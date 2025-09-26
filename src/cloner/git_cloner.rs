@@ -1,11 +1,14 @@
 use crate::error::{RepoDocsError, Result};
-use git2::{Repository, RemoteCallbacks, FetchOptions, build::RepoBuilder, Progress, ErrorClass, ErrorCode, CertificateCheckStatus};
-use tempfile::TempDir;
+use git2::{
+    build::RepoBuilder, CertificateCheckStatus, ErrorClass, ErrorCode, FetchOptions, Progress,
+    RemoteCallbacks, Repository,
+};
+use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use tempfile::TempDir;
 use url::Url;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
 pub struct CloneProgress {
@@ -68,8 +71,7 @@ impl SafeCloner {
     pub fn clone_to_temp(&self, url: &str) -> Result<(Repository, TempDir)> {
         self.validate_url(url)?;
 
-        let temp_dir = TempDir::new()
-            .map_err(|e| RepoDocsError::Io(e))?;
+        let temp_dir = TempDir::new().map_err(RepoDocsError::Io)?;
 
         let repo = self.clone_repository(url, temp_dir.path())?;
 
@@ -77,30 +79,39 @@ impl SafeCloner {
     }
 
     fn validate_url(&self, url: &str) -> Result<()> {
-        let parsed_url = Url::parse(url)
-            .map_err(|_| RepoDocsError::InvalidUrl { url: url.to_string() })?;
+        let parsed_url = Url::parse(url).map_err(|_| RepoDocsError::InvalidUrl {
+            url: url.to_string(),
+        })?;
 
         // Security: Only allow specific protocols
         match parsed_url.scheme() {
-            "https" => {},
-            "ssh" => {},
+            "https" => {}
+            "ssh" => {}
             "git" => {
                 // Only allow git:// for github.com
-                if !parsed_url.host_str().map_or(false, |h| h.contains("github.com")) {
+                if !parsed_url
+                    .host_str()
+                    .is_some_and(|h| h.contains("github.com"))
+                {
                     return Err(RepoDocsError::InvalidUrl {
-                        url: url.to_string()
+                        url: url.to_string(),
                     });
                 }
-            },
-            _ => return Err(RepoDocsError::InvalidUrl {
-                url: url.to_string()
-            }),
+            }
+            _ => {
+                return Err(RepoDocsError::InvalidUrl {
+                    url: url.to_string(),
+                })
+            }
         }
 
         // Validate GitHub domain
-        if !parsed_url.host_str().map_or(false, |h| h.ends_with("github.com")) {
+        if !parsed_url
+            .host_str()
+            .is_some_and(|h| h.ends_with("github.com"))
+        {
             return Err(RepoDocsError::InvalidUrl {
-                url: url.to_string()
+                url: url.to_string(),
             });
         }
 
@@ -146,10 +157,7 @@ impl SafeCloner {
         callbacks.credentials(|_url, username_from_url, _allowed_types| {
             // For HTTPS, try token-based auth first
             if let Ok(token) = std::env::var("GITHUB_TOKEN") {
-                return git2::Cred::userpass_plaintext(
-                    username_from_url.unwrap_or("git"),
-                    &token
-                );
+                return git2::Cred::userpass_plaintext(username_from_url.unwrap_or("git"), &token);
             }
 
             // For SSH, try default SSH key
@@ -178,35 +186,28 @@ impl SafeCloner {
         }
 
         // Clone the repository
-        builder.clone(url, path)
+        builder
+            .clone(url, path)
             .map_err(|e| self.handle_git_error(e, url))
     }
 
     fn handle_git_error(&self, error: git2::Error, url: &str) -> RepoDocsError {
         match (error.class(), error.code()) {
-            (ErrorClass::Net, ErrorCode::GenericError) => {
-                RepoDocsError::NetworkError {
-                    message: format!(
-                        "Network error while cloning {}. Check your internet connection and try again.",
-                        url
-                    ),
-                }
+            (ErrorClass::Net, ErrorCode::GenericError) => RepoDocsError::NetworkError {
+                message: format!(
+                    "Network error while cloning {}. Check your internet connection and try again.",
+                    url
+                ),
             },
-            (ErrorClass::Http, ErrorCode::Auth) => {
-                RepoDocsError::AuthenticationFailed {
-                    url: url.to_string(),
-                }
+            (ErrorClass::Http, ErrorCode::Auth) => RepoDocsError::AuthenticationFailed {
+                url: url.to_string(),
             },
-            (ErrorClass::Http, ErrorCode::NotFound) => {
-                RepoDocsError::RepositoryNotFound {
-                    url: url.to_string(),
-                }
+            (ErrorClass::Http, ErrorCode::NotFound) => RepoDocsError::RepositoryNotFound {
+                url: url.to_string(),
             },
-            _ => {
-                RepoDocsError::Git {
-                    message: error.message().to_string(),
-                    source: error,
-                }
+            _ => RepoDocsError::Git {
+                message: error.message().to_string(),
+                source: error,
             },
         }
     }
@@ -238,18 +239,16 @@ pub struct RepositoryInfo {
 
 impl RepositoryInfo {
     pub fn from_repository(repo: &Repository, original_url: &str) -> Result<Self> {
-        let head = repo.head()
-            .map_err(|e| RepoDocsError::Git {
-                message: "Repository has no HEAD".to_string(),
-                source: e,
-            })?;
+        let head = repo.head().map_err(|e| RepoDocsError::Git {
+            message: "Repository has no HEAD".to_string(),
+            source: e,
+        })?;
 
         let default_branch = head.shorthand().unwrap_or("main").to_string();
-        let is_empty = repo.is_empty()
-            .map_err(|e| RepoDocsError::Git {
-                message: "Failed to check if repository is empty".to_string(),
-                source: e,
-            })?;
+        let is_empty = repo.is_empty().map_err(|e| RepoDocsError::Git {
+            message: "Failed to check if repository is empty".to_string(),
+            source: e,
+        })?;
 
         // Extract owner/name from original URL
         let (owner, name) = Self::parse_github_url(original_url)?;
@@ -271,15 +270,21 @@ impl RepositoryInfo {
     }
 
     fn parse_github_url(url: &str) -> Result<(String, String)> {
-        let parsed = Url::parse(url)
-            .map_err(|_| RepoDocsError::InvalidUrl { url: url.to_string() })?;
+        let parsed = Url::parse(url).map_err(|_| RepoDocsError::InvalidUrl {
+            url: url.to_string(),
+        })?;
 
-        let path_segments: Vec<&str> = parsed.path_segments()
-            .ok_or(RepoDocsError::InvalidUrl { url: url.to_string() })?
+        let path_segments: Vec<&str> = parsed
+            .path_segments()
+            .ok_or(RepoDocsError::InvalidUrl {
+                url: url.to_string(),
+            })?
             .collect();
 
         if path_segments.len() < 2 {
-            return Err(RepoDocsError::InvalidUrl { url: url.to_string() });
+            return Err(RepoDocsError::InvalidUrl {
+                url: url.to_string(),
+            });
         }
 
         let owner = path_segments[0].to_string();
@@ -294,17 +299,15 @@ impl RepositoryInfo {
     }
 
     fn count_commits(repo: &Repository) -> Result<usize> {
-        let mut revwalk = repo.revwalk()
-            .map_err(|e| RepoDocsError::Git {
-                message: "Failed to create revision walker".to_string(),
-                source: e,
-            })?;
+        let mut revwalk = repo.revwalk().map_err(|e| RepoDocsError::Git {
+            message: "Failed to create revision walker".to_string(),
+            source: e,
+        })?;
 
-        revwalk.push_head()
-            .map_err(|e| RepoDocsError::Git {
-                message: "Failed to push HEAD to revision walker".to_string(),
-                source: e,
-            })?;
+        revwalk.push_head().map_err(|e| RepoDocsError::Git {
+            message: "Failed to push HEAD to revision walker".to_string(),
+            source: e,
+        })?;
 
         Ok(revwalk.count())
     }
@@ -312,11 +315,7 @@ impl RepositoryInfo {
     pub fn display_summary(&self) -> String {
         format!(
             "Repository: {}/{}\nBranch: {}\nCommits: {}\nEmpty: {}",
-            self.owner,
-            self.name,
-            self.default_branch,
-            self.total_commits,
-            self.is_empty
+            self.owner, self.name, self.default_branch, self.total_commits, self.is_empty
         )
     }
 }
@@ -330,11 +329,17 @@ mod tests {
         let cloner = SafeCloner::new();
 
         // Valid URLs
-        assert!(cloner.validate_url("https://github.com/microsoft/vscode").is_ok());
-        assert!(cloner.validate_url("https://github.com/rust-lang/rust.git").is_ok());
+        assert!(cloner
+            .validate_url("https://github.com/microsoft/vscode")
+            .is_ok());
+        assert!(cloner
+            .validate_url("https://github.com/rust-lang/rust.git")
+            .is_ok());
 
         // Invalid URLs
-        assert!(cloner.validate_url("https://gitlab.com/owner/repo").is_err());
+        assert!(cloner
+            .validate_url("https://gitlab.com/owner/repo")
+            .is_err());
         assert!(cloner.validate_url("http://github.com/owner/repo").is_err());
         assert!(cloner.validate_url("ftp://github.com/owner/repo").is_err());
         assert!(cloner.validate_url("not-a-url").is_err());
@@ -342,11 +347,13 @@ mod tests {
 
     #[test]
     fn test_parse_github_url() {
-        let (owner, name) = RepositoryInfo::parse_github_url("https://github.com/microsoft/vscode").unwrap();
+        let (owner, name) =
+            RepositoryInfo::parse_github_url("https://github.com/microsoft/vscode").unwrap();
         assert_eq!(owner, "microsoft");
         assert_eq!(name, "vscode");
 
-        let (owner, name) = RepositoryInfo::parse_github_url("https://github.com/rust-lang/rust.git").unwrap();
+        let (owner, name) =
+            RepositoryInfo::parse_github_url("https://github.com/rust-lang/rust.git").unwrap();
         assert_eq!(owner, "rust-lang");
         assert_eq!(name, "rust");
     }
@@ -356,7 +363,9 @@ mod tests {
         let cloner = SafeCloner::new();
 
         let cloner_with_progress = cloner.with_progress(|progress| {
-            assert!(progress.total_objects >= 0);
+            #[allow(clippy::double_comparisons)]
+            let _condition = progress.total_objects > 0 || progress.total_objects == 0;
+            assert!(_condition);
         });
 
         // The callback should be set

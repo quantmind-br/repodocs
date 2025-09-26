@@ -1,21 +1,23 @@
 pub mod cli;
+pub mod cloner;
 pub mod config;
 pub mod error;
-pub mod cloner;
-pub mod scanner;
 pub mod extractor;
+pub mod scanner;
 pub mod ui;
 
 // Public API re-exports
 pub use cli::{Cli, OutputFormat};
-pub use config::{Config, FilterConfig, OutputConfig, GitConfig, CliOverrides};
-pub use error::{RepoDocsError, UserFriendlyError, Result};
+pub use config::{CliOverrides, Config, FilterConfig, GitConfig, OutputConfig};
+pub use error::{RepoDocsError, Result, UserFriendlyError};
 
 // Core functionality re-exports
-pub use cloner::{SafeCloner, RepositoryInfo, CloneProgress};
-pub use scanner::{DocumentScanner, DocumentFile, FileFilter};
-pub use extractor::{FileOperations, OutputManager, ExtractionProgress, ExtractionReport, ConfigSnapshot};
-pub use ui::{ProgressManager, OutputFormatter, OutputMode, GracefulShutdown};
+pub use cloner::{CloneProgress, RepositoryInfo, SafeCloner};
+pub use extractor::{
+    ConfigSnapshot, ExtractionProgress, ExtractionReport, FileOperations, OutputManager,
+};
+pub use scanner::{DocumentFile, DocumentScanner, FileFilter};
+pub use ui::{GracefulShutdown, OutputFormatter, OutputMode, ProgressManager};
 
 use std::path::Path;
 use std::time::Instant;
@@ -45,7 +47,6 @@ impl RepoDocs {
     }
 
     /// Create a new RepoDocs instance for testing (no signal handler conflicts)
-    #[cfg(test)]
     pub fn new_for_test(config: Config, output_mode: OutputMode, verbose: u8, quiet: bool) -> Self {
         let output_formatter = OutputFormatter::new(output_mode, verbose, quiet);
         let progress_manager = ProgressManager::new(!quiet);
@@ -78,14 +79,15 @@ impl RepoDocs {
         // Validate the operation can proceed
         self.shutdown.check_shutdown()?;
 
-        self.output_formatter.start_operation("Starting documentation extraction");
+        self.output_formatter
+            .start_operation("Starting documentation extraction");
 
         // Step 1: Clone repository
         let (_repo, temp_dir, repo_info) = self.clone_repository(repository_url).await?;
         self.shutdown.check_shutdown()?;
 
         // Step 2: Scan for documentation files
-        let documents = self.scan_documentation(&temp_dir.path())?;
+        let documents = self.scan_documentation(temp_dir.path())?;
         self.shutdown.check_shutdown()?;
 
         if documents.is_empty() {
@@ -94,14 +96,16 @@ impl RepoDocs {
             });
         }
 
-        self.output_formatter.info(&format!("Found {} documentation files", documents.len()));
+        self.output_formatter
+            .info(&format!("Found {} documentation files", documents.len()));
 
         // Step 3: Setup output directory
         let output_manager = self.setup_output_directory(&repo_info)?;
         self.shutdown.check_shutdown()?;
 
         // Step 4: Extract files
-        let extraction_progress = self.extract_files(&documents, output_manager.get_output_directory())?;
+        let extraction_progress =
+            self.extract_files(&documents, output_manager.get_output_directory())?;
         self.shutdown.check_shutdown()?;
 
         // Step 5: Generate reports
@@ -115,18 +119,23 @@ impl RepoDocs {
 
         // Step 6: Create index file if requested
         if self.config.output.create_index {
-            let file_ops = FileOperations::new().with_preserve_structure(self.config.output.preserve_structure);
+            let file_ops = FileOperations::new()
+                .with_preserve_structure(self.config.output.preserve_structure);
             file_ops.create_index_file(&documents, output_manager.get_output_directory())?;
         }
 
         // Display summary
-        self.output_formatter.print_extraction_summary(&extraction_progress);
+        self.output_formatter
+            .print_extraction_summary(&extraction_progress);
 
         Ok(report)
     }
 
     /// Clone repository with progress indication
-    async fn clone_repository(&self, url: &str) -> Result<(git2::Repository, tempfile::TempDir, RepositoryInfo)> {
+    async fn clone_repository(
+        &self,
+        url: &str,
+    ) -> Result<(git2::Repository, tempfile::TempDir, RepositoryInfo)> {
         self.output_formatter.start_operation("Cloning repository");
 
         let clone_progress = self.progress_manager.create_clone_progress();
@@ -148,12 +157,11 @@ impl RepoDocs {
         };
 
         let url_clone = url.to_string();
-        let (repo, temp_dir) = task::spawn_blocking(move || {
-            cloner.clone_to_temp(&url_clone)
-        }).await
-        .map_err(|e| RepoDocsError::Config {
-            message: format!("Clone task failed: {}", e),
-        })??;
+        let (repo, temp_dir) = task::spawn_blocking(move || cloner.clone_to_temp(&url_clone))
+            .await
+            .map_err(|e| RepoDocsError::Config {
+                message: format!("Clone task failed: {}", e),
+            })??;
 
         ui::progress::finish_progress_with_summary(
             &clone_progress,
@@ -169,10 +177,10 @@ impl RepoDocs {
 
     /// Scan for documentation files
     fn scan_documentation(&self, repo_path: &Path) -> Result<Vec<DocumentFile>> {
-        self.output_formatter.start_operation("Scanning for documentation files");
+        self.output_formatter
+            .start_operation("Scanning for documentation files");
 
-        let scanner = DocumentScanner::new(&self.config.filters)
-            .with_repo_root(repo_path);
+        let scanner = DocumentScanner::new(&self.config.filters).with_repo_root(repo_path);
 
         let documents = scanner.scan_directory(repo_path)?;
 
@@ -204,10 +212,17 @@ impl RepoDocs {
     }
 
     /// Extract files with progress tracking
-    fn extract_files(&self, documents: &[DocumentFile], output_dir: &Path) -> Result<ExtractionProgress> {
-        self.output_formatter.start_operation("Extracting documentation files");
+    fn extract_files(
+        &self,
+        documents: &[DocumentFile],
+        output_dir: &Path,
+    ) -> Result<ExtractionProgress> {
+        self.output_formatter
+            .start_operation("Extracting documentation files");
 
-        let file_progress = self.progress_manager.create_file_progress(documents.len() as u64);
+        let file_progress = self
+            .progress_manager
+            .create_file_progress(documents.len() as u64);
         let progress_callback = {
             let pb = file_progress.clone();
             move |progress: &ExtractionProgress| {
@@ -215,14 +230,11 @@ impl RepoDocs {
             }
         };
 
-        let file_ops = FileOperations::new()
-            .with_preserve_structure(self.config.output.preserve_structure);
+        let file_ops =
+            FileOperations::new().with_preserve_structure(self.config.output.preserve_structure);
 
-        let extraction_progress = file_ops.extract_files(
-            documents,
-            output_dir,
-            Some(&progress_callback),
-        )?;
+        let extraction_progress =
+            file_ops.extract_files(documents, output_dir, Some(&progress_callback))?;
 
         ui::progress::finish_progress_with_summary(
             &file_progress,
@@ -246,8 +258,7 @@ impl RepoDocs {
     /// Generate sample configuration file
     pub fn generate_sample_config<P: AsRef<Path>>(output_path: P) -> Result<()> {
         let sample_config = Config::create_sample_config();
-        std::fs::write(output_path.as_ref(), sample_config)
-            .map_err(|e| RepoDocsError::Io(e))?;
+        std::fs::write(output_path.as_ref(), sample_config).map_err(RepoDocsError::Io)?;
         Ok(())
     }
 
@@ -306,8 +317,9 @@ pub async fn extract_docs_simple(
 
 /// Validate a GitHub repository URL
 pub fn validate_repository_url(url: &str) -> Result<String> {
-    cli::validate_github_url(url)
-        .map_err(|msg| RepoDocsError::InvalidUrl { url: msg.to_string() })
+    cli::validate_github_url(url).map_err(|msg| RepoDocsError::InvalidUrl {
+        url: msg.to_string(),
+    })
 }
 
 /// Get version information

@@ -1,13 +1,13 @@
-use crate::error::{RepoDocsError, Result};
-use crate::scanner::DocumentFile;
-use crate::extractor::ExtractionProgress;
 use crate::cloner::RepositoryInfo;
+use crate::error::{RepoDocsError, Result};
+use crate::extractor::ExtractionProgress;
+use crate::scanner::DocumentFile;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
-use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExtractionReport {
@@ -60,6 +60,7 @@ impl From<&DocumentFile> for FileInfo {
 
 pub struct OutputManager {
     base_path: PathBuf,
+    #[allow(dead_code)]
     repo_name: String,
     output_directory: PathBuf,
     force_overwrite: bool,
@@ -99,19 +100,16 @@ impl OutputManager {
                 });
             } else {
                 // Remove existing directory
-                fs::remove_dir_all(&self.output_directory)
-                    .map_err(|e| RepoDocsError::Io(e))?;
+                fs::remove_dir_all(&self.output_directory).map_err(RepoDocsError::Io)?;
             }
         }
 
         // Create output directory
-        fs::create_dir_all(&self.output_directory)
-            .map_err(|e| RepoDocsError::Io(e))?;
+        fs::create_dir_all(&self.output_directory).map_err(RepoDocsError::Io)?;
 
         // Create .repodocs metadata directory
         let metadata_dir = self.output_directory.join(".repodocs");
-        fs::create_dir_all(&metadata_dir)
-            .map_err(|e| RepoDocsError::Io(e))?;
+        fs::create_dir_all(&metadata_dir).map_err(RepoDocsError::Io)?;
 
         Ok(())
     }
@@ -147,8 +145,13 @@ impl OutputManager {
         Ok(report)
     }
 
-    fn create_extraction_summary(&self, documents: &[DocumentFile], progress: &ExtractionProgress) -> ExtractionSummary {
-        let mut files_by_extension: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    fn create_extraction_summary(
+        &self,
+        documents: &[DocumentFile],
+        progress: &ExtractionProgress,
+    ) -> ExtractionSummary {
+        let mut files_by_extension: std::collections::HashMap<String, usize> =
+            std::collections::HashMap::new();
         let mut largest_file: Option<&DocumentFile> = None;
 
         for doc in documents {
@@ -160,7 +163,7 @@ impl OutputManager {
 
             *files_by_extension.entry(ext).or_insert(0) += 1;
 
-            if largest_file.map_or(true, |f| doc.size > f.size) {
+            if largest_file.is_none_or(|f| doc.size > f.size) {
                 largest_file = Some(doc);
             }
         }
@@ -183,52 +186,90 @@ impl OutputManager {
     }
 
     fn save_report_json(&self, report: &ExtractionReport) -> Result<()> {
-        let report_path = self.output_directory.join(".repodocs").join("extraction_report.json");
-        let json_content = serde_json::to_string_pretty(report)
-            .map_err(|e| RepoDocsError::Config {
+        let report_path = self
+            .output_directory
+            .join(".repodocs")
+            .join("extraction_report.json");
+        let json_content =
+            serde_json::to_string_pretty(report).map_err(|e| RepoDocsError::Config {
                 message: format!("Failed to serialize report to JSON: {}", e),
             })?;
 
-        fs::write(&report_path, json_content)
-            .map_err(|e| RepoDocsError::Io(e))?;
+        fs::write(&report_path, json_content).map_err(RepoDocsError::Io)?;
 
         Ok(())
     }
 
     fn save_report_text(&self, report: &ExtractionReport) -> Result<()> {
-        let report_path = self.output_directory.join(".repodocs").join("extraction_report.txt");
-        let mut file = fs::File::create(&report_path)
-            .map_err(|e| RepoDocsError::Io(e))?;
+        let report_path = self
+            .output_directory
+            .join(".repodocs")
+            .join("extraction_report.txt");
+        let mut file = fs::File::create(&report_path).map_err(RepoDocsError::Io)?;
 
         writeln!(file, "RepoDocs Extraction Report")?;
         writeln!(file, "==========================")?;
         writeln!(file)?;
 
         // Repository information
-        writeln!(file, "Repository: {}/{}", report.repository_info.owner, report.repository_info.name)?;
+        writeln!(
+            file,
+            "Repository: {}/{}",
+            report.repository_info.owner, report.repository_info.name
+        )?;
         writeln!(file, "URL: {}", report.repository_info.url)?;
         writeln!(file, "Branch: {}", report.repository_info.default_branch)?;
-        writeln!(file, "Total commits: {}", report.repository_info.total_commits)?;
-        writeln!(file, "Repository empty: {}", report.repository_info.is_empty)?;
+        writeln!(
+            file,
+            "Total commits: {}",
+            report.repository_info.total_commits
+        )?;
+        writeln!(
+            file,
+            "Repository empty: {}",
+            report.repository_info.is_empty
+        )?;
         writeln!(file)?;
 
         // Extraction summary
         writeln!(file, "Extraction Summary:")?;
-        writeln!(file, "  Extracted at: {}", report.extraction_time.format("%Y-%m-%d %H:%M:%S UTC"))?;
-        writeln!(file, "  Duration: {:?}", report.extraction_summary.extraction_duration)?;
-        writeln!(file, "  Files processed: {}", report.extraction_summary.total_files_processed)?;
-        writeln!(file, "  Bytes processed: {} ({})",
-                 report.extraction_summary.total_bytes_processed,
-                 format_bytes(report.extraction_summary.total_bytes_processed))?;
-        writeln!(file, "  Average file size: {} ({})",
-                 report.extraction_summary.average_file_size,
-                 format_bytes(report.extraction_summary.average_file_size))?;
+        writeln!(
+            file,
+            "  Extracted at: {}",
+            report.extraction_time.format("%Y-%m-%d %H:%M:%S UTC")
+        )?;
+        writeln!(
+            file,
+            "  Duration: {:?}",
+            report.extraction_summary.extraction_duration
+        )?;
+        writeln!(
+            file,
+            "  Files processed: {}",
+            report.extraction_summary.total_files_processed
+        )?;
+        writeln!(
+            file,
+            "  Bytes processed: {} ({})",
+            report.extraction_summary.total_bytes_processed,
+            format_bytes(report.extraction_summary.total_bytes_processed)
+        )?;
+        writeln!(
+            file,
+            "  Average file size: {} ({})",
+            report.extraction_summary.average_file_size,
+            format_bytes(report.extraction_summary.average_file_size)
+        )?;
         writeln!(file)?;
 
         // Files by extension
         if !report.extraction_summary.files_by_extension.is_empty() {
             writeln!(file, "Files by extension:")?;
-            let mut extensions: Vec<_> = report.extraction_summary.files_by_extension.iter().collect();
+            let mut extensions: Vec<_> = report
+                .extraction_summary
+                .files_by_extension
+                .iter()
+                .collect();
             extensions.sort_by(|a, b| b.1.cmp(a.1)); // Sort by count descending
 
             for (ext, count) in extensions {
@@ -242,18 +283,38 @@ impl OutputManager {
             writeln!(file, "Largest file:")?;
             writeln!(file, "  Name: {}", largest.filename)?;
             writeln!(file, "  Path: {}", largest.relative_path)?;
-            writeln!(file, "  Size: {} ({})", largest.size, format_bytes(largest.size))?;
+            writeln!(
+                file,
+                "  Size: {} ({})",
+                largest.size,
+                format_bytes(largest.size)
+            )?;
             writeln!(file)?;
         }
 
         // Configuration used
         writeln!(file, "Configuration used:")?;
-        writeln!(file, "  Extensions: {}", report.config_used.extensions.join(", "))?;
-        writeln!(file, "  Max file size: {} ({})",
-                 report.config_used.max_file_size,
-                 format_bytes(report.config_used.max_file_size))?;
-        writeln!(file, "  Excluded directories: {}", report.config_used.exclude_dirs.join(", "))?;
-        writeln!(file, "  Preserve structure: {}", report.config_used.preserve_structure)?;
+        writeln!(
+            file,
+            "  Extensions: {}",
+            report.config_used.extensions.join(", ")
+        )?;
+        writeln!(
+            file,
+            "  Max file size: {} ({})",
+            report.config_used.max_file_size,
+            format_bytes(report.config_used.max_file_size)
+        )?;
+        writeln!(
+            file,
+            "  Excluded directories: {}",
+            report.config_used.exclude_dirs.join(", ")
+        )?;
+        writeln!(
+            file,
+            "  Preserve structure: {}",
+            report.config_used.preserve_structure
+        )?;
         writeln!(file)?;
 
         // Errors (if any)
@@ -268,10 +329,13 @@ impl OutputManager {
         // File listing
         writeln!(file, "Extracted files:")?;
         for file_info in &report.files {
-            writeln!(file, "  {} ({} bytes) - {}",
-                     file_info.relative_path,
-                     file_info.size,
-                     file_info.extension.as_str())?;
+            writeln!(
+                file,
+                "  {} ({} bytes) - {}",
+                file_info.relative_path,
+                file_info.size,
+                file_info.extension.as_str()
+            )?;
         }
 
         Ok(())
@@ -279,34 +343,62 @@ impl OutputManager {
 
     fn create_summary_file(&self, report: &ExtractionReport) -> Result<()> {
         let summary_path = self.output_directory.join("EXTRACTION_SUMMARY.md");
-        let mut file = fs::File::create(&summary_path)
-            .map_err(|e| RepoDocsError::Io(e))?;
+        let mut file = fs::File::create(&summary_path).map_err(RepoDocsError::Io)?;
 
         writeln!(file, "# Documentation Extraction Summary")?;
         writeln!(file)?;
-        writeln!(file, "**Repository:** [{}/{}]({})",
-                 report.repository_info.owner,
-                 report.repository_info.name,
-                 report.repository_info.url)?;
-        writeln!(file, "**Extracted:** {}", report.extraction_time.format("%Y-%m-%d %H:%M UTC"))?;
-        writeln!(file, "**Duration:** {:?}", report.extraction_summary.extraction_duration)?;
+        writeln!(
+            file,
+            "**Repository:** [{}/{}]({})",
+            report.repository_info.owner, report.repository_info.name, report.repository_info.url
+        )?;
+        writeln!(
+            file,
+            "**Extracted:** {}",
+            report.extraction_time.format("%Y-%m-%d %H:%M UTC")
+        )?;
+        writeln!(
+            file,
+            "**Duration:** {:?}",
+            report.extraction_summary.extraction_duration
+        )?;
         writeln!(file)?;
 
         writeln!(file, "## Statistics")?;
         writeln!(file)?;
-        writeln!(file, "- **Files processed:** {}", report.extraction_summary.total_files_processed)?;
-        writeln!(file, "- **Total size:** {}", format_bytes(report.extraction_summary.total_bytes_processed))?;
-        writeln!(file, "- **Average file size:** {}", format_bytes(report.extraction_summary.average_file_size))?;
+        writeln!(
+            file,
+            "- **Files processed:** {}",
+            report.extraction_summary.total_files_processed
+        )?;
+        writeln!(
+            file,
+            "- **Total size:** {}",
+            format_bytes(report.extraction_summary.total_bytes_processed)
+        )?;
+        writeln!(
+            file,
+            "- **Average file size:** {}",
+            format_bytes(report.extraction_summary.average_file_size)
+        )?;
         writeln!(file)?;
 
         if !report.extraction_summary.files_by_extension.is_empty() {
             writeln!(file, "## File Types")?;
             writeln!(file)?;
-            let mut extensions: Vec<_> = report.extraction_summary.files_by_extension.iter().collect();
+            let mut extensions: Vec<_> = report
+                .extraction_summary
+                .files_by_extension
+                .iter()
+                .collect();
             extensions.sort_by(|a, b| b.1.cmp(a.1));
 
             for (ext, count) in extensions {
-                let display_ext = if ext == "no_extension" { "no extension" } else { ext };
+                let display_ext = if ext == "no_extension" {
+                    "no extension"
+                } else {
+                    ext
+                };
                 writeln!(file, "- **{}**: {} files", display_ext, count)?;
             }
             writeln!(file)?;
@@ -330,10 +422,13 @@ impl OutputManager {
     fn validate_paths(&self) -> Result<()> {
         // Check if base path is writable
         if !self.base_path.exists() {
-            fs::create_dir_all(&self.base_path)
-                .map_err(|e| RepoDocsError::Permission {
-                    path: format!("Cannot create base directory {}: {}", self.base_path.display(), e),
-                })?;
+            fs::create_dir_all(&self.base_path).map_err(|e| RepoDocsError::Permission {
+                path: format!(
+                    "Cannot create base directory {}: {}",
+                    self.base_path.display(),
+                    e
+                ),
+            })?;
         }
 
         // Test write permissions
@@ -341,12 +436,16 @@ impl OutputManager {
         match fs::File::create(&test_file) {
             Ok(_) => {
                 let _ = fs::remove_file(&test_file); // Clean up test file
-            },
+            }
             Err(e) => {
                 return Err(RepoDocsError::Permission {
-                    path: format!("No write permission for directory {}: {}", self.base_path.display(), e),
+                    path: format!(
+                        "No write permission for directory {}: {}",
+                        self.base_path.display(),
+                        e
+                    ),
                 });
-            },
+            }
         }
 
         Ok(())
@@ -354,8 +453,7 @@ impl OutputManager {
 
     pub fn cleanup_on_error(&self) -> Result<()> {
         if self.output_directory.exists() {
-            fs::remove_dir_all(&self.output_directory)
-                .map_err(|e| RepoDocsError::Io(e))?;
+            fs::remove_dir_all(&self.output_directory).map_err(RepoDocsError::Io)?;
         }
         Ok(())
     }
@@ -412,8 +510,8 @@ fn format_bytes(bytes: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::time::SystemTime;
+    use tempfile::TempDir;
 
     fn create_test_repo_info() -> RepositoryInfo {
         RepositoryInfo {
@@ -448,10 +546,8 @@ mod tests {
     #[test]
     fn test_output_manager_creation() {
         let temp_dir = TempDir::new().unwrap();
-        let manager = OutputManager::new(
-            temp_dir.path().to_path_buf(),
-            "test-repo".to_string(),
-        ).unwrap();
+        let manager =
+            OutputManager::new(temp_dir.path().to_path_buf(), "test-repo".to_string()).unwrap();
 
         assert_eq!(manager.repo_name, "test-repo");
         assert_eq!(
@@ -463,10 +559,8 @@ mod tests {
     #[test]
     fn test_output_directory_initialization() {
         let temp_dir = TempDir::new().unwrap();
-        let manager = OutputManager::new(
-            temp_dir.path().to_path_buf(),
-            "test-repo".to_string(),
-        ).unwrap();
+        let manager =
+            OutputManager::new(temp_dir.path().to_path_buf(), "test-repo".to_string()).unwrap();
 
         manager.initialize().unwrap();
 
@@ -477,10 +571,8 @@ mod tests {
     #[test]
     fn test_extraction_report_creation() {
         let temp_dir = TempDir::new().unwrap();
-        let manager = OutputManager::new(
-            temp_dir.path().to_path_buf(),
-            "test-repo".to_string(),
-        ).unwrap();
+        let manager =
+            OutputManager::new(temp_dir.path().to_path_buf(), "test-repo".to_string()).unwrap();
 
         manager.initialize().unwrap();
 
@@ -496,21 +588,27 @@ mod tests {
 
         let config = create_test_config();
 
-        let report = manager.create_extraction_report(
-            &repo_info,
-            &documents,
-            &progress,
-            &config,
-        ).unwrap();
+        let report = manager
+            .create_extraction_report(&repo_info, &documents, &progress, &config)
+            .unwrap();
 
         assert_eq!(report.files.len(), 2);
         assert_eq!(report.extraction_summary.total_files_processed, 2);
         assert_eq!(report.extraction_summary.total_bytes_processed, 300);
 
         // Check that report files were created
-        assert!(manager.get_metadata_dir().join("extraction_report.json").exists());
-        assert!(manager.get_metadata_dir().join("extraction_report.txt").exists());
-        assert!(manager.get_output_directory().join("EXTRACTION_SUMMARY.md").exists());
+        assert!(manager
+            .get_metadata_dir()
+            .join("extraction_report.json")
+            .exists());
+        assert!(manager
+            .get_metadata_dir()
+            .join("extraction_report.txt")
+            .exists());
+        assert!(manager
+            .get_output_directory()
+            .join("EXTRACTION_SUMMARY.md")
+            .exists());
     }
 
     #[test]
@@ -529,10 +627,8 @@ mod tests {
     #[test]
     fn test_force_overwrite() {
         let temp_dir = TempDir::new().unwrap();
-        let manager = OutputManager::new(
-            temp_dir.path().to_path_buf(),
-            "test-repo".to_string(),
-        ).unwrap();
+        let manager =
+            OutputManager::new(temp_dir.path().to_path_buf(), "test-repo".to_string()).unwrap();
 
         // Create initial directory
         manager.initialize().unwrap();
@@ -548,7 +644,10 @@ mod tests {
         let manager_with_force = manager.with_force_overwrite(true);
         manager_with_force.initialize().unwrap();
         assert!(manager_with_force.get_output_directory().exists());
-        assert!(!manager_with_force.get_output_directory().join("test.txt").exists());
+        assert!(!manager_with_force
+            .get_output_directory()
+            .join("test.txt")
+            .exists());
     }
 
     #[test]

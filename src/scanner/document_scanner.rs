@@ -1,9 +1,9 @@
 use crate::config::FilterConfig;
 use crate::error::{RepoDocsError, Result};
 use crate::scanner::file_filter::FileFilter;
-use walkdir::{WalkDir, DirEntry};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
+use walkdir::{DirEntry, WalkDir};
 
 #[derive(Debug, Clone)]
 pub struct DocumentFile {
@@ -52,9 +52,22 @@ impl DocumentFile {
         let filename = self.filename.to_lowercase();
         matches!(
             filename.as_str(),
-            "readme" | "license" | "changelog" | "contributing" | "authors" | "notice"
-            | "install" | "usage" | "todo" | "copying" | "news" | "history" | "credits"
-            | "maintainers" | "thanks" | "acknowledgments"
+            "readme"
+                | "license"
+                | "changelog"
+                | "contributing"
+                | "authors"
+                | "notice"
+                | "install"
+                | "usage"
+                | "todo"
+                | "copying"
+                | "news"
+                | "history"
+                | "credits"
+                | "maintainers"
+                | "thanks"
+                | "acknowledgments"
         )
     }
 
@@ -116,7 +129,10 @@ impl DocumentScanner {
                 Ok(entry) => entry,
                 Err(err) => {
                     // Log permission errors but continue scanning
-                    if err.io_error().map_or(false, |e| e.kind() == std::io::ErrorKind::PermissionDenied) {
+                    if err
+                        .io_error()
+                        .is_some_and(|e| e.kind() == std::io::ErrorKind::PermissionDenied)
+                    {
                         scan_errors.push(format!("Permission denied: {}", err));
                     } else {
                         scan_errors.push(format!("Scan error: {}", err));
@@ -128,7 +144,7 @@ impl DocumentScanner {
             if entry.file_type().is_file() {
                 match self.process_file(&entry, root_path) {
                     Ok(Some(doc_file)) => documents.push(doc_file),
-                    Ok(None) => {}, // File filtered out
+                    Ok(None) => {} // File filtered out
                     Err(err) => {
                         scan_errors.push(format!(
                             "Error processing {}: {}",
@@ -194,8 +210,7 @@ impl DocumentScanner {
         }
 
         // Get file metadata
-        let metadata = entry.metadata()
-            .map_err(|e| RepoDocsError::Io(e.into()))?;
+        let metadata = entry.metadata().map_err(|e| RepoDocsError::Io(e.into()))?;
 
         // Check file size limits
         if !self.filter.is_size_allowed(metadata.len()) {
@@ -206,33 +221,36 @@ impl DocumentScanner {
         let relative_path = self.calculate_relative_path(path, root_path)?;
 
         // Get modification time
-        let modified = metadata.modified()
-            .unwrap_or(SystemTime::UNIX_EPOCH);
+        let modified = metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH);
 
-        let doc_file = DocumentFile::new(
-            path.to_path_buf(),
-            relative_path,
-            metadata.len(),
-            modified,
-        );
+        let doc_file =
+            DocumentFile::new(path.to_path_buf(), relative_path, metadata.len(), modified);
 
         Ok(Some(doc_file))
     }
 
     fn calculate_relative_path(&self, file_path: &Path, root_path: &Path) -> Result<PathBuf> {
-        let relative = file_path.strip_prefix(root_path)
-            .map_err(|_| RepoDocsError::InvalidPath {
-                path: format!(
-                    "Cannot calculate relative path for {} from root {}",
-                    file_path.display(),
-                    root_path.display()
-                ),
-            })?;
+        let relative =
+            file_path
+                .strip_prefix(root_path)
+                .map_err(|_| RepoDocsError::InvalidPath {
+                    path: format!(
+                        "Cannot calculate relative path for {} from root {}",
+                        file_path.display(),
+                        root_path.display()
+                    ),
+                })?;
 
         // Security: Ensure the relative path doesn't contain parent directory references
-        if relative.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+        if relative
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
+        {
             return Err(RepoDocsError::InvalidPath {
-                path: format!("Path contains parent directory references: {}", relative.display()),
+                path: format!(
+                    "Path contains parent directory references: {}",
+                    relative.display()
+                ),
             });
         }
 
@@ -240,28 +258,34 @@ impl DocumentScanner {
     }
 
     pub fn get_statistics(&self, documents: &[DocumentFile]) -> ScanStatistics {
-        let mut stats = ScanStatistics::default();
-        stats.total_files = documents.len();
-        stats.total_size = documents.iter().map(|d| d.size).sum();
+        let total_files = documents.len();
+        let total_size = documents.iter().map(|d| d.size).sum();
 
         // Group by extension
+        let mut files_by_extension = std::collections::HashMap::new();
         for doc in documents {
             let ext = if doc.extension.is_empty() {
                 "no_extension".to_string()
             } else {
                 doc.extension.clone()
             };
-
-            *stats.files_by_extension.entry(ext).or_insert(0) += 1;
+            *files_by_extension.entry(ext).or_insert(0) += 1;
         }
 
         // Find largest file
-        if let Some(largest) = documents.iter().max_by_key(|d| d.size) {
-            stats.largest_file_size = largest.size;
-            stats.largest_file_path = largest.relative_path.clone();
-        }
+        let (largest_file_size, largest_file_path) = documents
+            .iter()
+            .max_by_key(|d| d.size)
+            .map(|d| (d.size, d.relative_path.clone()))
+            .unwrap_or((0, PathBuf::new()));
 
-        stats
+        ScanStatistics {
+            total_files,
+            total_size,
+            files_by_extension,
+            largest_file_size,
+            largest_file_path,
+        }
     }
 }
 
@@ -324,9 +348,8 @@ fn format_bytes(bytes: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
-    use std::io::Write;
+    use tempfile::TempDir;
 
     fn create_test_config() -> FilterConfig {
         FilterConfig {
@@ -381,19 +404,35 @@ mod tests {
         let scanner = DocumentScanner::new(&config);
 
         // Test file filter directly
-        assert!(scanner.filter.is_documentation_file(&test_dir.join("README.md")));
-        assert!(scanner.filter.is_documentation_file(&test_dir.join("test.txt")));
+        assert!(scanner
+            .filter
+            .is_documentation_file(&test_dir.join("README.md")));
+        assert!(scanner
+            .filter
+            .is_documentation_file(&test_dir.join("test.txt")));
 
         // Test directory traversal logic - the subdirectory should be traversed
-        assert!(scanner.filter.should_traverse_directory(&test_dir), "Should traverse test directory");
+        assert!(
+            scanner.filter.should_traverse_directory(&test_dir),
+            "Should traverse test directory"
+        );
 
         // The scanner should find these files
         let documents = scanner.scan_directory(&test_dir).unwrap();
 
         // Both files should be found
-        assert!(!documents.is_empty(), "Scanner should find at least one file");
-        assert!(documents.iter().any(|d| d.filename == "README.md"), "Should find README.md");
-        assert!(documents.iter().any(|d| d.filename == "test.txt"), "Should find test.txt");
+        assert!(
+            !documents.is_empty(),
+            "Scanner should find at least one file"
+        );
+        assert!(
+            documents.iter().any(|d| d.filename == "README.md"),
+            "Should find README.md"
+        );
+        assert!(
+            documents.iter().any(|d| d.filename == "test.txt"),
+            "Should find test.txt"
+        );
     }
 
     #[test]
@@ -403,13 +442,13 @@ mod tests {
                 PathBuf::from("test.md"),
                 PathBuf::from("test.md"),
                 100,
-                SystemTime::UNIX_EPOCH
+                SystemTime::UNIX_EPOCH,
             ),
             DocumentFile::new(
                 PathBuf::from("README"),
                 PathBuf::from("README"),
                 200,
-                SystemTime::UNIX_EPOCH
+                SystemTime::UNIX_EPOCH,
             ),
         ];
 

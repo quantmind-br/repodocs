@@ -11,11 +11,10 @@ pub struct FileFilter {
 
 impl FileFilter {
     pub fn new(config: &FilterConfig) -> Self {
-        let exclude_patterns = config.exclude_patterns
+        let exclude_patterns = config
+            .exclude_patterns
             .iter()
-            .filter_map(|pattern| {
-                Regex::new(pattern).ok()
-            })
+            .filter_map(|pattern| Regex::new(pattern).ok())
             .collect();
 
         Self {
@@ -47,10 +46,28 @@ impl FileFilter {
     fn is_extensionless_doc(&self, filename: &str) -> bool {
         matches!(
             filename,
-            "readme" | "license" | "licence" | "changelog" | "contributing" | "authors" | "notice"
-            | "install" | "usage" | "todo" | "copying" | "news" | "history" | "credits"
-            | "maintainers" | "thanks" | "acknowledgments" | "acknowledgements"
-            | "code_of_conduct" | "security" | "support" | "codeofconduct"
+            "readme"
+                | "license"
+                | "licence"
+                | "changelog"
+                | "contributing"
+                | "authors"
+                | "notice"
+                | "install"
+                | "usage"
+                | "todo"
+                | "copying"
+                | "news"
+                | "history"
+                | "credits"
+                | "maintainers"
+                | "thanks"
+                | "acknowledgments"
+                | "acknowledgements"
+                | "code_of_conduct"
+                | "security"
+                | "support"
+                | "codeofconduct"
         )
     }
 
@@ -59,9 +76,11 @@ impl FileFilter {
             let dir_name_lower = dir_name.to_lowercase();
 
             // Check against excluded directories
-            if self.exclude_dirs.iter().any(|exclude| {
-                exclude.to_lowercase() == dir_name_lower
-            }) {
+            if self
+                .exclude_dirs
+                .iter()
+                .any(|exclude| exclude.to_lowercase() == dir_name_lower)
+            {
                 return false;
             }
 
@@ -76,7 +95,10 @@ impl FileFilter {
             // Skip hidden directories (starting with .)
             if dir_name.starts_with('.') && dir_name != "." && dir_name != ".." {
                 // Allow some common documentation directories
-                if !matches!(dir_name_lower.as_str(), ".github" | ".vscode" | ".devcontainer") {
+                if !matches!(
+                    dir_name_lower.as_str(),
+                    ".github" | ".vscode" | ".devcontainer"
+                ) {
                     return false;
                 }
             }
@@ -84,10 +106,24 @@ impl FileFilter {
             // Skip common build/output directories
             if matches!(
                 dir_name_lower.as_str(),
-                "target" | "build" | "dist" | "out" | "output" | "bin" | "obj"
-                | "node_modules" | "vendor" | ".cache" | "tmp" | "temp"
-                | "__pycache__" | ".pytest_cache" | ".mypy_cache"
-                | "coverage" | ".coverage" | "htmlcov"
+                "target"
+                    | "build"
+                    | "dist"
+                    | "out"
+                    | "output"
+                    | "bin"
+                    | "obj"
+                    | "node_modules"
+                    | "vendor"
+                    | ".cache"
+                    | "tmp"
+                    | "temp"
+                    | "__pycache__"
+                    | ".pytest_cache"
+                    | ".mypy_cache"
+                    | "coverage"
+                    | ".coverage"
+                    | "htmlcov"
             ) {
                 return false;
             }
@@ -105,7 +141,9 @@ impl FileFilter {
     }
 
     pub fn matches_any_pattern(&self, text: &str) -> bool {
-        self.exclude_patterns.iter().any(|pattern| pattern.is_match(text))
+        self.exclude_patterns
+            .iter()
+            .any(|pattern| pattern.is_match(text))
     }
 
     pub fn add_extension<S: Into<String>>(&mut self, extension: S) {
@@ -150,7 +188,6 @@ impl Default for FileFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
     fn create_test_config() -> FilterConfig {
         FilterConfig {
@@ -166,10 +203,7 @@ mod tests {
                 "node_modules".to_string(),
                 "target".to_string(),
             ],
-            exclude_patterns: vec![
-                r".*\.min\..*".to_string(),
-                r".*\.lock".to_string(),
-            ],
+            exclude_patterns: vec![r".*\.min\..*".to_string(), r".*\.lock".to_string()],
             max_depth: 10,
         }
     }
@@ -290,11 +324,28 @@ mod tests {
         let filter = FileFilter::new(&config);
 
         let doc_files = [
-            "README", "LICENSE", "LICENCE", "CHANGELOG", "CONTRIBUTING",
-            "AUTHORS", "NOTICE", "INSTALL", "USAGE", "TODO", "COPYING",
-            "NEWS", "HISTORY", "CREDITS", "MAINTAINERS", "THANKS",
-            "ACKNOWLEDGMENTS", "ACKNOWLEDGEMENTS", "CODE_OF_CONDUCT",
-            "SECURITY", "SUPPORT", "CODEOFCONDUCT"
+            "README",
+            "LICENSE",
+            "LICENCE",
+            "CHANGELOG",
+            "CONTRIBUTING",
+            "AUTHORS",
+            "NOTICE",
+            "INSTALL",
+            "USAGE",
+            "TODO",
+            "COPYING",
+            "NEWS",
+            "HISTORY",
+            "CREDITS",
+            "MAINTAINERS",
+            "THANKS",
+            "ACKNOWLEDGMENTS",
+            "ACKNOWLEDGEMENTS",
+            "CODE_OF_CONDUCT",
+            "SECURITY",
+            "SUPPORT",
+            "CODEOFCONDUCT",
         ];
 
         for file in &doc_files {

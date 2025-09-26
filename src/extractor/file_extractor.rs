@@ -2,7 +2,7 @@ use crate::error::{RepoDocsError, Result};
 use crate::scanner::DocumentFile;
 use std::fs;
 use std::io::{BufReader, BufWriter, Read, Write};
-use std::path::{Path, Component};
+use std::path::{Component, Path};
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone)]
@@ -109,8 +109,7 @@ impl FileOperations {
 
         // Create output directory if it doesn't exist
         if !output_root.exists() {
-            fs::create_dir_all(output_root)
-                .map_err(|e| RepoDocsError::Io(e))?;
+            fs::create_dir_all(output_root).map_err(RepoDocsError::Io)?;
         }
 
         for document in documents {
@@ -120,20 +119,14 @@ impl FileOperations {
 
             match self.copy_document(document, output_root) {
                 Ok(bytes_copied) => {
-                    progress.update_file(
-                        document.filename.clone(),
-                        bytes_copied,
-                    );
-                },
+                    progress.update_file(document.filename.clone(), bytes_copied);
+                }
                 Err(e) => {
-                    let error_msg = format!(
-                        "Failed to copy {}: {}",
-                        document.source_path.display(),
-                        e
-                    );
+                    let error_msg =
+                        format!("Failed to copy {}: {}", document.source_path.display(), e);
                     progress.add_error(error_msg);
                     // Continue with other files instead of failing completely
-                },
+                }
             }
         }
 
@@ -152,11 +145,7 @@ impl FileOperations {
             output_root.join(&document.filename)
         };
 
-        self.copy_preserving_structure(
-            &document.source_path,
-            output_root,
-            &document.relative_path,
-        )
+        self.copy_preserving_structure(&document.source_path, output_root, &document.relative_path)
     }
 
     pub fn copy_preserving_structure(
@@ -165,21 +154,20 @@ impl FileOperations {
         dest_root: &Path,
         relative_path: &Path,
     ) -> Result<u64> {
-        let dest_path = if self.preserve_structure {
-            dest_root.join(relative_path)
-        } else {
-            dest_root.join(
-                relative_path.file_name()
-                    .ok_or_else(|| RepoDocsError::InvalidPath {
+        let dest_path =
+            if self.preserve_structure {
+                dest_root.join(relative_path)
+            } else {
+                dest_root.join(relative_path.file_name().ok_or_else(|| {
+                    RepoDocsError::InvalidPath {
                         path: relative_path.display().to_string(),
-                    })?
-            )
-        };
+                    }
+                })?)
+            };
 
         // Create parent directories
         if let Some(parent) = dest_path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| RepoDocsError::Io(e))?;
+            fs::create_dir_all(parent).map_err(RepoDocsError::Io)?;
         }
 
         // Secure copy operation
@@ -215,11 +203,9 @@ impl FileOperations {
     }
 
     fn copy_file_with_buffer(&self, source: &Path, dest: &Path) -> Result<u64> {
-        let source_file = fs::File::open(source)
-            .map_err(|e| RepoDocsError::Io(e))?;
+        let source_file = fs::File::open(source).map_err(RepoDocsError::Io)?;
 
-        let dest_file = fs::File::create(dest)
-            .map_err(|e| RepoDocsError::Io(e))?;
+        let dest_file = fs::File::create(dest).map_err(RepoDocsError::Io)?;
 
         let mut reader = BufReader::with_capacity(self.buffer_size, source_file);
         let mut writer = BufWriter::with_capacity(self.buffer_size, dest_file);
@@ -228,25 +214,28 @@ impl FileOperations {
         let mut buffer = vec![0u8; 8192]; // 8KB chunks
 
         loop {
-            let bytes_read = reader.read(&mut buffer)
-                .map_err(|e| RepoDocsError::Io(e))?;
+            let bytes_read = reader.read(&mut buffer).map_err(RepoDocsError::Io)?;
 
             if bytes_read == 0 {
                 break; // End of file
             }
 
-            writer.write_all(&buffer[..bytes_read])
-                .map_err(|e| RepoDocsError::Io(e))?;
+            writer
+                .write_all(&buffer[..bytes_read])
+                .map_err(RepoDocsError::Io)?;
 
             total_bytes += bytes_read as u64;
         }
 
-        writer.flush().map_err(|e| RepoDocsError::Io(e))?;
+        writer.flush().map_err(RepoDocsError::Io)?;
 
         // Set file modification time to match source
         if let Ok(source_metadata) = fs::metadata(source) {
             if let Ok(modified_time) = source_metadata.modified() {
-                let _ = filetime::set_file_mtime(dest, filetime::FileTime::from_system_time(modified_time));
+                let _ = filetime::set_file_mtime(
+                    dest,
+                    filetime::FileTime::from_system_time(modified_time),
+                );
             }
         }
 
@@ -282,9 +271,9 @@ impl FileOperations {
             #[cfg(windows)]
             {
                 let reserved_names = [
-                    "CON", "PRN", "AUX", "NUL",
-                    "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
-                    "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+                    "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6",
+                    "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7",
+                    "LPT8", "LPT9",
                 ];
 
                 let name_upper = filename.to_uppercase();
@@ -303,9 +292,10 @@ impl FileOperations {
 
             // Check for invalid characters
             let invalid_chars = ['<', '>', ':', '"', '|', '?', '*'];
-            if filename.chars().any(|c| {
-                invalid_chars.contains(&c) || c.is_control() || c == '\0'
-            }) {
+            if filename
+                .chars()
+                .any(|c| invalid_chars.contains(&c) || c.is_control() || c == '\0')
+            {
                 return Err(RepoDocsError::InvalidPath {
                     path: format!("Filename contains invalid characters: {}", filename),
                 });
@@ -324,13 +314,15 @@ impl FileOperations {
 
     pub fn create_index_file(&self, documents: &[DocumentFile], output_dir: &Path) -> Result<()> {
         let index_path = output_dir.join("_index.md");
-        let mut index_file = fs::File::create(&index_path)
-            .map_err(|e| RepoDocsError::Io(e))?;
+        let mut index_file = fs::File::create(&index_path).map_err(RepoDocsError::Io)?;
 
         writeln!(index_file, "# Documentation Index")?;
         writeln!(index_file)?;
-        writeln!(index_file, "Generated by RepoDocs on {}",
-                 chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"))?;
+        writeln!(
+            index_file,
+            "Generated by RepoDocs on {}",
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
+        )?;
         writeln!(index_file)?;
 
         // Group files by directory
@@ -338,7 +330,9 @@ impl FileOperations {
             std::collections::BTreeMap::new();
 
         for doc in documents {
-            let dir = doc.relative_path.parent()
+            let dir = doc
+                .relative_path
+                .parent()
                 .map(|p| p.to_string_lossy().to_string())
                 .unwrap_or_else(|| ".".to_string());
 
@@ -373,8 +367,11 @@ impl FileOperations {
 
         writeln!(index_file, "---")?;
         writeln!(index_file, "Total files: {}", documents.len())?;
-        writeln!(index_file, "Total size: {} bytes",
-                 documents.iter().map(|d| d.size).sum::<u64>())?;
+        writeln!(
+            index_file,
+            "Total size: {} bytes",
+            documents.iter().map(|d| d.size).sum::<u64>()
+        )?;
 
         Ok(())
     }
@@ -426,7 +423,11 @@ pub fn check_path_length(path: &Path) -> Result<()> {
 
     if path_str.len() > MAX_PATH {
         Err(RepoDocsError::InvalidPath {
-            path: format!("Path too long: {} characters (max: {})", path_str.len(), MAX_PATH),
+            path: format!(
+                "Path too long: {} characters (max: {})",
+                path_str.len(),
+                MAX_PATH
+            ),
         })
     } else {
         Ok(())
@@ -436,10 +437,10 @@ pub fn check_path_length(path: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
     use std::path::PathBuf;
     use std::time::SystemTime;
+    use tempfile::TempDir;
 
     fn create_test_document(name: &str, content: &str, temp_dir: &Path) -> DocumentFile {
         let file_path = temp_dir.join(name);
@@ -466,11 +467,9 @@ mod tests {
         let documents = vec![doc1, doc2];
         let operations = FileOperations::new();
 
-        let progress = operations.extract_files(
-            &documents,
-            dest_dir.path(),
-            None,
-        ).unwrap();
+        let progress = operations
+            .extract_files(&documents, dest_dir.path(), None)
+            .unwrap();
 
         assert_eq!(progress.files_processed, 2);
         assert_eq!(progress.errors.len(), 0);
@@ -498,11 +497,9 @@ mod tests {
         );
 
         let operations = FileOperations::new().with_preserve_structure(true);
-        let progress = operations.extract_files(
-            &[document],
-            dest_dir.path(),
-            None,
-        ).unwrap();
+        let progress = operations
+            .extract_files(&[document], dest_dir.path(), None)
+            .unwrap();
 
         assert_eq!(progress.files_processed, 1);
         assert!(dest_dir.path().join("docs").join("nested.md").exists());
@@ -511,8 +508,14 @@ mod tests {
     #[test]
     fn test_filename_sanitization() {
         assert_eq!(sanitize_filename("normal_file.txt"), "normal_file.txt");
-        assert_eq!(sanitize_filename("file<>with|bad*chars.txt"), "file__with_bad_chars.txt");
-        assert_eq!(sanitize_filename("file/with\\slashes.txt"), "file_with_slashes.txt");
+        assert_eq!(
+            sanitize_filename("file<>with|bad*chars.txt"),
+            "file__with_bad_chars.txt"
+        );
+        assert_eq!(
+            sanitize_filename("file/with\\slashes.txt"),
+            "file_with_slashes.txt"
+        );
         assert_eq!(sanitize_filename("   "), "unnamed_file");
         assert_eq!(sanitize_filename("file..."), "file");
     }
@@ -538,7 +541,9 @@ mod tests {
         let doc = create_test_document("README.md", "# Test", temp_dir.path());
 
         let operations = FileOperations::new();
-        operations.create_index_file(&[doc], temp_dir.path()).unwrap();
+        operations
+            .create_index_file(&[doc], temp_dir.path())
+            .unwrap();
 
         let index_path = temp_dir.path().join("_index.md");
         assert!(index_path.exists());

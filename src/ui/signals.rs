@@ -37,7 +37,6 @@ impl GracefulShutdown {
     }
 
     /// Create a GracefulShutdown instance for testing (no signal handler registration)
-    #[cfg(test)]
     pub fn new_for_test() -> Self {
         Self {
             running: Arc::new(AtomicBool::new(true)),
@@ -75,7 +74,11 @@ impl GracefulShutdown {
         Ok(result)
     }
 
-    pub fn with_periodic_checks<F, R>(&self, mut operation: F, check_interval_ops: usize) -> Result<R>
+    pub fn with_periodic_checks<F, R>(
+        &self,
+        mut operation: F,
+        check_interval_ops: usize,
+    ) -> Result<R>
     where
         F: FnMut(&Self) -> Result<Option<R>>,
     {
@@ -113,6 +116,7 @@ impl Default for GracefulShutdown {
 // Shutdown-aware operation wrapper
 pub struct ShutdownAwareOperation<'a> {
     shutdown: &'a GracefulShutdown,
+    #[allow(dead_code)]
     operation_name: String,
 }
 
@@ -186,11 +190,14 @@ impl ShutdownCoordinator {
         })
     }
 
-    pub fn start_operation(&self) -> Result<ShutdownAwareOperation> {
+    pub fn start_operation(&self) -> Result<ShutdownAwareOperation<'_>> {
         self.shutdown.check_shutdown()?;
         self.active_operations.store(true, Ordering::SeqCst);
 
-        Ok(ShutdownAwareOperation::new(&self.shutdown, "coordinated_operation"))
+        Ok(ShutdownAwareOperation::new(
+            &self.shutdown,
+            "coordinated_operation",
+        ))
     }
 
     pub fn finish_operation(&self) {
@@ -225,11 +232,9 @@ impl ShutdownCoordinator {
 
 impl Default for ShutdownCoordinator {
     fn default() -> Self {
-        Self::new().unwrap_or_else(|_| {
-            Self {
-                shutdown: Arc::new(GracefulShutdown::default()),
-                active_operations: Arc::new(AtomicBool::new(false)),
-            }
+        Self::new().unwrap_or_else(|_| Self {
+            shutdown: Arc::new(GracefulShutdown::default()),
+            active_operations: Arc::new(AtomicBool::new(false)),
         })
     }
 }
@@ -237,7 +242,6 @@ impl Default for ShutdownCoordinator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::thread;
     use std::time::Duration;
 
     #[test]
@@ -331,16 +335,19 @@ mod tests {
         let shutdown = GracefulShutdown::default();
         let mut counter = 0;
 
-        let result = shutdown.with_periodic_checks(|shutdown| {
-            counter += 1;
+        let result = shutdown.with_periodic_checks(
+            |shutdown| {
+                counter += 1;
 
-            if counter >= 3 {
-                Ok(Some(counter))
-            } else {
-                shutdown.check_shutdown()?;
-                Ok(None)
-            }
-        }, 1);
+                if counter >= 3 {
+                    Ok(Some(counter))
+                } else {
+                    shutdown.check_shutdown()?;
+                    Ok(None)
+                }
+            },
+            1,
+        );
 
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 3);
@@ -351,20 +358,23 @@ mod tests {
         let shutdown = GracefulShutdown::default();
         let mut counter = 0;
 
-        let result = shutdown.with_periodic_checks(|_shutdown| {
-            counter += 1;
+        let result = shutdown.with_periodic_checks(
+            |_shutdown| {
+                counter += 1;
 
-            if counter == 2 {
-                // Request shutdown on second iteration
-                shutdown.request_shutdown();
-            }
+                if counter == 2 {
+                    // Request shutdown on second iteration
+                    shutdown.request_shutdown();
+                }
 
-            if counter >= 5 {
-                Ok(Some(counter))
-            } else {
-                Ok(None)
-            }
-        }, 1);
+                if counter >= 5 {
+                    Ok(Some(counter))
+                } else {
+                    Ok(None)
+                }
+            },
+            1,
+        );
 
         // Should be cancelled before reaching 5
         assert!(result.is_err());

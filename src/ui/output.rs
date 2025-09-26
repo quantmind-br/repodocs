@@ -1,8 +1,8 @@
-use console::{style, Term, Emoji};
+use crate::error::{RepoDocsError, UserFriendlyError};
+use crate::extractor::{ExtractionProgress, ExtractionReport};
+use console::{style, Emoji, Term};
 use serde_json;
 use std::time::Duration;
-use crate::extractor::{ExtractionReport, ExtractionProgress};
-use crate::error::{RepoDocsError, UserFriendlyError};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OutputMode {
@@ -27,10 +27,10 @@ static CROSS: Emoji = Emoji("❌ ", "✗ ");
 static INFO: Emoji = Emoji("ℹ️  ", "i ");
 static WARNING: Emoji = Emoji("⚠️  ", "! ");
 static ROCKET: Emoji = Emoji("🚀 ", "> ");
-static HOURGLASS: Emoji = Emoji("⏳ ", "* ");
 static SPARKLES: Emoji = Emoji("✨ ", "* ");
 
 pub struct OutputFormatter {
+    #[allow(dead_code)]
     term: Term,
     mode: OutputMode,
     use_colors: bool,
@@ -101,7 +101,7 @@ impl OutputFormatter {
                     } else {
                         println!("  DEBUG: {}", message);
                     }
-                },
+                }
                 OutputMode::Json => self.print_json_message("debug", message),
                 OutputMode::Plain => println!("DEBUG: {}", message),
             }
@@ -117,7 +117,7 @@ impl OutputFormatter {
                     } else {
                         println!("> {}", operation);
                     }
-                },
+                }
                 OutputMode::Json => self.print_json_message("operation_start", operation),
                 OutputMode::Plain => println!("STARTING: {}", operation),
             }
@@ -134,20 +134,24 @@ impl OutputFormatter {
                 OutputMode::Human => {
                     println!();
                     if self.use_colors {
-                        println!("{}{}", INFO, style(&format!("Suggestion: {}", suggestion)).cyan());
+                        println!(
+                            "{}{}",
+                            INFO,
+                            style(&format!("Suggestion: {}", suggestion)).cyan()
+                        );
                     } else {
                         println!("Suggestion: {}", suggestion);
                     }
-                },
+                }
                 OutputMode::Json => {
                     self.print_json_object(&serde_json::json!({
                         "type": "suggestion",
                         "message": suggestion
                     }));
-                },
+                }
                 OutputMode::Plain => {
                     println!("SUGGESTION: {}", suggestion);
-                },
+                }
             }
         }
     }
@@ -169,10 +173,10 @@ impl OutputFormatter {
         match self.mode {
             OutputMode::Human => self.print_human_report(report),
             OutputMode::Json => {
-                let json_output = serde_json::to_string_pretty(report)
-                    .unwrap_or_else(|_| "{}".to_string());
+                let json_output =
+                    serde_json::to_string_pretty(report).unwrap_or_else(|_| "{}".to_string());
                 println!("{}", json_output);
-            },
+            }
             OutputMode::Plain => self.print_plain_report(report),
         }
     }
@@ -192,16 +196,16 @@ impl OutputFormatter {
                     println!("=== {} ===", title);
                 }
                 println!();
-            },
+            }
             OutputMode::Json => {
                 self.print_json_object(&serde_json::json!({
                     "type": "header",
                     "title": title
                 }));
-            },
+            }
             OutputMode::Plain => {
                 println!("=== {} ===", title);
-            },
+            }
         }
     }
 
@@ -217,11 +221,11 @@ impl OutputFormatter {
                 } else {
                     println!("{}", "-".repeat(60));
                 }
-            },
+            }
             OutputMode::Plain => {
                 println!("{}", "-".repeat(60));
-            },
-            OutputMode::Json => {}, // No separator in JSON mode
+            }
+            OutputMode::Json => {} // No separator in JSON mode
         }
     }
 
@@ -231,12 +235,14 @@ impl OutputFormatter {
     }
 
     fn print_human_message(&self, msg_type: MessageType, message: &str) {
-        let (emoji, color_fn): (Emoji, Box<dyn Fn(&str) -> console::StyledObject<&str>>) = match msg_type {
-            MessageType::Success => (CHECKMARK, Box::new(|s| style(s).green().bold())),
-            MessageType::Error => (CROSS, Box::new(|s| style(s).red().bold())),
-            MessageType::Warning => (WARNING, Box::new(|s| style(s).yellow().bold())),
-            MessageType::Info => (INFO, Box::new(|s| style(s).cyan())),
-        };
+        #[allow(clippy::type_complexity)]
+        let (emoji, color_fn): (Emoji, Box<dyn Fn(&str) -> console::StyledObject<&str>>) =
+            match msg_type {
+                MessageType::Success => (CHECKMARK, Box::new(|msg| style(msg).green().bold())),
+                MessageType::Error => (CROSS, Box::new(|msg| style(msg).red().bold())),
+                MessageType::Warning => (WARNING, Box::new(|msg| style(msg).yellow().bold())),
+                MessageType::Info => (INFO, Box::new(|msg| style(msg).cyan())),
+            };
 
         if self.use_colors {
             match msg_type {
@@ -268,7 +274,10 @@ impl OutputFormatter {
     }
 
     fn print_json_object(&self, obj: &serde_json::Value) {
-        println!("{}", serde_json::to_string(obj).unwrap_or_else(|_| "{}".to_string()));
+        println!(
+            "{}",
+            serde_json::to_string(obj).unwrap_or_else(|_| "{}".to_string())
+        );
     }
 
     fn print_human_summary(&self, progress: &ExtractionProgress) {
@@ -276,7 +285,8 @@ impl OutputFormatter {
         self.print_separator();
 
         if self.use_colors {
-            println!("{} {}",
+            println!(
+                "{} {}",
                 style("Documentation extraction completed!").green().bold(),
                 CHECKMARK
             );
@@ -285,24 +295,36 @@ impl OutputFormatter {
         }
 
         println!();
-        println!("  Files processed: {}",
-                 if self.use_colors {
-                     style(progress.files_processed).cyan().bold().to_string()
-                 } else {
-                     progress.files_processed.to_string()
-                 });
-        println!("  Bytes processed: {}",
-                 if self.use_colors {
-                     style(format_bytes(progress.bytes_processed)).cyan().bold().to_string()
-                 } else {
-                     format_bytes(progress.bytes_processed)
-                 });
-        println!("  Time taken:      {}",
-                 if self.use_colors {
-                     style(format_duration(progress.elapsed())).cyan().bold().to_string()
-                 } else {
-                     format_duration(progress.elapsed())
-                 });
+        println!(
+            "  Files processed: {}",
+            if self.use_colors {
+                style(progress.files_processed).cyan().bold().to_string()
+            } else {
+                progress.files_processed.to_string()
+            }
+        );
+        println!(
+            "  Bytes processed: {}",
+            if self.use_colors {
+                style(format_bytes(progress.bytes_processed))
+                    .cyan()
+                    .bold()
+                    .to_string()
+            } else {
+                format_bytes(progress.bytes_processed)
+            }
+        );
+        println!(
+            "  Time taken:      {}",
+            if self.use_colors {
+                style(format_duration(progress.elapsed()))
+                    .cyan()
+                    .bold()
+                    .to_string()
+            } else {
+                format_duration(progress.elapsed())
+            }
+        );
 
         if !progress.errors.is_empty() {
             println!("  Errors:          {}", progress.errors.len());
@@ -321,7 +343,10 @@ impl OutputFormatter {
             "timestamp": chrono::Utc::now().to_rfc3339()
         });
 
-        println!("{}", serde_json::to_string_pretty(&summary).unwrap_or_else(|_| "{}".to_string()));
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&summary).unwrap_or_else(|_| "{}".to_string())
+        );
     }
 
     fn print_plain_summary(&self, progress: &ExtractionProgress) {
@@ -337,18 +362,32 @@ impl OutputFormatter {
     fn print_human_report(&self, report: &ExtractionReport) {
         self.print_header("Extraction Report");
 
-        println!("Repository: {}/{}", report.repository_info.owner, report.repository_info.name);
+        println!(
+            "Repository: {}/{}",
+            report.repository_info.owner, report.repository_info.name
+        );
         println!("URL: {}", report.repository_info.url);
-        println!("Extracted at: {}", report.extraction_time.format("%Y-%m-%d %H:%M UTC"));
+        println!(
+            "Extracted at: {}",
+            report.extraction_time.format("%Y-%m-%d %H:%M UTC")
+        );
         println!();
 
         if !report.extraction_summary.files_by_extension.is_empty() {
             println!("Files by type:");
-            let mut extensions: Vec<_> = report.extraction_summary.files_by_extension.iter().collect();
+            let mut extensions: Vec<_> = report
+                .extraction_summary
+                .files_by_extension
+                .iter()
+                .collect();
             extensions.sort_by(|a, b| b.1.cmp(a.1));
 
             for (ext, count) in extensions {
-                let display_ext = if ext == "no_extension" { "no extension" } else { ext };
+                let display_ext = if ext == "no_extension" {
+                    "no extension"
+                } else {
+                    ext
+                };
                 println!("  {}: {} files", display_ext, count);
             }
             println!();
@@ -364,10 +403,19 @@ impl OutputFormatter {
 
     fn print_plain_report(&self, report: &ExtractionReport) {
         println!("REPORT: Extraction completed");
-        println!("Repository: {}/{}", report.repository_info.owner, report.repository_info.name);
+        println!(
+            "Repository: {}/{}",
+            report.repository_info.owner, report.repository_info.name
+        );
         println!("Files: {}", report.extraction_summary.total_files_processed);
-        println!("Size: {} bytes", report.extraction_summary.total_bytes_processed);
-        println!("Duration: {:?}", report.extraction_summary.extraction_duration);
+        println!(
+            "Size: {} bytes",
+            report.extraction_summary.total_bytes_processed
+        );
+        println!(
+            "Duration: {:?}",
+            report.extraction_summary.extraction_duration
+        );
 
         if !report.errors.is_empty() {
             println!("Errors: {}", report.errors.len());
@@ -420,7 +468,7 @@ pub struct ProgressAwareOutput<'a> {
 impl<'a> ProgressAwareOutput<'a> {
     pub fn new(
         formatter: &'a OutputFormatter,
-        progress_manager: Option<&'a crate::ui::ProgressManager>
+        progress_manager: Option<&'a crate::ui::ProgressManager>,
     ) -> Self {
         Self {
             formatter,
@@ -459,7 +507,6 @@ impl<'a> ProgressAwareOutput<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::SystemTime;
 
     #[test]
     fn test_output_mode_parsing() {

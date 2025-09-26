@@ -72,7 +72,9 @@ impl UserFriendlyError for RepoDocsError {
             RepoDocsError::NetworkError { message } => {
                 format!("Network error: {}", message)
             }
-            RepoDocsError::NoDocumentationFound { searched_extensions } => {
+            RepoDocsError::NoDocumentationFound {
+                searched_extensions,
+            } => {
                 format!(
                     "No documentation files found with extensions: {}",
                     searched_extensions.join(", ")
@@ -84,9 +86,7 @@ impl UserFriendlyError for RepoDocsError {
             RepoDocsError::Permission { path } => {
                 format!("Permission denied accessing: {}", path)
             }
-            RepoDocsError::Cancelled => {
-                "Operation was cancelled by user".to_string()
-            }
+            RepoDocsError::Cancelled => "Operation was cancelled by user".to_string(),
             RepoDocsError::Timeout { seconds } => {
                 format!("Operation timed out after {} seconds", seconds)
             }

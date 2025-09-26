@@ -1,7 +1,7 @@
-use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
-use std::time::Duration;
 use crate::cloner::CloneProgress;
 use crate::extractor::ExtractionProgress;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use std::time::Duration;
 
 pub struct ProgressManager {
     multi_progress: MultiProgress,
@@ -24,10 +24,10 @@ impl ProgressManager {
         let pb = self.multi_progress.add(ProgressBar::new(100));
         pb.set_style(
             ProgressStyle::with_template(
-                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>3}% {msg}"
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>3}% {msg}",
             )
             .unwrap_or_else(|_| ProgressStyle::default_bar())
-            .progress_chars("#>-")
+            .progress_chars("#>-"),
         );
         pb.set_message("Initializing clone...");
         pb.enable_steady_tick(Duration::from_millis(100));
@@ -60,11 +60,9 @@ impl ProgressManager {
         let pb = self.multi_progress.add(ProgressBar::new_spinner());
         pb.enable_steady_tick(Duration::from_millis(100));
         pb.set_style(
-            ProgressStyle::with_template(
-                "{spinner:.green} {msg} ({elapsed})"
-            )
-            .unwrap_or_else(|_| ProgressStyle::default_spinner())
-            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
+            ProgressStyle::with_template("{spinner:.green} {msg} ({elapsed})")
+                .unwrap_or_else(|_| ProgressStyle::default_spinner())
+                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
         );
         pb.set_message(message.to_string());
         pb
@@ -125,8 +123,7 @@ pub fn update_clone_progress(pb: &ProgressBar, progress: &CloneProgress) {
         if progress.received_objects == progress.total_objects && progress.total_deltas > 0 {
             pb.set_message(format!(
                 "Resolving deltas {}/{}",
-                progress.indexed_deltas,
-                progress.total_deltas
+                progress.indexed_deltas, progress.total_deltas
             ));
         } else {
             pb.set_message(format!(
@@ -217,7 +214,12 @@ impl OperationProgress {
 
     pub fn finish_with_message(&self, message: &str) {
         let duration = self.start_time.elapsed();
-        let final_message = format!("{}: {} ({})", self.operation_name, message, format_duration(duration));
+        let final_message = format!(
+            "{}: {} ({})",
+            self.operation_name,
+            message,
+            format_duration(duration)
+        );
         self.progress_bar.finish_with_message(final_message);
     }
 
@@ -315,9 +317,9 @@ mod tests {
         // In test environments, progress bars might be hidden due to no TTY
         // Just test that they are created without panicking
         // The visibility depends on the environment (TTY vs non-TTY)
-        assert!(clone_pb.length().unwrap_or(0) >= 0);
-        assert!(file_pb.length().unwrap_or(0) >= 0);
-        assert!(spinner.message().len() >= 0);
+        assert!(clone_pb.length().unwrap_or(0) > 0 || clone_pb.length().is_none());
+        assert!(file_pb.length().unwrap_or(0) > 0 || file_pb.length().is_none());
+        assert!(!spinner.message().is_empty());
     }
 
     #[test]

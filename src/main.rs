@@ -1,8 +1,5 @@
-use repodocs::{
-    Cli, RepoDocs, Config, RepoDocsError, UserFriendlyError,
-    OutputMode, OutputFormatter
-};
 use clap::Parser;
+use repodocs::{Cli, OutputFormatter, OutputMode, RepoDocs, RepoDocsError, UserFriendlyError};
 use std::process;
 
 #[tokio::main]
@@ -68,7 +65,9 @@ async fn run() -> i32 {
 }
 
 fn handle_generate_config(cli: &Cli) -> i32 {
-    let config_path = cli.config.as_ref()
+    let config_path = cli
+        .config
+        .as_ref()
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_else(|| "repodocs.toml".to_string());
 
@@ -81,7 +80,10 @@ fn handle_generate_config(cli: &Cli) -> i32 {
             0
         }
         Err(e) => {
-            eprintln!("Failed to generate configuration file: {}", e.user_message());
+            eprintln!(
+                "Failed to generate configuration file: {}",
+                e.user_message()
+            );
             if let Some(suggestion) = e.suggestion() {
                 eprintln!("Suggestion: {}", suggestion);
             }
@@ -98,7 +100,10 @@ fn handle_dry_run(cli: &Cli, repodocs: &RepoDocs) -> i32 {
 
     // Validate repository URL
     match repodocs::validate_repository_url(&cli.repository_url) {
-        Ok(_) => formatter.success(&format!("✓ Repository URL is valid: {}", cli.repository_url)),
+        Ok(_) => formatter.success(&format!(
+            "✓ Repository URL is valid: {}",
+            cli.repository_url
+        )),
         Err(e) => {
             formatter.error(&format!("✗ Invalid repository URL: {}", e.user_message()));
             return 1;
@@ -111,9 +116,15 @@ fn handle_dry_run(cli: &Cli, repodocs: &RepoDocs) -> i32 {
 
     println!("  Extensions: {}", config.filters.extensions.join(", "));
     println!("  Max file size: {} bytes", config.filters.max_file_size);
-    println!("  Exclude directories: {}", config.filters.exclude_dirs.join(", "));
+    println!(
+        "  Exclude directories: {}",
+        config.filters.exclude_dirs.join(", ")
+    );
     println!("  Preserve structure: {}", config.output.preserve_structure);
-    println!("  Base directory: {}", config.output.base_directory.display());
+    println!(
+        "  Base directory: {}",
+        config.output.base_directory.display()
+    );
 
     if let Some(ref branch) = config.git.branch {
         println!("  Git branch: {}", branch);
@@ -126,7 +137,10 @@ fn handle_dry_run(cli: &Cli, repodocs: &RepoDocs) -> i32 {
     let (owner, repo_name) = match cli.extract_repo_info() {
         Ok(info) => info,
         Err(e) => {
-            formatter.error(&format!("Failed to parse repository info: {}", e.user_message()));
+            formatter.error(&format!(
+                "Failed to parse repository info: {}",
+                e.user_message()
+            ));
             return 1;
         }
     };
@@ -134,7 +148,10 @@ fn handle_dry_run(cli: &Cli, repodocs: &RepoDocs) -> i32 {
     let output_dir = match cli.get_output_directory_name() {
         Ok(name) => name,
         Err(e) => {
-            formatter.error(&format!("Failed to determine output directory: {}", e.user_message()));
+            formatter.error(&format!(
+                "Failed to determine output directory: {}",
+                e.user_message()
+            ));
             return 1;
         }
     };
@@ -160,6 +177,7 @@ fn print_startup_error(error: &RepoDocsError) {
     formatter.print_user_friendly_error(error);
 }
 
+#[allow(dead_code)]
 fn setup_logging() {
     // Basic logging setup - in a real implementation, this could be more sophisticated
     if std::env::var("RUST_LOG").is_err() {
@@ -173,8 +191,8 @@ fn setup_logging() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn test_generate_config_command() {
@@ -209,8 +227,8 @@ mod tests {
 
     #[test]
     fn test_dry_run_mode() {
-        let config = Config::default();
-        let repodocs = RepoDocs::new(config, OutputMode::Plain, 0, true).unwrap();
+        let config = repodocs::Config::default();
+        let repodocs = RepoDocs::new_for_test(config, OutputMode::Plain, 0, true);
 
         let cli = Cli {
             repository_url: "https://github.com/microsoft/vscode".to_string(),
@@ -236,8 +254,8 @@ mod tests {
 
     #[test]
     fn test_invalid_url_handling() {
-        let config = Config::default();
-        let repodocs = RepoDocs::new(config, OutputMode::Plain, 0, true).unwrap();
+        let config = repodocs::Config::default();
+        let repodocs = RepoDocs::new_for_test(config, OutputMode::Plain, 0, true);
 
         let cli = Cli {
             repository_url: "invalid-url".to_string(),

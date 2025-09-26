@@ -1,4 +1,4 @@
-use crate::config::{Config, CliOverrides};
+use crate::config::{CliOverrides, Config};
 use crate::error::{RepoDocsError, Result};
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
@@ -8,8 +8,10 @@ use url::Url;
 #[command(name = "repodocs")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "Extract documentation from GitHub repositories")]
-#[command(long_about = "RepoDocs clones a GitHub repository and extracts all documentation files \
-                       into a local directory for offline browsing and analysis.")]
+#[command(
+    long_about = "RepoDocs clones a GitHub repository and extracts all documentation files \
+                       into a local directory for offline browsing and analysis."
+)]
 #[command(before_help = "🚀 RepoDocs - Documentation Extraction Tool")]
 #[command(after_help = "EXAMPLES:\n  \
     repodocs https://github.com/microsoft/vscode\n  \
@@ -28,7 +30,11 @@ pub struct Cli {
     pub output: Option<String>,
 
     /// File formats to extract (comma-separated)
-    #[arg(short, long, help = "File extensions to extract (e.g., md,rst,txt,adoc)")]
+    #[arg(
+        short,
+        long,
+        help = "File extensions to extract (e.g., md,rst,txt,adoc)"
+    )]
     pub formats: Option<String>,
 
     /// Directories to exclude from extraction
@@ -56,7 +62,11 @@ pub struct Cli {
     pub timeout: Option<u64>,
 
     /// Specific git branch to clone
-    #[arg(short, long, help = "Specific branch to clone (default: repository default)")]
+    #[arg(
+        short,
+        long,
+        help = "Specific branch to clone (default: repository default)"
+    )]
     pub branch: Option<String>,
 
     /// Verbose output level (-v, -vv, -vvv)
@@ -106,9 +116,7 @@ impl Cli {
             if o.contains('/') || o.contains('\\') {
                 PathBuf::from(o)
             } else {
-                std::env::current_dir()
-                    .unwrap_or_default()
-                    .join(o)
+                std::env::current_dir().unwrap_or_default().join(o)
             }
         });
 
@@ -126,7 +134,8 @@ impl Cli {
 
     pub fn extract_repo_info(&self) -> Result<(String, String)> {
         let url = Url::parse(&self.repository_url)?;
-        let path_segments: Vec<&str> = url.path_segments()
+        let path_segments: Vec<&str> = url
+            .path_segments()
             .ok_or(RepoDocsError::InvalidUrl {
                 url: self.repository_url.clone(),
             })?
@@ -177,37 +186,48 @@ impl Cli {
 
 pub fn validate_github_url(s: &str) -> std::result::Result<String, String> {
     // Parse URL
-    let url = Url::parse(s)
-        .map_err(|_| "Invalid URL format. Please provide a valid URL.".to_string())?;
+    let url =
+        Url::parse(s).map_err(|_| "Invalid URL format. Please provide a valid URL.".to_string())?;
 
     // Security: Only allow specific schemes
     match url.scheme() {
-        "https" => {},
-        "ssh" => {},
+        "https" => {}
+        "ssh" => {}
         "git" => {
             // Only allow git:// for github.com (public repos)
-            if !url.host_str().map_or(false, |h| h.contains("github.com")) {
+            if !url.host_str().is_some_and(|h| h.contains("github.com")) {
                 return Err("git:// protocol only allowed for github.com".to_string());
             }
-        },
-        _ => return Err("Only HTTPS, SSH, and git:// protocols are supported for security reasons".to_string()),
+        }
+        _ => {
+            return Err(
+                "Only HTTPS, SSH, and git:// protocols are supported for security reasons"
+                    .to_string(),
+            )
+        }
     }
 
     // Security: Only allow GitHub URLs
-    let host = url.host_str()
+    let host = url
+        .host_str()
         .ok_or("URL must include a valid hostname".to_string())?;
 
     if !host.ends_with("github.com") {
-        return Err("Only GitHub URLs are supported (e.g., github.com, api.github.com)".to_string());
+        return Err(
+            "Only GitHub URLs are supported (e.g., github.com, api.github.com)".to_string(),
+        );
     }
 
     // Validate path structure
-    let path_segments: Vec<&str> = url.path_segments()
+    let path_segments: Vec<&str> = url
+        .path_segments()
         .ok_or("Invalid repository path".to_string())?
         .collect();
 
     if path_segments.len() < 2 {
-        return Err("URL must include owner/repository (e.g., https://github.com/owner/repo)".to_string());
+        return Err(
+            "URL must include owner/repository (e.g., https://github.com/owner/repo)".to_string(),
+        );
     }
 
     // Validate owner and repo names
@@ -219,17 +239,16 @@ pub fn validate_github_url(s: &str) -> std::result::Result<String, String> {
     }
 
     // Security: Validate characters in owner and repo names
-    let valid_chars = |s: &str| s.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.');
+    let valid_chars = |s: &str| {
+        s.chars()
+            .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.')
+    };
 
     if !valid_chars(owner) {
         return Err("Owner name contains invalid characters. Only alphanumeric, hyphens, underscores, and dots are allowed.".to_string());
     }
 
-    let repo_name = if repo.ends_with(".git") {
-        &repo[..repo.len() - 4]
-    } else {
-        repo
-    };
+    let repo_name = repo.strip_suffix(".git").unwrap_or(repo);
 
     if !valid_chars(repo_name) {
         return Err("Repository name contains invalid characters. Only alphanumeric, hyphens, underscores, and dots are allowed.".to_string());
@@ -256,14 +275,18 @@ pub fn parse_size_string(s: &str) -> std::result::Result<u64, String> {
     } else if s.ends_with("mb") || s.ends_with("m") {
         (s.trim_end_matches("mb").trim_end_matches("m"), 1024 * 1024)
     } else if s.ends_with("gb") || s.ends_with("g") {
-        (s.trim_end_matches("gb").trim_end_matches("g"), 1024 * 1024 * 1024)
+        (
+            s.trim_end_matches("gb").trim_end_matches("g"),
+            1024 * 1024 * 1024,
+        )
     } else if s.ends_with("b") {
         (s.trim_end_matches("b"), 1)
     } else {
-  (s.as_str(), 1)
+        (s.as_str(), 1)
     };
 
-    let number: f64 = number_str.parse()
+    let number: f64 = number_str
+        .parse()
         .map_err(|_| format!("Invalid number format: {}", number_str))?;
 
     if number < 0.0 {
@@ -295,10 +318,10 @@ mod tests {
         let invalid_urls = [
             "https://gitlab.com/owner/repo",
             "http://github.com/owner/repo", // http not allowed
-            "https://github.com/owner",      // missing repo
-            "https://github.com/",           // missing owner and repo
+            "https://github.com/owner",     // missing repo
+            "https://github.com/",          // missing owner and repo
             "not-a-url",
-            "ftp://github.com/owner/repo",   // wrong protocol
+            "ftp://github.com/owner/repo", // wrong protocol
         ];
 
         for url in &invalid_urls {

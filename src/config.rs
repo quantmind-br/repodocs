@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Config {
     pub filters: FilterConfig,
     pub output: OutputConfig,
@@ -32,16 +32,6 @@ pub struct GitConfig {
     pub clone_depth: Option<u32>,
     pub timeout: u64,
     pub branch: Option<String>,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            filters: FilterConfig::default(),
-            output: OutputConfig::default(),
-            git: GitConfig::default(),
-        }
-    }
 }
 
 impl Default for FilterConfig {
@@ -100,8 +90,8 @@ impl Default for GitConfig {
     fn default() -> Self {
         Self {
             clone_depth: None, // Full clone by default
-            timeout: 300, // 5 minutes
-            branch: None, // Default branch
+            timeout: 300,      // 5 minutes
+            branch: None,      // Default branch
         }
     }
 }
@@ -120,15 +110,13 @@ impl Config {
             });
         }
 
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| RepoDocsError::Config {
-                message: format!("Failed to read config file {}: {}", path.display(), e),
-            })?;
+        let content = std::fs::read_to_string(path).map_err(|e| RepoDocsError::Config {
+            message: format!("Failed to read config file {}: {}", path.display(), e),
+        })?;
 
-        let config: Config = toml::from_str(&content)
-            .map_err(|e| RepoDocsError::Config {
-                message: format!("Failed to parse config file {}: {}", path.display(), e),
-            })?;
+        let config: Config = toml::from_str(&content).map_err(|e| RepoDocsError::Config {
+            message: format!("Failed to parse config file {}: {}", path.display(), e),
+        })?;
 
         Ok(config)
     }
@@ -138,11 +126,7 @@ impl Config {
             Some(path) => Self::load_from_file(path),
             None => {
                 // Try to load from default locations
-                let default_paths = [
-                    "repodocs.toml",
-                    "repodocs.config.toml",
-                    ".repodocs.toml",
-                ];
+                let default_paths = ["repodocs.toml", "repodocs.config.toml", ".repodocs.toml"];
 
                 for default_path in &default_paths {
                     if Path::new(default_path).exists() {
@@ -192,15 +176,13 @@ impl Config {
 
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let path = path.as_ref();
-        let content = toml::to_string_pretty(self)
-            .map_err(|e| RepoDocsError::Config {
-                message: format!("Failed to serialize config: {}", e),
-            })?;
+        let content = toml::to_string_pretty(self).map_err(|e| RepoDocsError::Config {
+            message: format!("Failed to serialize config: {}", e),
+        })?;
 
-        std::fs::write(path, content)
-            .map_err(|e| RepoDocsError::Config {
-                message: format!("Failed to write config file {}: {}", path.display(), e),
-            })?;
+        std::fs::write(path, content).map_err(|e| RepoDocsError::Config {
+            message: format!("Failed to write config file {}: {}", path.display(), e),
+        })?;
 
         Ok(())
     }
@@ -238,10 +220,7 @@ impl Config {
         if let Some(parent) = self.output.base_directory.parent() {
             if !parent.exists() {
                 return Err(RepoDocsError::Config {
-                    message: format!(
-                        "Parent directory does not exist: {}",
-                        parent.display()
-                    ),
+                    message: format!("Parent directory does not exist: {}", parent.display()),
                 });
             }
         }
@@ -315,7 +294,6 @@ impl CliOverrides {
 mod tests {
     use super::*;
     use tempfile::NamedTempFile;
-    use std::io::Write;
 
     #[test]
     fn test_default_config() {
@@ -337,7 +315,7 @@ mod tests {
     #[test]
     fn test_config_file_operations() {
         let config = Config::default();
-        let mut temp_file = NamedTempFile::new().unwrap();
+        let temp_file = NamedTempFile::new().unwrap();
 
         // Test saving
         config.save_to_file(temp_file.path()).unwrap();
