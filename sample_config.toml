@@ -1,0 +1,6 @@
+Generated sample configuration file: repodocs.toml
+
+To use this configuration:
+  repodocs <repository-url> --config repodocs.toml
+
+Edit the file to customize settings for your needs.

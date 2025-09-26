@@ -1,0 +1,33 @@
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test outputs
+*-test/
+perf-test/
+release-perf-test/
+json-test/
+config-test/
+hello-world-test/
+large-file-test/
+docs-test/
+local-test/
+
+# Claude files
+.claude/
+
+# PRP documentation (can be committed separately if needed)
+PRPs/

@@ -1,0 +1,44 @@
+[filters]
+extensions = [
+    "md",
+    "markdown",
+    "mdown",
+    "rst",
+    "rest",
+    "adoc",
+    "asciidoc",
+    "asc",
+    "txt",
+    "text",
+    "org",
+    "wiki",
+    "tex",
+    "latex",
+]
+max_file_size = 10485760
+exclude_dirs = [
+    "node_modules",
+    ".git",
+    "target",
+    "build",
+    "dist",
+    "vendor",
+    ".vscode",
+    ".idea",
+]
+exclude_patterns = [
+    '.*\.min\..*',
+    '.*\.lock',
+    'package-lock\.json',
+    'yarn\.lock',
+]
+max_depth = 10
+
+[output]
+preserve_structure = true
+create_index = true
+generate_report = true
+base_directory = "/home/diogo/dev/repodocs"
+
+[git]
+timeout = 300
