@@ -341,7 +341,6 @@ func TestIntegration_Orchestrator_WithCustomConfig(t *testing.T) {
 		DryRun:     false,
 		RenderJS:   false,
 		Limit:      10,
-		MaxDepth:   3,
 		ExcludePatterns: []string{"test/*", "*.tmp"},
 	}
 
@@ -400,7 +399,7 @@ func TestIntegration_Orchestrator_MultipleRuns(t *testing.T) {
 
 	for _, url := range urls {
 		t.Run("run: "+url, func(t *testing.T) {
-			err := orchestrator.Run(context.Background(), url, app.OrchestratorOptions{
+			_ = orchestrator.Run(context.Background(), url, app.OrchestratorOptions{
 				Limit: 1,
 			})
 			// Depending on strategy implementation, this might succeed or fail
