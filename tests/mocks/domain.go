@@ -391,3 +391,48 @@ func (mr *MockWriterMockRecorder) Write(ctx, doc any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Write", reflect.TypeOf((*MockWriter)(nil).Write), ctx, doc)
 }
+
+// SimpleMockCache is a simple in-memory cache for testing without gomock
+type SimpleMockCache struct {
+	data map[string][]byte
+}
+
+// NewSimpleMockCache creates a new SimpleMockCache
+func NewSimpleMockCache() *SimpleMockCache {
+	return &SimpleMockCache{
+		data: make(map[string][]byte),
+	}
+}
+
+// Get retrieves a value from the cache
+func (m *SimpleMockCache) Get(ctx context.Context, key string) ([]byte, error) {
+	value, ok := m.data[key]
+	if !ok {
+		return nil, domain.ErrCacheMiss
+	}
+	return value, nil
+}
+
+// Set stores a value in the cache
+func (m *SimpleMockCache) Set(ctx context.Context, key string, value []byte, ttl time.Duration) error {
+	m.data[key] = value
+	return nil
+}
+
+// Has checks if a key exists in the cache
+func (m *SimpleMockCache) Has(ctx context.Context, key string) bool {
+	_, ok := m.data[key]
+	return ok
+}
+
+// Delete removes a key from the cache
+func (m *SimpleMockCache) Delete(ctx context.Context, key string) error {
+	delete(m.data, key)
+	return nil
+}
+
+// Close releases cache resources
+func (m *SimpleMockCache) Close() error {
+	m.data = nil
+	return nil
+}

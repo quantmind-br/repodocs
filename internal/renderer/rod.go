@@ -275,3 +275,11 @@ func IsAvailable() bool {
 func GetBrowserPath() (string, bool) {
 	return launcher.LookPath()
 }
+
+// GetTabPool returns the tab pool for testing purposes
+func (r *Renderer) GetTabPool() (*TabPool, error) {
+	if r.pool == nil {
+		return nil, fmt.Errorf("pool not initialized")
+	}
+	return r.pool, nil
+}

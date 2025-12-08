@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>fmt package - fmt - Go Packages</title>
+	<meta name="description" content="Package fmt implements formatted I/O with functions analogous to C's printf and scanf."/>
+	<link rel="stylesheet" href="/lib/godoc/style.css"/>
+	<link rel="stylesheet" href="/lib/godoc/jquery.treeview.css"/>
+	<link rel="icon" href="/favicon.ico"/>
+</head>
+<body class="layout-theme-light">
+	<div id="topbar" class="no-print">
+		<div class="build-info">
+			<span>go1.21.4</span>
+		</div>
+		<div class="search">
+			<form action="/search" method="get">
+				<input type="hidden" name="m" value="pkg"/>
+				<input type="search" name="q" placeholder="Search documentation" />
+			</form>
+		</div>
+	</div>
+
+	<div id="page" class="page">
+		<div class="unit-header">
+			<header>
+				<h1 class="UnitHeader-title">
+					<span>fmt</span>
+				</h1>
+				<div class="UnitHeader-base">
+					<span class="UnitHeader-location">package fmt</span>
+					<span class="UnitHeader-version">package fmt</span>
+				</div>
+			</header>
+		</div>
+
+		<div class="go-Main">
+			<div class="unitDoc">
+				<div class="Documentation-content">
+					<section class="Documentation-overview" id="pkg-overview">
+						<h3>Overview <a class="Documentation-anchor" href="#pkg-overview" aria-label="Permalink to this section">¶</a></h3>
+						<div class="Documentation-description">
+							<p>Package fmt implements formatted I/O with functions analogous to C's printf and scanf. The format verbs are derived from C's but are simpler.</p>
+							<p>Some flags and verbs are implemented differently on Windows. The typical difference is that on Windows the default format for float values is 6 bytes, like printed with %f.</p>
+						</div>
+						<pre><code>import "fmt"
+</code></pre>
+					</section>
+
+					<section class="Documentation-index" id="pkg-index">
+						<h3>Index <a class="Documentation-anchor" href="#pkg-index" aria-label="Permalink to this section">¶</a></h3>
+						<div class="Documentation-list">
+							<ul>
+								<li><a href="#Println">func Println(a ...any) (n int, err error)</a></li>
+								<li><a href="#Printf">func Printf(format string, a ...any) (n int, err error)</a></li>
+								<li><a href="#Print">func Print(a ...any) (n int, err error)</a></li>
+								<li><a href="#Sprintf">func Sprintf(format string, a ...any) string</a></li>
+								<li><a href="#Stringer">type Stringer</a></li>
+							</ul>
+						</div>
+					</section>
+
+					<section class="Documentation-constants" id="pkg-constants">
+						<h3>Constants <a class="Documentation-anchor" href="#pkg-constants" aria-label="Permalink to this section">¶</a></h3>
+						<div class="Documentation-constants-body">
+							<p>This package has no exported constants.</p>
+						</div>
+					</section>
+
+					<section class="Documentation-variables" id="pkg-variables">
+						<h3>Variables <a class="Documentation-anchor" href="#pkg-variables" aria-label="Permalink to this section">¶</a></h3>
+						<div class="Documentation-variables-body">
+							<p>This package has no exported variables.</p>
+						</div>
+					</section>
+
+					<section class="Documentation-functions" id="pkg-functions">
+						<h3>Functions <a class="Documentation-anchor" href="#pkg-functions" aria-label="Permalink to this section">¶</a></h3>
+						<div class="Documentation-functions-body">
+							<div id="Println" class="Documentation-function">
+								<h4>func Println</h4>
+								<pre class="Signature">func Println(a ...any) (n int, err error)</pre>
+								<div class="Documentation-paragraph">
+									<p>Println formats using the default formats for its operands and writes to standard output. Spaces are always added between operands and a newline is appended. It returns the number of bytes written and any write error encountered.</p>
+								</div>
+								<div class="Documentation-example">
+									<p>Example:</p>
+									<pre><code>fmt.Println("hello")
+</code></pre>
+								</div>
+							</div>
+
+							<div id="Printf" class="Documentation-function">
+								<h4>func Printf</h4>
+								<pre class="Signature">func Printf(format string, a ...any) (n int, err error)</pre>
+								<div class="Documentation-paragraph">
+									<p>Printf formats according to a format specifier and writes to standard output. It returns the number of bytes written and any write error encountered.</p>
+								</div>
+							</div>
+
+							<div id="Print" class="Documentation-function">
+								<h4>func Print</h4>
+								<pre class="Signature">func Print(a ...any) (n int, err error)</pre>
+								<div class="Documentation-paragraph">
+									<p>Print formats using the default formats for its operands and writes to standard output. It returns the number of bytes written and any write error encountered.</p>
+								</div>
+							</div>
+
+							<div id="Sprintf" class="Documentation-function">
+								<h4>func Sprintf</h4>
+								<pre class="Signature">func Sprintf(format string, a ...any) string</pre>
+								<div class="Documentation-paragraph">
+									<p>Sprintf formats according to a format specifier and returns the resulting string.</p>
+								</div>
+							</div>
+						</div>
+					</section>
+
+					<section class="Documentation-types" id="pkg-types">
+						<h3>Types <a class="Documentation-anchor" href="#pkg-types" aria-label="Permalink to this section">¶</a></h3>
+						<div class="Documentation-types-body">
+							<div id="Stringer" class="Documentation-type">
+								<h4>type Stringer</h4>
+								<pre class="Signature">type Stringer interface {
+    String() string
+}</pre>
+								<div class="Documentation-paragraph">
+									<p>Stringer is the interface that wraps the String method. Stringer is implemented by many types in the standard library.</p>
+								</div>
+							</div>
+						</div>
+					</section>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div id="footer">
+		<p>Copyright © 2024 The Go Authors. All rights reserved.</p>
+	</div>
+</body>
+</html>

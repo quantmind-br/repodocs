@@ -1,0 +1,70 @@
+# Project Documentation
+
+## Getting Started
+- [Installation Guide](https://example.com/install)
+- [Quick Start Tutorial](https://example.com/quickstart)
+- [Basic Concepts](https://example.com/concepts)
+
+## API Reference
+- [REST API](https://example.com/api/rest)
+- [GraphQL API](https://example.com/api/graphql)
+- [WebSocket API](https://example.com/api/websocket)
+- [Authentication](https://example.com/auth)
+
+## Guides
+- [User Guide](https://example.com/docs/user-guide)
+- [Admin Guide](https://example.com/docs/admin)
+- [Developer Guide](https://example.com/docs/developer)
+
+## Examples
+- [Hello World](examples/hello-world.html)
+- [API Usage](examples/api-usage.html)
+- [Advanced Examples](examples/advanced/)
+
+## Tutorials
+- [Tutorial 1: Basics](https://tutorial.example.com/basics)
+- [Tutorial 2: Intermediate](https://tutorial.example.com/intermediate)
+- [Tutorial 3: Advanced](https://tutorial.example.com/advanced)
+
+## Reference
+- [Configuration](https://example.com/config)
+- [CLI Reference](https://example.com/cli)
+- [Environment Variables](https://example.com/env)
+
+## Resources
+- [FAQ](https://example.com/faq)
+- [Troubleshooting](https://example.com/troubleshooting)
+- [Support](https://example.com/support)
+
+## External Links
+- [GitHub Repository](https://github.com/example/repo)
+- [Community Forum](https://forum.example.com)
+- [Blog](https://blog.example.com)
+
+## Legacy Documentation
+- [v1.0 Guide](https://example.com/v1/guide)
+- [v2.0 Migration](https://example.com/migration)
+
+## Notes
+# This is a comment that should be ignored
+# Another comment line
+
+## Relative Links
+- [Home](index.html)
+- [About](about.html)
+- [Contact](contact.html)
+
+## Links with Special Characters
+- [API v2.1](https://example.com/api/v2.1?lang=en&format=json)
+- [Download Page](https://example.com/download?file=latest&os=linux)
+
+## Empty and Anchor Links (should be skipped)
+- [](#top)
+- [](#section-1)
+- [](https://example.com/empty)
+- [Empty Title](   )
+
+## Invalid/Malformed (will be filtered)
+not-a-url
+http://
+https://
