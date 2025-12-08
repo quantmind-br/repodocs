@@ -126,6 +126,116 @@ func TestParseLastMod(t *testing.T) {
 	}
 }
 
+// TestProcessSitemapIndex tests processing of sitemap index files
+func TestProcessSitemapIndex(t *testing.T) {
+	t.Run("simple sitemap index", func(t *testing.T) {
+		// Arrange
+		xmlContent := `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<sitemap>
+		<loc>https://example.com/sitemap1.xml</loc>
+		<lastmod>2024-01-15T10:00:00Z</lastmod>
+	</sitemap>
+	<sitemap>
+		<loc>https://example.com/sitemap2.xml</loc>
+		<lastmod>2024-01-14T10:00:00Z</lastmod>
+	</sitemap>
+</sitemapindex>`
+
+		// Act
+		sitemap, err := parseSitemapTest([]byte(xmlContent), "https://example.com/sitemap-index.xml")
+
+		// Assert
+		require.NoError(t, err)
+		assert.NotNil(t, sitemap)
+		assert.True(t, sitemap.IsIndex, "Should be detected as a sitemap index")
+		assert.Equal(t, "https://example.com/sitemap-index.xml", sitemap.SourceURL)
+	})
+
+	t.Run("nested sitemap index with mixed content", func(t *testing.T) {
+		// Arrange
+		xmlContent := `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<sitemap>
+		<loc>https://example.com/products/sitemap.xml</loc>
+		<lastmod>2024-01-15T12:00:00Z</lastmod>
+	</sitemap>
+	<sitemap>
+		<loc>https://example.com/blog/sitemap.xml</loc>
+		<lastmod>2024-01-15T10:30:00Z</lastmod>
+	</sitemap>
+	<sitemap>
+		<loc>https://example.com/docs/sitemap.xml</loc>
+		<lastmod>2024-01-14T15:45:00Z</lastmod>
+	</sitemap>
+</sitemapindex>`
+
+		// Act
+		sitemap, err := parseSitemapTest([]byte(xmlContent), "https://example.com/sitemap.xml")
+
+		// Assert
+		require.NoError(t, err)
+		assert.NotNil(t, sitemap)
+		assert.True(t, sitemap.IsIndex, "Should be detected as a sitemap index")
+	})
+
+	t.Run("invalid XML", func(t *testing.T) {
+		// Arrange
+		invalidXML := `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<sitemap>
+		<loc>https://example.com/sitemap1.xml</loc>
+	<sitemap>
+		<!-- Missing closing tag -->
+</sitemapindex>`
+
+		// Act
+		sitemap, _ := parseSitemapTest([]byte(invalidXML), "https://example.com/sitemap.xml")
+
+		// Assert
+		// The parser should handle this gracefully
+		assert.NotNil(t, sitemap)
+	})
+
+	t.Run("empty sitemap index", func(t *testing.T) {
+		// Arrange
+		xmlContent := `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+</sitemapindex>`
+
+		// Act
+		sitemap, err := parseSitemapTest([]byte(xmlContent), "https://example.com/sitemap.xml")
+
+		// Assert
+		require.NoError(t, err)
+		assert.NotNil(t, sitemap)
+		assert.True(t, sitemap.IsIndex, "Should be detected as a sitemap index")
+	})
+
+	t.Run("sitemap index with URLs in sitemaps", func(t *testing.T) {
+		// Arrange
+		xmlContent := `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<sitemap>
+		<loc>https://cdn.example.com/sitemaps/product-sitemap-1.xml.gz</loc>
+		<lastmod>2024-01-15T08:00:00Z</lastmod>
+	</sitemap>
+	<sitemap>
+		<loc>https://cdn.example.com/sitemaps/product-sitemap-2.xml.gz</loc>
+		<lastmod>2024-01-15T08:00:00Z</lastmod>
+	</sitemap>
+</sitemapindex>`
+
+		// Act
+		sitemap, err := parseSitemapTest([]byte(xmlContent), "https://example.com/sitemap.xml")
+
+		// Assert
+		require.NoError(t, err)
+		assert.NotNil(t, sitemap)
+		assert.True(t, sitemap.IsIndex, "Should be detected as a sitemap index")
+	})
+}
+
 // Helper functions that mirror unexported functions from sitemap.go
 func parseSitemapTest(data []byte, baseURL string) (*domain.Sitemap, error) {
 	result := &domain.Sitemap{
