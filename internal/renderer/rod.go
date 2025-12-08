@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/go-rod/rod"
@@ -110,6 +111,9 @@ func (r *Renderer) Render(ctx context.Context, url string, opts domain.RenderOpt
 	}
 	defer r.pool.Release(page)
 
+	// Apply context to page so all operations respect the timeout
+	page = page.Context(ctx)
+
 	// Apply stealth mode
 	if r.stealth {
 		if err := ApplyStealthMode(page); err != nil {
@@ -165,14 +169,32 @@ func (r *Renderer) Render(ctx context.Context, url string, opts domain.RenderOpt
 }
 
 // setCookies sets cookies on a page
-func (r *Renderer) setCookies(page *rod.Page, url string, cookies []*http.Cookie) error {
+func (r *Renderer) setCookies(page *rod.Page, pageURL string, cookies []*http.Cookie) error {
+	// Parse URL to extract domain if cookie domain is empty
+	parsedURL, err := url.Parse(pageURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse URL for cookies: %w", err)
+	}
+
 	for _, cookie := range cookies {
+		// Use cookie domain if set, otherwise extract from URL
+		domain := cookie.Domain
+		if domain == "" {
+			domain = parsedURL.Hostname()
+		}
+
+		// Use cookie path if set, otherwise default to "/"
+		path := cookie.Path
+		if path == "" {
+			path = "/"
+		}
+
 		err := page.SetCookies([]*proto.NetworkCookieParam{
 			{
 				Name:     cookie.Name,
 				Value:    cookie.Value,
-				Domain:   cookie.Domain,
-				Path:     cookie.Path,
+				Domain:   domain,
+				Path:     path,
 				Secure:   cookie.Secure,
 				HTTPOnly: cookie.HttpOnly,
 			},

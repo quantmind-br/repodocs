@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -30,18 +31,20 @@ func TestE2E_SitemapParsing(t *testing.T) {
 	// Serve sitemap
 	mux.HandleFunc("/sitemap.xml", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/xml")
+		// Use absolute URLs as required by sitemap spec
+		baseURL := "http://" + r.Host
 		w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
 		<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 			<url>
-				<loc>/docs/intro</loc>
+				<loc>` + baseURL + `/docs/intro</loc>
 				<lastmod>2024-01-15</lastmod>
 			</url>
 			<url>
-				<loc>/docs/getting-started</loc>
+				<loc>` + baseURL + `/docs/getting-started</loc>
 				<lastmod>2024-01-14</lastmod>
 			</url>
 			<url>
-				<loc>/docs/api</loc>
+				<loc>` + baseURL + `/docs/api</loc>
 				<lastmod>2024-01-13</lastmod>
 			</url>
 		</urlset>`))
@@ -290,7 +293,7 @@ func TestE2E_SitemapWithLimit(t *testing.T) {
 		xml := `<?xml version="1.0" encoding="UTF-8"?>
 		<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`
 		for i := 1; i <= 20; i++ {
-			xml += `<url><loc>` + baseURL + `/page/` + string(rune('0'+i)) + `</loc></url>`
+			xml += `<url><loc>` + baseURL + `/page/` + strconv.Itoa(i) + `</loc></url>`
 		}
 		xml += `</urlset>`
 		w.Write([]byte(xml))

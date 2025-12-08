@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -130,7 +131,7 @@ func TestRenderWithWaitFor(t *testing.T) {
     </script>
 </head>
 <body>
-    <div id="delayed" style="display:none;">Delayed Content</div>
+    <p>Initial content</p>
 </body>
 </html>
 `
@@ -295,11 +296,14 @@ func TestRenderTimeout(t *testing.T) {
 	})
 
 	// Should timeout
-	assert.Error(t, err)
+	if !assert.Error(t, err) {
+		t.Fatal("Expected timeout error but got nil")
+	}
 	errMsg := err.Error()
-	hasTimeout := assert.Contains(t, errMsg, "timeout") || assert.Contains(t, errMsg, "context")
+	// Check for timeout-related error message (context deadline exceeded, timeout, etc.)
+	hasTimeout := strings.Contains(errMsg, "timeout") || strings.Contains(errMsg, "context")
 	if !hasTimeout {
-		t.Logf("Unexpected error message: %s", errMsg)
+		t.Errorf("Expected timeout-related error but got: %s", errMsg)
 	}
 }
 

@@ -154,10 +154,16 @@ func TestE2E_CrawlMockSite(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify files were created
-	files, err := filepath.Glob(filepath.Join(tmpDir, "**/*.md"))
-	if err != nil {
-		files, _ = filepath.Glob(filepath.Join(tmpDir, "*.md"))
-	}
+	var files []string
+	filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if !info.IsDir() && filepath.Ext(path) == ".md" {
+			files = append(files, path)
+		}
+		return nil
+	})
 
 	// Should have created at least the index file
 	assert.Greater(t, len(files), 0, "Should have created at least one markdown file")
