@@ -118,6 +118,90 @@ func TestGenerateOutputDirFromURL(t *testing.T) {
 	}
 }
 
+func TestHasBaseURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		target   string
+		base     string
+		expected bool
+	}{
+		// Basic cases
+		{
+			name:     "Exact match",
+			target:   "https://example.com/docs",
+			base:     "https://example.com/docs",
+			expected: true,
+		},
+		{
+			name:     "Target is subpath",
+			target:   "https://example.com/docs/api",
+			base:     "https://example.com/docs",
+			expected: true,
+		},
+		{
+			name:     "Target is deeper subpath",
+			target:   "https://example.com/docs/api/v1/users",
+			base:     "https://example.com/docs",
+			expected: true,
+		},
+		{
+			name:     "Target is different path",
+			target:   "https://example.com/blog",
+			base:     "https://example.com/docs",
+			expected: false,
+		},
+		{
+			name:     "Target is root, base has path",
+			target:   "https://example.com/",
+			base:     "https://example.com/docs",
+			expected: false,
+		},
+		{
+			name:     "Similar prefix but different path",
+			target:   "https://example.com/docs-old",
+			base:     "https://example.com/docs",
+			expected: false,
+		},
+		{
+			name:     "Empty base allows all",
+			target:   "https://example.com/anything",
+			base:     "",
+			expected: true,
+		},
+		{
+			name:     "Different host",
+			target:   "https://other.com/docs",
+			base:     "https://example.com/docs",
+			expected: false,
+		},
+		{
+			name:     "Base is root",
+			target:   "https://example.com/docs/api",
+			base:     "https://example.com/",
+			expected: true,
+		},
+		{
+			name:     "Trailing slashes handled",
+			target:   "https://example.com/docs/",
+			base:     "https://example.com/docs",
+			expected: true,
+		},
+		{
+			name:     "Case insensitive host",
+			target:   "https://EXAMPLE.COM/docs/api",
+			base:     "https://example.com/docs",
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := utils.HasBaseURL(tt.target, tt.base)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestSanitizeForDirName(t *testing.T) {
 	// Test through GenerateOutputDirFromURL since sanitizeForDirName is not exported
 	tests := []struct {

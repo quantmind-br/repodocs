@@ -1,262 +1,252 @@
-# RepoDocs-Go
+# repodocs-go: Documentation Extraction CLI
 
-A CLI tool for extracting documentation from websites, Git repositories, sitemaps, pkg.go.dev, and llms.txt files. Built with Go, featuring stealth mode for avoiding bot detection and JavaScript rendering for single-page applications.
+## Project Overview
 
-## Features
+`repodocs-go` is a powerful Command Line Interface (CLI) tool designed to automate the extraction, cleaning, and conversion of documentation from diverse sources into standardized Markdown files. It acts as a robust client capable of handling complex web environments, including JavaScript-heavy Single Page Applications (SPAs) and version control systems.
 
-- **Multiple Extraction Strategies**: Automatically detects and uses the appropriate strategy based on URL
-  - **Crawler**: Web crawling with Colly, includes stealth transport
-  - **Sitemap**: Parse XML sitemaps (including sitemap index and gzipped)
-  - **Git**: Clone and extract documentation from Git repositories
-  - **pkg.go.dev**: Extract Go package documentation
-  - **llms.txt**: Parse and download referenced documentation
+**Purpose and Main Functionality**
+The primary goal of `repodocs-go` is to provide a reliable, configurable pipeline for transforming unstructured or semi-structured content (HTML, Git files) into clean, readable documentation, suitable for integration into knowledge bases or static site generators.
 
-- **Stealth Mode**: TLS fingerprinting with Chrome profile, User-Agent rotation, and header randomization
-- **JavaScript Rendering**: Headless browser with Rod for SPAs (React, Vue, Next.js, Nuxt)
-- **Caching**: BadgerDB-based caching with TTL support
-- **Output Formats**: Markdown with YAML frontmatter, optional JSON metadata
-- **Progress Tracking**: Real-time progress bars and logging
+**Key Features and Capabilities**
 
-## Installation
+*   **Multi-Strategy Extraction:** Supports various input sources, including standard web pages (Crawler), sitemaps, and Git repositories.
+*   **SPA Rendering:** Utilizes a headless browser (Chromium via `rod`) to render JavaScript-heavy content before extraction.
+*   **Content Cleaning:** Employs a content pipeline to sanitize HTML, extract the main article body (readability), and convert it to Markdown.
+*   **Resilient Fetching:** Includes a custom HTTP client with retry logic (exponential backoff) for transient network errors and specific status codes (429, 5xx).
+*   **Persistent Caching:** Uses BadgerDB for local, persistent caching of fetched resources, reducing external load and improving performance.
+*   **Stealth Capabilities:** Integrates specialized HTTP clients and browser automation techniques to handle anti-bot measures.
 
-### From Source
+**Likely Intended Use Cases**
 
-```bash
-go install github.com/quantmind-br/repodocs-go/cmd/repodocs@latest
+*   Automated documentation generation for microservices by reading files directly from Git repositories.
+*   Archiving or mirroring external documentation websites.
+*   Creating local, searchable documentation from complex, modern web applications (SPAs).
+
+## Table of Contents
+
+1.  [Project Overview](#project-overview)
+2.  [Architecture](#architecture)
+3.  [C4 Model Architecture](#c4-model-architecture)
+4.  [Repository Structure](#repository-structure)
+5.  [Dependencies and Integration](#dependencies-and-integration)
+6.  [API Documentation](#api-documentation)
+7.  [Development Notes](#development-notes)
+8.  [Known Issues and Limitations](#known-issues-and-limitations)
+9.  [Additional Documentation](#additional-documentation)
+
+## Architecture
+
+### High-Level Architecture Overview
+
+The `repodocs-go` architecture follows a layered, modular design, closely resembling a **Hexagonal Architecture** (Ports and Adapters). The core logic is decoupled from infrastructure concerns through interfaces defined in the `internal/domain` package.
+
+The system is centered around the **Orchestrator**, which acts as the application coordinator. It loads configuration, detects the input source type, selects the appropriate **Strategy** (e.g., `CrawlerStrategy`, `GitStrategy`), and executes the content extraction and conversion **Pipeline**.
+
+### Technology Stack and Frameworks
+
+| Category | Technology/Framework | Purpose |
+| :--- | :--- | :--- |
+| **Language** | Go | Primary development language. |
+| **CLI/Config** | `cobra`, `viper` | Command-line interface and configuration management. |
+| **Caching** | BadgerDB | Embedded, persistent key-value store for caching fetched content. |
+| **Web Scraping** | `gocolly/colly`, `fhttp`, `tls-client` | Web crawling and specialized HTTP requests (stealth). |
+| **Rendering** | `go-rod`, Chromium | Headless browser automation for JavaScript rendering. |
+| **Content Processing** | `go-readability`, `html-to-markdown` | HTML cleaning, core content extraction, and Markdown conversion. |
+
+### Key Design Patterns
+
+| Pattern | Implementation | Description |
+| :--- | :--- | :--- |
+| **Strategy Pattern** | `internal/strategies` | Allows the `Orchestrator` to dynamically select the extraction logic (`Git`, `Sitemap`, `Crawler`) based on the input URL. |
+| **Pipeline Pattern** | `internal/converter/pipeline.go` | Defines a fixed, sequential chain of responsibility for content transformation (Sanitize -> Readability -> Markdown). |
+| **Dependency Injection** | `internal/strategies/Dependencies` | A central Composition Root that instantiates and aggregates all infrastructure services, injecting them into the specific `Strategy` implementations. |
+
+### Component Relationships
+
+The following diagram illustrates the flow of control and data through the main components of the application.
+
+```mermaid
+graph TD
+    subgraph Application Flow
+        A[cmd/main.go] --> B(app.Orchestrator);
+        B --> C{Detect Strategy};
+        C --> D(Strategy Implementation);
+        D --> E(strategy.Execute());
+    end
+
+    subgraph Infrastructure Services
+        F(fetcher.Client)
+        G(renderer.Renderer)
+        H(converter.Pipeline)
+        I(cache.BadgerCache)
+        J(output.Writer)
+    end
+
+    E --> |Uses| F;
+    E --> |Uses| G;
+    E --> |Uses| H;
+    E --> |Uses| J;
+
+    F --> |Caches/Retrieves| I;
+    F --> |Fetches Raw Content| K[External Web/Git];
+    G --> |Renders JS Content| L[Chromium/Headless Browser];
+    H --> |Transforms HTML to Markdown| M[Content Processing Libraries];
+    J --> |Writes Final Output| N[Local Filesystem];
+
+    style B fill:#f9f,stroke:#333
+    style E fill:#ccf,stroke:#333
+    style H fill:#ccf,stroke:#333
 ```
 
-### Build Locally
+## C4 Model Architecture
 
-```bash
-git clone https://github.com/quantmind-br/repodocs-go.git
-cd repodocs-go
-make build
-./build/repodocs --help
+### Context Diagram
+
+The Context diagram shows the `repodocs-go` system and its primary interactions with external entities.
+
+<details>
+<summary>C4 Context Diagram</summary>
+
+```mermaid
+C4Context
+    title Context Diagram for repodocs-go
+    Person(user, "Developer/User", "Operates the CLI tool to generate documentation.")
+    System(repodocs, "repodocs-go CLI Tool", "A command-line application that extracts, cleans, and converts documentation from various sources into Markdown.")
+
+    System_Ext(web_services, "External Web Services", "Public or private websites, APIs, and sitemaps.")
+    System_Ext(git_repos, "Git Repositories", "Remote or local Git repositories (e.g., GitHub, GitLab).")
+    System_Ext(filesystem, "Local Filesystem", "The local disk where configuration, cache, and final output files are stored.")
+
+    user -- "Runs command with URL" --> repodocs
+    repodocs --> "Fetches content (HTTP/HTTPS)" --> web_services
+    repodocs --> "Clones/Reads content (Git Protocol/HTTP)" --> git_repos
+    repodocs --> "Reads config, cache, Writes final Markdown" --> filesystem
+
+    Rel(repodocs, web_services, "Consumes content from", "HTTP/HTTPS")
+    Rel(repodocs, git_repos, "Consumes content from", "Git Protocol")
+    Rel(repodocs, filesystem, "Persists data to", "File I/O")
 ```
+</details>
 
-## Usage
+### Container Diagram
 
-### Basic Usage
+The Container diagram breaks down the `repodocs-go` system into its main technical building blocks.
 
-```bash
-# Crawl a website
-repodocs https://docs.example.com
+<details>
+<summary>C4 Container Diagram</summary>
 
-# Parse a sitemap
-repodocs https://example.com/sitemap.xml
+```mermaid
+C4Container
+    title Container Diagram for repodocs-go
+    System_Boundary(repodocs, "repodocs-go")
+        Container(cli, "CLI Application", "Go Executable", "The main application binary containing the Orchestrator, Strategies, and Conversion Pipeline.")
+        Container(cache, "BadgerDB Cache", "Embedded Key-Value Store", "Stores fetched raw content (HTML/XML) to minimize repeated external requests.")
+        Container(renderer, "Headless Browser Pool", "Chromium/Rod", "Manages instances of a headless browser for rendering JavaScript-heavy pages.")
+    System_Boundary(repodocs)
 
-# Clone and extract from a Git repository
-repodocs https://github.com/user/repo
+    System_Ext(web_services, "External Web Services", "Public or private websites, APIs, and sitemaps.")
+    System_Ext(git_repos, "Git Repositories", "Remote or local Git repositories.")
+    System_Ext(filesystem, "Local Filesystem", "The local disk for final output.")
 
-# Extract Go package documentation
-repodocs https://pkg.go.dev/github.com/user/package
-
-# Parse llms.txt
-repodocs https://example.com/llms.txt
+    cli --> cache "Reads and Writes cached content"
+    cli --> renderer "Sends URLs for rendering"
+    cli --> web_services "Fetches content (HTTP/Stealth Client)"
+    cli --> git_repos "Clones/Reads repository content"
+    cli --> filesystem "Writes final Markdown documentation"
 ```
+</details>
 
-### Common Options
+## Repository Structure
 
-```bash
-# Specify output directory
-repodocs https://example.com -o ./output
+The repository is organized to separate the application entry point, core logic, domain contracts, and infrastructure implementations.
 
-# Limit number of pages
-repodocs https://example.com -l 100
+| Directory | Purpose |
+| :--- | :--- |
+| `cmd/` | Contains the main CLI entry point (`main.go`) and `cobra` command definitions. |
+| `internal/app` | Application layer logic, including the `Orchestrator` and `Detector`. |
+| `internal/domain` | Core business models, interfaces (contracts), and custom errors. |
+| `internal/strategies` | Implementations of the `domain.Strategy` interface (e.g., `crawler`, `git`, `sitemap`). |
+| `internal/converter` | The content transformation pipeline (sanitization, readability, markdown conversion). |
+| `internal/fetcher` | Network I/O, custom HTTP client, retry logic, and stealth features. |
+| `internal/cache` | Concrete implementation of the `domain.Cache` interface using BadgerDB. |
+| `internal/renderer` | Headless browser management using the `rod` library. |
+| `internal/output` | Logic for writing the final documentation files to the filesystem. |
+| `internal/utils` | Shared utilities like logging (`zerolog`) and the worker pool. |
 
-# Set crawl depth
-repodocs https://example.com -d 2
+## Dependencies and Integration
 
-# Force JS rendering
-repodocs https://example.com --render-js
+The project integrates with several internal and external systems to perform its function.
 
-# Dry run (simulate without writing)
-repodocs https://example.com --dry-run
+### Internal Service Dependencies
 
-# Verbose output
-repodocs https://example.com -v
-```
+| Service | Technology | Integration Method | Notes |
+| :--- | :--- | :--- | :--- |
+| **Local Cache** | BadgerDB | Embedded Key-Value Store | Used by the `fetcher` to store raw HTTP responses, keyed by URL and configuration hash. |
+| **Headless Browser** | Chromium/Rod | DevTools Protocol | Managed by the `renderer` package to execute JavaScript and obtain final DOM content for SPAs. |
 
-### All Options
+### External Service Dependencies
 
-| Flag | Short | Default | Description |
-|------|-------|---------|-------------|
-| `--output` | `-o` | `./docs` | Output directory |
-| `--concurrency` | `-j` | `5` | Number of concurrent workers |
-| `--limit` | `-l` | `0` | Max pages to process (0=unlimited) |
-| `--max-depth` | `-d` | `3` | Max crawl depth |
-| `--exclude` | | `[]` | Regex patterns to exclude |
-| `--nofolders` | | `false` | Flat output structure |
-| `--force` | | `false` | Overwrite existing files |
-| `--verbose` | `-v` | `false` | Verbose output |
-| `--no-cache` | | `false` | Disable caching |
-| `--cache-ttl` | | `24h` | Cache TTL |
-| `--refresh-cache` | | `false` | Force cache refresh |
-| `--render-js` | | `false` | Force JS rendering |
-| `--timeout` | | `30s` | Request timeout |
-| `--json-meta` | | `false` | Generate JSON metadata files |
-| `--dry-run` | | `false` | Simulate without writing files |
-| `--split` | | `false` | Split output by sections (pkg.go.dev) |
-| `--include-assets` | | `false` | Include referenced images (git) |
-| `--user-agent` | | `""` | Custom User-Agent |
-| `--content-selector` | | `""` | CSS selector for main content |
+| Service | Protocol/Type | Purpose |
+| :--- | :--- | :--- |
+| **Generic Web Services** | HTTP/HTTPS | Primary source for content fetching (HTML, XML, raw files). |
+| **Git Repositories** | Git Protocol/HTTP | Source for file-based documentation extraction. |
+| **LLM Services** | TBD (API) | Placeholder strategy (`LLMsStrategy`) for future integration with Large Language Models for processing or generating content. |
 
-## Configuration
+### Integration Patterns
 
-Create a configuration file at `~/.repodocs/config.yaml`:
+*   **Custom HTTP Client:** Uses specialized Go libraries (`fhttp`, `tls-client`) to implement a "stealth" client, allowing the tool to fetch content from sites with anti-bot measures.
+*   **Retry Mechanism:** Implements an exponential backoff strategy for retrying network requests on transient errors (e.g., 429, 5xx status codes).
+*   **Browser Automation:** The `internal/renderer` package uses `rod` to control a headless browser, which is essential for accurately fetching content from modern, client-side rendered applications.
 
-```yaml
-output:
-  directory: "./docs"
-  flat: false
-  json_metadata: true
-  overwrite: false
+## API Documentation
 
-concurrency:
-  workers: 5
-  timeout: 30s
-  max_depth: 3
+As a Command Line Interface (CLI) tool, `repodocs-go` does not expose any external HTTP or network-based APIs. Its primary interface is the command line itself, and its "API" for developers is its configuration and the external services it consumes.
 
-cache:
-  enabled: true
-  ttl: 24h
+### APIs Served by This Project
 
-rendering:
-  force_js: false
-  js_timeout: 60s
-  scroll_to_end: true
+N/A (No endpoints served)
 
-stealth:
-  user_agent: ""
-  random_delay_min: 1s
-  random_delay_max: 3s
+### External API Configuration
 
-exclude:
-  - ".*\\.pdf$"
-  - ".*/login.*"
-  - ".*/admin.*"
+The tool acts as a client, and its behavior when interacting with external services is highly configurable via CLI flags and configuration files.
 
-logging:
-  level: "info"
-  format: "pretty"
-```
+| Configuration Parameter | Default Value | Description |
+| :--- | :--- | :--- |
+| `source-url` | N/A (Required) | The target URL or repository path to extract documentation from. |
+| `output` | (URL-based default) | The directory path where the final Markdown files will be written. |
+| `concurrency` | TBD | The maximum number of concurrent fetching/rendering tasks (managed by the internal worker pool). |
+| `max-retries` | 3 | Maximum number of times to retry a failed network request. |
+| `timeout` | 30 seconds | Request timeout for individual network operations. |
+| `user-agent` | Custom | The User-Agent string used for all HTTP requests. |
+| `cache-ttl` | TBD | Time-to-live for cached items in BadgerDB. |
 
-## Commands
+## Development Notes
 
-### Doctor
+### Project-Specific Conventions
 
-Check system dependencies:
+*   **Structured Logging:** The project uses `github.com/rs/zerolog` for structured, leveled logging, configured via the `--verbose` flag.
+*   **Dependency Management:** Dependencies are managed using a **Composition Root** pattern (`internal/strategies/Dependencies`), ensuring that concrete implementations are instantiated in one central location and injected into consumers via interfaces.
+*   **Context Usage:** All major operations and network calls accept a `context.Context` to allow for graceful cancellation (e.g., on `SIGINT`/`SIGTERM`) and timeouts.
 
-```bash
-repodocs doctor
-```
+### Testing Requirements
 
-This will verify:
-- Internet connectivity
-- Chrome/Chromium availability (for JS rendering)
-- Write permissions
-- Configuration file validity
-- Cache directory
+*   **Dependency Check:** The `repodocs doctor` command is available to check for required external dependencies, particularly the presence and accessibility of the Chromium binary needed for the `internal/renderer` component.
+*   **Integration Testing:** Due to the heavy reliance on external services (HTTP, Git, Chromium), robust integration tests are necessary to ensure the `fetcher`, `renderer`, and various `strategies` function correctly.
 
-### Version
+### Performance Considerations
 
-```bash
-repodocs version
-```
+*   **Concurrency:** The application utilizes a `WorkerPool` (`internal/utils/workerpool.go`) to manage concurrent fetching and processing tasks, optimizing throughput when dealing with sitemaps or large crawl scopes.
+*   **Caching:** The use of BadgerDB provides fast, persistent caching, which is critical for performance, especially when running the tool multiple times against the same source or during development.
 
-## Output Format
+## Known Issues and Limitations
 
-### Markdown with Frontmatter
+*   **LLM Strategy Placeholder:** The `LLMsStrategy` is currently a placeholder and does not contain functional integration logic for Large Language Models.
+*   **Git Retry Logic:** The Git strategy relies on the underlying `go-git/v5` library for operations. No specific retry or backoff logic is implemented within the Go code for failed Git operations.
+*   **Headless Browser Overhead:** The dependency on a headless browser (Chromium) for rendering significantly increases the application's resource footprint and deployment complexity.
+*   **Stealth Client Maintenance:** The reliance on specialized, non-standard HTTP libraries (`fhttp`, `tls-client`) for stealth features may introduce maintenance challenges if these libraries lag behind upstream Go updates or if anti-bot techniques evolve.
 
-Each extracted page is saved as a Markdown file with YAML frontmatter:
+## Additional Documentation
 
-```markdown
----
-title: "Page Title"
-url: "https://example.com/docs/page"
-source: "crawler"
-fetched_at: "2024-01-15T10:30:00Z"
-rendered_js: false
-word_count: 1523
----
-
-# Page Title
-
-Content here...
-```
-
-### JSON Metadata
-
-With `--json-meta`, a companion JSON file is created:
-
-```json
-{
-  "url": "https://example.com/docs/page",
-  "title": "Page Title",
-  "description": "Page description",
-  "fetched_at": "2024-01-15T10:30:00Z",
-  "word_count": 1523,
-  "char_count": 8432,
-  "links": ["https://example.com/other"],
-  "headers": {
-    "h1": ["Page Title"],
-    "h2": ["Section 1", "Section 2"]
-  },
-  "rendered_with_js": false,
-  "source_strategy": "crawler"
-}
-```
-
-## Development
-
-### Prerequisites
-
-- Go 1.21+
-- Chrome/Chromium (for JS rendering)
-
-### Building
-
-```bash
-make build
-```
-
-### Testing
-
-```bash
-# Run all tests
-make test
-
-# Run with coverage
-make coverage
-
-# Run linter
-make lint
-```
-
-### Project Structure
-
-```
-cmd/repodocs/         # CLI entrypoint
-internal/
-  app/                # Application orchestrator
-  cache/              # BadgerDB cache implementation
-  config/             # Configuration management
-  converter/          # HTML to Markdown pipeline
-  domain/             # Interfaces and models
-  fetcher/            # HTTP client with stealth features
-  output/             # Output writer
-  renderer/           # Headless browser (Rod)
-  strategies/         # Extraction strategies
-  utils/              # Utilities
-pkg/version/          # Version information
-tests/                # Test suites
-```
-
-## Requirements
-
-- **Chrome/Chromium**: Required for JavaScript rendering
-- **Internet**: Required for web extraction
-
-## License
-
-MIT License
+*   [Project Plan and Roadmap](./PLAN.md)
+*   [Current Development Tasks](./TASKS.md)
+*   [Linting and Code Quality Configuration](./.golangci.yml)

@@ -285,6 +285,41 @@ func sanitizeForDirName(s string) string {
 	return result.String()
 }
 
+// HasBaseURL checks if a URL starts with the given base URL path
+// Example: HasBaseURL("https://example.com/docs/api", "https://example.com/docs") returns true
+// Example: HasBaseURL("https://example.com/blog", "https://example.com/docs") returns false
+func HasBaseURL(targetURL, baseURL string) bool {
+	if baseURL == "" {
+		return true
+	}
+
+	targetParsed, err := url.Parse(targetURL)
+	if err != nil {
+		return false
+	}
+
+	baseParsed, err := url.Parse(baseURL)
+	if err != nil {
+		return false
+	}
+
+	// Must be same host
+	if strings.ToLower(targetParsed.Host) != strings.ToLower(baseParsed.Host) {
+		return false
+	}
+
+	// Normalize paths
+	targetPath := strings.TrimSuffix(targetParsed.Path, "/")
+	basePath := strings.TrimSuffix(baseParsed.Path, "/")
+
+	// Target path must start with base path
+	if basePath == "" || basePath == "/" {
+		return true
+	}
+
+	return targetPath == basePath || strings.HasPrefix(targetPath, basePath+"/")
+}
+
 // FilterLinks filters links based on patterns
 func FilterLinks(links []string, excludePatterns []string) []string {
 	var regexps []*regexp.Regexp

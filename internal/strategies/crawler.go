@@ -49,6 +49,11 @@ func (s *CrawlerStrategy) CanHandle(url string) bool {
 func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options) error {
 	s.logger.Info().Str("url", url).Msg("Starting web crawl")
 
+	// Log filter if set
+	if opts.FilterURL != "" {
+		s.logger.Info().Str("filter", opts.FilterURL).Msg("URL filter active - only crawling URLs under this path")
+	}
+
 	// Create visited URL tracker
 	visited := sync.Map{}
 	var processedCount int
@@ -94,6 +99,11 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 
 		// Check if within same domain
 		if !utils.IsSameDomain(link, url) {
+			return
+		}
+
+		// Check base URL filter - only crawl URLs that start with the filter path
+		if opts.FilterURL != "" && !utils.HasBaseURL(link, opts.FilterURL) {
 			return
 		}
 

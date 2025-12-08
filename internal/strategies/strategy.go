@@ -39,6 +39,7 @@ type Options struct {
 	IncludeAssets   bool
 	ContentSelector string
 	CacheTTL        string
+	FilterURL       string // Base URL filter - only crawl URLs starting with this path
 }
 
 // DefaultOptions returns default strategy options

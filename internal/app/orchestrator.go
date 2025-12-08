@@ -29,6 +29,7 @@ type OrchestratorOptions struct {
 	Limit           int
 	ContentSelector string
 	ExcludePatterns []string
+	FilterURL       string
 }
 
 // NewOrchestrator creates a new orchestrator with the given configuration
@@ -135,6 +136,7 @@ func (o *Orchestrator) Run(ctx context.Context, url string, opts OrchestratorOpt
 		Split:           opts.Split,
 		IncludeAssets:   opts.IncludeAssets,
 		ContentSelector: opts.ContentSelector,
+		FilterURL:       opts.FilterURL,
 	}
 
 	// Execute strategy

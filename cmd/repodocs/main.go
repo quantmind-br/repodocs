@@ -52,8 +52,9 @@ func init() {
 	rootCmd.PersistentFlags().StringP("output", "o", "./docs", "Output directory")
 	rootCmd.PersistentFlags().IntP("concurrency", "j", 5, "Number of concurrent workers")
 	rootCmd.PersistentFlags().IntP("limit", "l", 0, "Max pages to process (0=unlimited)")
-	rootCmd.PersistentFlags().IntP("max-depth", "d", 3, "Max crawl depth")
+	rootCmd.PersistentFlags().IntP("max-depth", "d", 4, "Max crawl depth")
 	rootCmd.PersistentFlags().StringSlice("exclude", nil, "Regex patterns to exclude")
+	rootCmd.PersistentFlags().String("filter", "", "Base URL filter (only crawl URLs starting with this path)")
 	rootCmd.PersistentFlags().Bool("nofolders", false, "Flat output structure")
 	rootCmd.PersistentFlags().Bool("force", false, "Overwrite existing files")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
@@ -160,6 +161,7 @@ func run(cmd *cobra.Command, args []string) error {
 	excludePatterns, _ := cmd.Flags().GetStringSlice("exclude")
 	renderJS, _ := cmd.Flags().GetBool("render-js")
 	force, _ := cmd.Flags().GetBool("force")
+	filterURL, _ := cmd.Flags().GetString("filter")
 
 	// Create orchestrator options
 	orchOpts := app.OrchestratorOptions{
@@ -173,6 +175,7 @@ func run(cmd *cobra.Command, args []string) error {
 		Limit:           limit,
 		ContentSelector: contentSelector,
 		ExcludePatterns: excludePatterns,
+		FilterURL:       filterURL,
 	}
 
 	// Create orchestrator
