@@ -93,12 +93,14 @@ func (s *GitStrategy) Execute(ctx context.Context, url string, opts Options) err
 		}
 	}
 
-	_, err = git.PlainCloneContext(ctx, tmpDir, false, cloneOpts)
+	repo, err := git.PlainCloneContext(ctx, tmpDir, false, cloneOpts)
 	if err != nil {
 		return err
 	}
 
-	s.logger.Info().Msg("Repository cloned, processing files")
+	// Get default branch name
+	defaultBranch := getDefaultBranch(repo)
+	s.logger.Info().Str("branch", defaultBranch).Msg("Repository cloned, processing files")
 
 	// Find all documentation files
 	var files []string
@@ -151,7 +153,7 @@ func (s *GitStrategy) Execute(ctx context.Context, url string, opts Options) err
 
 		bar.Add(1)
 
-		if err := s.processFile(ctx, file, tmpDir, url, opts); err != nil {
+		if err := s.processFile(ctx, file, tmpDir, url, defaultBranch, opts); err != nil {
 			s.logger.Warn().Err(err).Str("file", file).Msg("Failed to process file")
 		}
 	}
@@ -161,7 +163,7 @@ func (s *GitStrategy) Execute(ctx context.Context, url string, opts Options) err
 }
 
 // processFile processes a single documentation file
-func (s *GitStrategy) processFile(ctx context.Context, path, tmpDir, repoURL string, opts Options) error {
+func (s *GitStrategy) processFile(ctx context.Context, path, tmpDir, repoURL, branch string, opts Options) error {
 	// Read file content
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -175,7 +177,9 @@ func (s *GitStrategy) processFile(ctx context.Context, path, tmpDir, repoURL str
 
 	// Get relative path for URL
 	relPath, _ := filepath.Rel(tmpDir, path)
-	fileURL := repoURL + "/blob/main/" + relPath // Simplified URL
+	// Convert Windows backslashes to forward slashes for URL
+	relPathURL := strings.ReplaceAll(relPath, "\\", "/")
+	fileURL := repoURL + "/blob/" + branch + "/" + relPathURL
 
 	// Create document
 	doc := &domain.Document{
@@ -186,6 +190,7 @@ func (s *GitStrategy) processFile(ctx context.Context, path, tmpDir, repoURL str
 		WordCount:      len(strings.Fields(string(content))),
 		CharCount:      len(content),
 		SourceStrategy: s.Name(),
+		RelativePath:   relPath, // Store relative path for output structure
 	}
 
 	// For markdown files, the content is already markdown
@@ -222,4 +227,20 @@ func extractTitleFromPath(path string) string {
 	}
 
 	return name
+}
+
+// getDefaultBranch returns the default branch name from the cloned repository
+func getDefaultBranch(repo *git.Repository) string {
+	// Try to get HEAD reference
+	head, err := repo.Head()
+	if err == nil {
+		// Extract branch name from refs/heads/branch-name
+		refName := head.Name().String()
+		if strings.HasPrefix(refName, "refs/heads/") {
+			return strings.TrimPrefix(refName, "refs/heads/")
+		}
+	}
+
+	// Fallback to "main" if we can't determine the branch
+	return "main"
 }

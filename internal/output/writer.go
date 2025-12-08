@@ -47,7 +47,14 @@ func NewWriter(opts WriterOptions) *Writer {
 // Write saves a document to the output directory
 func (w *Writer) Write(ctx context.Context, doc *domain.Document) error {
 	// Generate path
-	path := utils.GeneratePath(w.baseDir, doc.URL, w.flat)
+	var path string
+	if doc.RelativePath != "" {
+		// For Git-sourced files, use the relative path directly
+		path = utils.GeneratePathFromRelative(w.baseDir, doc.RelativePath, w.flat)
+	} else {
+		// For other sources, generate path from URL
+		path = utils.GeneratePath(w.baseDir, doc.URL, w.flat)
+	}
 
 	// Check if file exists
 	if !w.force {

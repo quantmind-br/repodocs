@@ -135,6 +135,41 @@ func GeneratePath(baseDir, rawURL string, flat bool) string {
 	return filepath.Join(baseDir, relativePath)
 }
 
+// GeneratePathFromRelative generates the output path from a relative file path
+// Used for Git-sourced files to preserve the repository's directory structure
+func GeneratePathFromRelative(baseDir, relPath string, flat bool) string {
+	if flat {
+		// For flat mode, use only the filename
+		filename := filepath.Base(relPath)
+		// Remove extension and add .md if needed
+		ext := filepath.Ext(filename)
+		name := strings.TrimSuffix(filename, ext)
+		name = SanitizeFilename(name)
+		if !strings.HasSuffix(name, ".md") {
+			name += ".md"
+		}
+		return filepath.Join(baseDir, name)
+	}
+
+	// For nested mode, preserve directory structure
+	// Ensure path uses OS-specific separators
+	relPath = filepath.FromSlash(relPath)
+
+	// Sanitize each component
+	parts := strings.Split(relPath, string(filepath.Separator))
+	for i, part := range parts {
+		parts[i] = SanitizeFilename(part)
+	}
+	result := filepath.Join(parts...)
+
+	// Add .md extension if not present
+	if !strings.HasSuffix(result, ".md") {
+		result += ".md"
+	}
+
+	return filepath.Join(baseDir, result)
+}
+
 // JSONPath returns the corresponding JSON metadata path for a markdown file
 func JSONPath(mdPath string) string {
 	return strings.TrimSuffix(mdPath, ".md") + ".json"
