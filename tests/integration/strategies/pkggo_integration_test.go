@@ -22,9 +22,12 @@ func TestPkgGoStrategy_Execute_Success(t *testing.T) {
 	ctx := context.Background()
 	server := testutil.NewTestServer(t)
 
-	// Load the fixture HTML - use absolute path from project root
-	repoRoot := "/home/diogo/dev/repodocs-go/repodocs-go"
-	fixturePath := filepath.Join(repoRoot, "tests/fixtures/pkggo/sample_page.html")
+	// Load the fixture HTML - detect project root dynamically
+	// tests/integration/strategies is 3 levels deep from project root
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	// The test runs from the package directory, so we need to go up 4 levels to reach project root
+	fixturePath := filepath.Join(wd, "../../../tests/fixtures/pkggo/sample_page.html")
 	htmlContent, err := os.ReadFile(fixturePath)
 	require.NoError(t, err)
 
@@ -70,9 +73,12 @@ func TestPkgGoStrategy_Execute_SplitSections(t *testing.T) {
 	ctx := context.Background()
 	server := testutil.NewTestServer(t)
 
-	// Load the fixture HTML - use absolute path from project root
-	repoRoot := "/home/diogo/dev/repodocs-go/repodocs-go"
-	fixturePath := filepath.Join(repoRoot, "tests/fixtures/pkggo/sample_page.html")
+	// Load the fixture HTML - detect project root dynamically
+	// tests/integration/strategies is 3 levels deep from project root
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	// The test runs from the package directory, so we need to go up 4 levels to reach project root
+	fixturePath := filepath.Join(wd, "../../../tests/fixtures/pkggo/sample_page.html")
 	htmlContent, err := os.ReadFile(fixturePath)
 	require.NoError(t, err)
 
@@ -110,9 +116,12 @@ func TestPkgGoStrategy_Execute_DryRun(t *testing.T) {
 	ctx := context.Background()
 	server := testutil.NewTestServer(t)
 
-	// Load the fixture HTML - use absolute path from project root
-	repoRoot := "/home/diogo/dev/repodocs-go/repodocs-go"
-	fixturePath := filepath.Join(repoRoot, "tests/fixtures/pkggo/sample_page.html")
+	// Load the fixture HTML - detect project root dynamically
+	// tests/integration/strategies is 3 levels deep from project root
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	// The test runs from the package directory, so we need to go up 4 levels to reach project root
+	fixturePath := filepath.Join(wd, "../../../tests/fixtures/pkggo/sample_page.html")
 	htmlContent, err := os.ReadFile(fixturePath)
 	require.NoError(t, err)
 

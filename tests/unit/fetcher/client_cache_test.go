@@ -137,7 +137,7 @@ func TestClient_GetCookies(t *testing.T) {
 		// Execute: Get cookies for an invalid URL (empty string)
 		cookies := client.GetCookies("")
 
-		// Verify: Returns empty slice for unparseable/empty URLs
+		// Verify: Returns empty slice for empty URLs (url.Parse("") doesn't error)
 		assert.NotNil(t, cookies)
 		assert.Empty(t, cookies)
 	})
