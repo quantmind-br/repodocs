@@ -36,6 +36,11 @@ type OrchestratorOptions struct {
 func NewOrchestrator(opts OrchestratorOptions) (*Orchestrator, error) {
 	cfg := opts.Config
 
+	// Validate config
+	if cfg == nil {
+		return nil, fmt.Errorf("config is required")
+	}
+
 	// Create logger
 	logLevel := "info"
 	logFormat := "pretty"

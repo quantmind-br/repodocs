@@ -261,13 +261,13 @@ func TestCompareAllSizes(t *testing.T) {
 	fmt.Println("========================================")
 
 	results := make([]struct {
-		name           string
-		cloneDuration  time.Duration
+		name            string
+		cloneDuration   time.Duration
 		archiveDuration time.Duration
-		cloneSize      int64
-		archiveSize    int64
-		cloneFiles     int
-		archiveFiles   int
+		cloneSize       int64
+		archiveSize     int64
+		cloneFiles      int
+		archiveFiles    int
 	}, 0)
 
 	for _, repo := range testRepos[:3] { // Skip kubernetes for now
@@ -324,21 +324,21 @@ func TestCompareAllSizes(t *testing.T) {
 
 		// Store results
 		results = append(results, struct {
-			name           string
-			cloneDuration  time.Duration
+			name            string
+			cloneDuration   time.Duration
 			archiveDuration time.Duration
-			cloneSize      int64
-			archiveSize    int64
-			cloneFiles     int
-			archiveFiles   int
+			cloneSize       int64
+			archiveSize     int64
+			cloneFiles      int
+			archiveFiles    int
 		}{
-			name:           repo.name,
-			cloneDuration:  cloneDuration,
+			name:            repo.name,
+			cloneDuration:   cloneDuration,
 			archiveDuration: archiveDuration,
-			cloneSize:      cloneSize,
-			archiveSize:    archiveSize,
-			cloneFiles:     cloneFiles,
-			archiveFiles:   archiveFiles,
+			cloneSize:       cloneSize,
+			archiveSize:     archiveSize,
+			cloneFiles:      cloneFiles,
+			archiveFiles:    archiveFiles,
 		})
 
 		// Print comparison

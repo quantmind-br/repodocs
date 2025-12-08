@@ -1,12 +1,9 @@
 package integration
 
 import (
-	"context"
 	"testing"
-	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
-	"github.com/quantmind-br/repodocs-go/tests/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

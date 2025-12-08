@@ -336,11 +336,11 @@ func TestIntegration_Orchestrator_WithCustomConfig(t *testing.T) {
 	cfg.Concurrency.MaxDepth = 2
 
 	opts := app.OrchestratorOptions{
-		Config:     cfg,
-		Verbose:    true,
-		DryRun:     false,
-		RenderJS:   false,
-		Limit:      10,
+		Config:          cfg,
+		Verbose:         true,
+		DryRun:          false,
+		RenderJS:        false,
+		Limit:           10,
 		ExcludePatterns: []string{"test/*", "*.tmp"},
 	}
 
