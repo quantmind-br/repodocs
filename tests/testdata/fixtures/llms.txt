@@ -1,0 +1,14 @@
+# Example LLMS.txt
+
+This is a sample llms.txt file for testing.
+
+## Documentation Links
+
+- [Getting Started](https://example.com/docs/getting-started)
+- [API Reference](https://example.com/docs/api-reference)
+- [Configuration Guide](https://example.com/docs/configuration)
+
+## Tutorials
+
+- [Quick Start Tutorial](https://example.com/tutorials/quick-start)
+- [Advanced Usage](https://example.com/tutorials/advanced)

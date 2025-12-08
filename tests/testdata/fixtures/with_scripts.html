@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Page with Scripts and Styles</title>
+    <style>
+        body { font-family: Arial; }
+        .hidden { display: none; }
+    </style>
+    <script>
+        console.log("This should be removed");
+    </script>
+</head>
+<body>
+    <article>
+        <h1>Main Content</h1>
+        <p>This is the main content that should be extracted.</p>
+        <script>
+            // Inline script that should be removed
+            document.write("injected content");
+        </script>
+        <p>More content after script.</p>
+        <style>
+            .dynamic { color: red; }
+        </style>
+        <noscript>JavaScript is disabled</noscript>
+        <iframe src="https://ads.example.com"></iframe>
+    </article>
+</body>
+</html>

@@ -1,0 +1,22 @@
+[
+  {
+    "loc": "https://example.com/",
+    "lastmod": "2024-01-15",
+    "priority": "1.0"
+  },
+  {
+    "loc": "https://example.com/docs/getting-started",
+    "lastmod": "2024-01-14",
+    "priority": "0.8"
+  },
+  {
+    "loc": "https://example.com/docs/api-reference",
+    "lastmod": "2024-01-13",
+    "priority": "0.8"
+  },
+  {
+    "loc": "https://example.com/blog/post-1",
+    "lastmod": "2024-01-10",
+    "priority": "0.5"
+  }
+]

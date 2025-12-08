@@ -1,0 +1,249 @@
+package strategies
+
+import (
+	"context"
+	"regexp"
+	"sync"
+	"time"
+
+	"github.com/gocolly/colly/v2"
+	"github.com/quantmind-br/repodocs-go/internal/converter"
+	"github.com/quantmind-br/repodocs-go/internal/fetcher"
+	"github.com/quantmind-br/repodocs-go/internal/output"
+	"github.com/quantmind-br/repodocs-go/internal/renderer"
+	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/schollz/progressbar/v3"
+)
+
+// CrawlerStrategy crawls websites to extract documentation
+type CrawlerStrategy struct {
+	fetcher   *fetcher.Client
+	renderer  *renderer.Renderer
+	converter *converter.Pipeline
+	writer    *output.Writer
+	logger    *utils.Logger
+}
+
+// NewCrawlerStrategy creates a new crawler strategy
+func NewCrawlerStrategy(deps *Dependencies) *CrawlerStrategy {
+	return &CrawlerStrategy{
+		fetcher:   deps.Fetcher,
+		renderer:  deps.Renderer,
+		converter: deps.Converter,
+		writer:    deps.Writer,
+		logger:    deps.Logger,
+	}
+}
+
+// Name returns the strategy name
+func (s *CrawlerStrategy) Name() string {
+	return "crawler"
+}
+
+// CanHandle returns true if this strategy can handle the given URL
+func (s *CrawlerStrategy) CanHandle(url string) bool {
+	return utils.IsHTTPURL(url)
+}
+
+// Execute runs the crawler extraction strategy
+func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options) error {
+	s.logger.Info().Str("url", url).Msg("Starting web crawl")
+
+	// Create visited URL tracker
+	visited := sync.Map{}
+	var processedCount int
+	var mu sync.Mutex
+
+	// Compile exclude patterns
+	var excludeRegexps []*regexp.Regexp
+	for _, pattern := range opts.Exclude {
+		if re, err := regexp.Compile(pattern); err == nil {
+			excludeRegexps = append(excludeRegexps, re)
+		}
+	}
+
+	// Create colly collector
+	c := colly.NewCollector(
+		colly.Async(true),
+		colly.MaxDepth(opts.MaxDepth),
+	)
+
+	// Set transport from fetcher for stealth
+	c.WithTransport(s.fetcher.Transport())
+
+	// Configure rate limiting
+	_ = c.Limit(&colly.LimitRule{
+		DomainGlob:  "*",
+		Parallelism: opts.Concurrency,
+		RandomDelay: 2 * time.Second,
+	})
+
+	// Create progress bar (unknown total)
+	bar := progressbar.NewOptions(-1,
+		progressbar.OptionSetDescription("Crawling"),
+		progressbar.OptionShowCount(),
+		progressbar.OptionSpinnerType(14),
+	)
+
+	// Handle links
+	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
+		link := e.Request.AbsoluteURL(e.Attr("href"))
+		if link == "" {
+			return
+		}
+
+		// Check if within same domain
+		if !utils.IsSameDomain(link, url) {
+			return
+		}
+
+		// Check exclude patterns
+		for _, re := range excludeRegexps {
+			if re.MatchString(link) {
+				return
+			}
+		}
+
+		// Check limit
+		mu.Lock()
+		if opts.Limit > 0 && processedCount >= opts.Limit {
+			mu.Unlock()
+			return
+		}
+		mu.Unlock()
+
+		// Check if already visited
+		if _, exists := visited.LoadOrStore(link, true); exists {
+			return
+		}
+
+		// Visit the link
+		_ = e.Request.Visit(link)
+	})
+
+	// Handle page responses
+	c.OnResponse(func(r *colly.Response) {
+		// Check context cancellation
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		// Check content type
+		contentType := r.Headers.Get("Content-Type")
+		if !isHTMLContentType(contentType) {
+			return
+		}
+
+		// Check limit
+		mu.Lock()
+		if opts.Limit > 0 && processedCount >= opts.Limit {
+			mu.Unlock()
+			return
+		}
+		processedCount++
+		mu.Unlock()
+
+		bar.Add(1)
+
+		// Check if already exists
+		if !opts.Force && s.writer.Exists(r.Request.URL.String()) {
+			return
+		}
+
+		// Get HTML content
+		html := string(r.Body)
+
+		// Check if JS rendering is needed
+		if opts.RenderJS || renderer.NeedsJSRendering(html) {
+			if s.renderer != nil {
+				rendered, err := s.renderer.Render(ctx, r.Request.URL.String(), renderer.RenderOptions{
+					Timeout:     60 * time.Second,
+					WaitStable:  2 * time.Second,
+					ScrollToEnd: true,
+				})
+				if err == nil {
+					html = rendered
+				}
+			}
+		}
+
+		// Convert to document
+		doc, err := s.converter.Convert(ctx, html, r.Request.URL.String())
+		if err != nil {
+			s.logger.Warn().Err(err).Str("url", r.Request.URL.String()).Msg("Failed to convert page")
+			return
+		}
+
+		// Set metadata
+		doc.SourceStrategy = s.Name()
+		doc.FetchedAt = time.Now()
+
+		// Write document
+		if !opts.DryRun {
+			if err := s.writer.Write(ctx, doc); err != nil {
+				s.logger.Warn().Err(err).Str("url", r.Request.URL.String()).Msg("Failed to write document")
+			}
+		}
+	})
+
+	// Handle errors
+	c.OnError(func(r *colly.Response, err error) {
+		s.logger.Debug().Err(err).Str("url", r.Request.URL.String()).Msg("Request failed")
+	})
+
+	// Start crawling
+	if err := c.Visit(url); err != nil {
+		return err
+	}
+
+	// Handle context cancellation
+	done := make(chan struct{})
+	go func() {
+		c.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-done:
+	}
+
+	s.logger.Info().Int("pages", processedCount).Msg("Crawl completed")
+	return nil
+}
+
+// isHTMLContentType checks if content type is HTML
+func isHTMLContentType(contentType string) bool {
+	return contentType == "" ||
+		contains(contentType, "text/html") ||
+		contains(contentType, "application/xhtml")
+}
+
+// contains checks if a string contains a substring (case-insensitive)
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsLower(lower(s), lower(substr)))
+}
+
+func containsLower(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
+func lower(s string) string {
+	b := make([]byte, len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 'A' && c <= 'Z' {
+			c += 'a' - 'A'
+		}
+		b[i] = c
+	}
+	return string(b)
+}
