@@ -227,9 +227,13 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 
 // isHTMLContentType checks if content type is HTML
 func isHTMLContentType(contentType string) bool {
-	return contentType == "" ||
-		contains(contentType, "text/html") ||
-		contains(contentType, "application/xhtml")
+	if contentType == "" {
+		return true
+	}
+	// Use case-insensitive comparison for content types
+	lowerCT := lower(contentType)
+	return contains(lowerCT, "text/html") ||
+		contains(lowerCT, "application/xhtml")
 }
 
 // contains checks if a string contains a substring (case-sensitive)

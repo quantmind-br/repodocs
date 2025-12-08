@@ -98,17 +98,40 @@ func TestIsHTMLContentType(t *testing.T) {
 
 // Helper function to test unexported isHTMLContentType
 func isHTMLContentType(contentType string) bool {
-	return contentType == "" ||
-		contains(contentType, "text/html") ||
-		contains(contentType, "application/xhtml")
+	if contentType == "" {
+		return true
+	}
+	// Use case-insensitive comparison for content types
+	lowerCT := lower(contentType)
+	return contains(lowerCT, "text/html") ||
+		contains(lowerCT, "application/xhtml")
 }
 
 // Helper function to test unexported contains
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsLower(lower(s), lower(substr)))
+	if len(s) < len(substr) {
+		return false
+	}
+	// Check for exact match first
+	if s == substr {
+		return true
+	}
+	// Check for case-sensitive substring match
+	return containsCaseSensitive(s, substr)
+}
+
+// Helper function for case-sensitive substring search
+func containsCaseSensitive(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 func containsLower(s, substr string) bool {
+	// s and substr should already be lowercased by the caller
 	for i := 0; i <= len(s)-len(substr); i++ {
 		if s[i:i+len(substr)] == substr {
 			return true
