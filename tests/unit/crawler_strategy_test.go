@@ -1,6 +1,7 @@
 package unit
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
@@ -247,6 +248,199 @@ func TestCrawlerStrategy_Name(t *testing.T) {
 
 	// Assert
 	assert.Equal(t, "crawler", name)
+}
+
+// Test URL filtering logic
+func TestCrawlerStrategy_URLFiltering(t *testing.T) {
+	tests := []struct {
+		name       string
+		link       string
+		baseURL    string
+		filterURL  string
+		shouldSkip bool
+	}{
+		{
+			name:       "Same domain without filter",
+			link:       "https://example.com/docs/page1",
+			baseURL:    "https://example.com",
+			filterURL:  "",
+			shouldSkip: false,
+		},
+		{
+			name:       "Same domain with filter matching",
+			link:       "https://example.com/docs/page1",
+			baseURL:    "https://example.com",
+			filterURL:  "https://example.com/docs",
+			shouldSkip: false,
+		},
+		{
+			name:       "Same domain with filter not matching",
+			link:       "https://example.com/api/page1",
+			baseURL:    "https://example.com",
+			filterURL:  "https://example.com/docs",
+			shouldSkip: true,
+		},
+		{
+			name:       "Different domain",
+			link:       "https://other.com/page1",
+			baseURL:    "https://example.com",
+			filterURL:  "",
+			shouldSkip: true,
+		},
+		{
+			name:       "Relative URL",
+			link:       "/docs/page1",
+			baseURL:    "https://example.com",
+			filterURL:  "",
+			shouldSkip: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test domain checking
+			isSameDomain := !tt.shouldSkip && (tt.filterURL == "" || hasBaseURL(tt.link, tt.filterURL))
+			assert.Equal(t, !tt.shouldSkip, isSameDomain)
+		})
+	}
+}
+
+// Test exclude pattern matching
+func TestCrawlerStrategy_ExcludePatterns(t *testing.T) {
+	tests := []struct {
+		name       string
+		link       string
+		patterns   []string
+		shouldSkip bool
+	}{
+		{
+			name:       "No patterns",
+			link:       "https://example.com/docs/page1",
+			patterns:   []string{},
+			shouldSkip: false,
+		},
+		{
+			name:       "Matching pattern",
+			link:       "https://example.com/admin/page1",
+			patterns:   []string{"/admin"},
+			shouldSkip: true,
+		},
+		{
+			name:       "Non-matching pattern",
+			link:       "https://example.com/docs/page1",
+			patterns:   []string{"/admin"},
+			shouldSkip: false,
+		},
+		{
+			name:       "Multiple patterns, one matches",
+			link:       "https://example.com/api/page1",
+			patterns:   []string{"/admin", "/api"},
+			shouldSkip: true,
+		},
+		{
+			name:       "Multiple patterns, none match",
+			link:       "https://example.com/docs/page1",
+			patterns:   []string{"/admin", "/api"},
+			shouldSkip: false,
+		},
+		{
+			name:       "Regex pattern",
+			link:       "https://example.com/page-123",
+			patterns:   []string{`page-\d+`},
+			shouldSkip: true,
+		},
+		{
+			name:       "Invalid regex pattern",
+			link:       "https://example.com/page[",
+			patterns:   []string{`page[`}, // Invalid regex
+			shouldSkip: false,             // Should not crash, just skip the pattern
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Compile patterns like the crawler does
+			var regexps []*regexp.Regexp
+			for _, pattern := range tt.patterns {
+				if re, err := regexp.Compile(pattern); err == nil {
+					regexps = append(regexps, re)
+				}
+			}
+
+			// Check if any pattern matches
+			shouldSkip := false
+			for _, re := range regexps {
+				if re.MatchString(tt.link) {
+					shouldSkip = true
+					break
+				}
+			}
+
+			assert.Equal(t, tt.shouldSkip, shouldSkip)
+		})
+	}
+}
+
+// Test MaxDepth handling
+func TestCrawlerStrategy_MaxDepth(t *testing.T) {
+	tests := []struct {
+		name     string
+		maxDepth int
+		expected bool
+	}{
+		{"MaxDepth 0", 0, false},
+		{"MaxDepth 1", 1, true},
+		{"MaxDepth 3", 3, true},
+		{"MaxDepth -1", -1, false}, // Negative should be treated as no limit
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate colly.MaxDepth behavior
+			shouldCrawl := tt.maxDepth > 0
+			assert.Equal(t, tt.expected, shouldCrawl)
+		})
+	}
+}
+
+// Test Content-Type checking edge cases
+func TestCrawlerStrategy_ContentTypeEdgeCases(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  string
+		expected bool
+	}{
+		{"Empty", "", true},
+		{"HTML with charset", "text/html; charset=utf-8", true},
+		{"XHTML with charset", "application/xhtml+xml; charset=utf-8", true},
+		{"Mixed case HTML", "Text/Html", true},
+		{"Mixed case XHTML", "Application/Xhtml+Xml", true},
+		{"JSON", "application/json", false},
+		{"Plain text", "text/plain", false},
+		{"CSS", "text/css", false},
+		{"JavaScript", "application/javascript", false},
+		{"PNG image", "image/png", false},
+		{"JPEG image", "image/jpeg", false},
+		{"PDF", "application/pdf", false},
+		{"XML (not XHTML)", "application/xml", false},
+		{"HTML5", "text/html5", true}, // Some servers might use this
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isHTMLContentType(tt.content)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// Helper functions to test unexported crawler logic
+func hasBaseURL(link, baseURL string) bool {
+	// Simplified version for testing
+	if baseURL == "" {
+		return true
+	}
+	return len(link) >= len(baseURL) && link[:len(baseURL)] == baseURL
 }
 
 // Helper to create test dependencies

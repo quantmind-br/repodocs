@@ -21,7 +21,7 @@ import (
 // SitemapStrategy extracts documentation from sitemap XML files
 type SitemapStrategy struct {
 	fetcher   *fetcher.Client
-	renderer  *renderer.Renderer
+	renderer  domain.Renderer
 	converter *converter.Pipeline
 	writer    *output.Writer
 	logger    *utils.Logger
@@ -123,7 +123,7 @@ func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options)
 		// Check if JS rendering is needed
 		if opts.RenderJS || renderer.NeedsJSRendering(html) {
 			if s.renderer != nil {
-				rendered, err := s.renderer.Render(ctx, sitemapURL.Loc, renderer.RenderOptions{
+				rendered, err := s.renderer.Render(ctx, sitemapURL.Loc, domain.RenderOptions{
 					Timeout:     60 * time.Second,
 					WaitStable:  2 * time.Second,
 					ScrollToEnd: true,

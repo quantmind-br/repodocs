@@ -93,26 +93,8 @@ func NewRenderer(opts RendererOptions) (*Renderer, error) {
 	}, nil
 }
 
-// RenderOptions contains options for rendering a page
-type RenderOptions struct {
-	Timeout     time.Duration
-	WaitFor     string        // CSS selector to wait for
-	WaitStable  time.Duration // Wait for network idle
-	ScrollToEnd bool          // Scroll to load lazy content
-	Cookies     []*http.Cookie
-}
-
-// DefaultRenderOptions returns default render options
-func DefaultRenderOptions() RenderOptions {
-	return RenderOptions{
-		Timeout:     60 * time.Second,
-		WaitStable:  2 * time.Second,
-		ScrollToEnd: true,
-	}
-}
-
 // Render fetches and renders a page with JavaScript
-func (r *Renderer) Render(ctx context.Context, url string, opts RenderOptions) (string, error) {
+func (r *Renderer) Render(ctx context.Context, url string, opts domain.RenderOptions) (string, error) {
 	if opts.Timeout <= 0 {
 		opts.Timeout = r.timeout
 	}
@@ -239,6 +221,15 @@ func (r *Renderer) scrollToEnd(page *rod.Page) error {
 	_, _ = page.Eval(`() => window.scrollTo(0, 0)`)
 
 	return nil
+}
+
+// DefaultRenderOptions returns default render options
+func DefaultRenderOptions() domain.RenderOptions {
+	return domain.RenderOptions{
+		Timeout:     60 * time.Second,
+		WaitStable:  2 * time.Second,
+		ScrollToEnd: true,
+	}
 }
 
 // Close releases browser resources

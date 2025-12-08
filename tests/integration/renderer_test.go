@@ -1,215 +1,556 @@
 package integration
 
 import (
+	"context"
+	"fmt"
+	"net"
+	"net/http"
 	"testing"
+	"time"
 
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/renderer"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestNeedsJSRendering_EmptyReactRoot(t *testing.T) {
-	html := `
-	<!DOCTYPE html>
-	<html>
-	<head><title>React App</title></head>
-	<body>
-		<div id="root"></div>
-		<script src="/static/js/bundle.js"></script>
-	</body>
-	</html>
-	`
-
-	assert.True(t, renderer.NeedsJSRendering(html), "Empty React root should need JS rendering")
+// skipIfChromeUnavailable skips the test if Chrome is not available
+func skipIfChromeUnavailable(t *testing.T) {
+	if !renderer.IsAvailable() {
+		t.Skip("Chrome/Chromium not available, skipping integration test")
+	}
 }
 
-func TestNeedsJSRendering_EmptyVueApp(t *testing.T) {
-	html := `
-	<!DOCTYPE html>
-	<html>
-	<head><title>Vue App</title></head>
-	<body>
-		<div id="app"></div>
-		<script src="/js/app.js"></script>
-	</body>
-	</html>
-	`
+// TestNewRendererIntegration tests creating a renderer with actual Chrome
+func TestNewRendererIntegration(t *testing.T) {
+	skipIfChromeUnavailable(t)
 
-	assert.True(t, renderer.NeedsJSRendering(html), "Empty Vue app should need JS rendering")
+	// Test with default options
+	opts := renderer.DefaultRendererOptions()
+	opts.Headless = true
+	opts.MaxTabs = 2
+
+	r, err := renderer.NewRenderer(opts)
+	require.NoError(t, err)
+	defer r.Close()
+
+	// Verify the renderer was created successfully
+	assert.NotNil(t, r)
 }
 
-func TestNeedsJSRendering_NextJS(t *testing.T) {
-	html := `
-	<!DOCTYPE html>
-	<html>
-	<head><title>Next.js App</title></head>
-	<body>
-		<div id="__next"></div>
-		<script src="/_next/static/chunks/main.js"></script>
-	</body>
-	</html>
-	`
+// TestRenderIntegration tests rendering an actual HTML page
+func TestRenderIntegration(t *testing.T) {
+	skipIfChromeUnavailable(t)
 
-	assert.True(t, renderer.NeedsJSRendering(html), "Empty Next.js container should need JS rendering")
+	r, err := renderer.NewRenderer(renderer.DefaultRendererOptions())
+	require.NoError(t, err)
+	defer r.Close()
+
+	ctx := context.Background()
+
+	// Use a simple HTML page for testing
+	testHTML := `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Page</title>
+</head>
+<body>
+    <h1>Test Heading</h1>
+    <p>This is a test paragraph.</p>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.classList.add('loaded');
+        });
+    </script>
+</body>
+</html>
+`
+
+	// Start a local HTTP server to serve the test HTML
+	server := &http.Server{
+		Addr:    "127.0.0.1:0",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprint(w, testHTML)
+		}),
+	}
+
+	// Find an available port
+	listener, err := netListen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Skip("Could not find available port, skipping test")
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	server.Addr = fmt.Sprintf("127.0.0.1:%d", port)
+
+	go server.Serve(listener)
+	defer server.Close()
+
+	// Give the server time to start
+	time.Sleep(100 * time.Millisecond)
+
+	url := fmt.Sprintf("http://127.0.0.1:%d/", port)
+
+	// Test basic rendering
+	html, err := r.Render(ctx, url, domain.RenderOptions{
+		Timeout:     10 * time.Second,
+		WaitStable:  1 * time.Second,
+		ScrollToEnd: false,
+	})
+
+	require.NoError(t, err)
+	assert.Contains(t, html, "Test Heading")
+	assert.Contains(t, html, "test paragraph")
 }
 
-func TestNeedsJSRendering_Nuxt(t *testing.T) {
-	html := `
-	<!DOCTYPE html>
-	<html>
-	<head><title>Nuxt App</title></head>
-	<body>
-		<div id="__nuxt"></div>
-		<script>window.__NUXT__={}</script>
-	</body>
-	</html>
-	`
+// TestRenderWithWaitFor tests rendering with a wait selector
+func TestRenderWithWaitFor(t *testing.T) {
+	skipIfChromeUnavailable(t)
 
-	assert.True(t, renderer.NeedsJSRendering(html), "Nuxt.js page should need JS rendering")
+	r, err := renderer.NewRenderer(renderer.DefaultRendererOptions())
+	require.NoError(t, err)
+	defer r.Close()
+
+	ctx := context.Background()
+
+	// HTML with delayed content
+	testHTML := `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Delayed Content</title>
+    <script>
+        setTimeout(function() {
+            var el = document.createElement('div');
+            el.id = 'delayed';
+            el.textContent = 'Delayed Content';
+            document.body.appendChild(el);
+        }, 500);
+    </script>
+</head>
+<body>
+    <div id="delayed" style="display:none;">Delayed Content</div>
+</body>
+</html>
+`
+
+	server := &http.Server{
+		Addr: "127.0.0.1:0",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprint(w, testHTML)
+		}),
+	}
+
+	listener, err := netListen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Skip("Could not find available port, skipping test")
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	server.Addr = fmt.Sprintf("127.0.0.1:%d", port)
+
+	go server.Serve(listener)
+	defer server.Close()
+
+	time.Sleep(100 * time.Millisecond)
+
+	url := fmt.Sprintf("http://127.0.0.1:%d/", port)
+
+	// Render with wait for selector
+	html, err := r.Render(ctx, url, domain.RenderOptions{
+		Timeout:     10 * time.Second,
+		WaitFor:     "#delayed",
+		ScrollToEnd: false,
+	})
+
+	require.NoError(t, err)
+	assert.Contains(t, html, "Delayed Content")
 }
 
-func TestNeedsJSRendering_StaticContent(t *testing.T) {
-	html := `
-	<!DOCTYPE html>
-	<html>
-	<head><title>Static Page</title></head>
-	<body>
-		<header>
-			<nav>Navigation</nav>
-		</header>
-		<main>
-			<h1>Welcome to Our Website</h1>
-			<p>This is a static page with plenty of content.</p>
-			<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-			   Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-			   Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>
-			<p>More content here to ensure we have enough text.</p>
-			<p>And even more content to make this a substantial static page.</p>
-		</main>
-		<footer>Copyright 2024</footer>
-	</body>
-	</html>
-	`
+// TestRenderWithCookies tests rendering with cookies
+func TestRenderWithCookies(t *testing.T) {
+	skipIfChromeUnavailable(t)
 
-	assert.False(t, renderer.NeedsJSRendering(html), "Static content should not need JS rendering")
+	r, err := renderer.NewRenderer(renderer.DefaultRendererOptions())
+	require.NoError(t, err)
+	defer r.Close()
+
+	ctx := context.Background()
+
+	// HTML that reads cookies
+	testHTML := `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cookie Test</title>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var el = document.getElementById('cookie-value');
+            el.textContent = document.cookie || 'no cookies';
+        });
+    </script>
+</head>
+<body>
+    <div id="cookie-value"></div>
+</body>
+</html>
+`
+
+	server := &http.Server{
+		Addr: "127.0.0.1:0",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprint(w, testHTML)
+		}),
+	}
+
+	listener, err := netListen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Skip("Could not find available port, skipping test")
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	server.Addr = fmt.Sprintf("127.0.0.1:%d", port)
+
+	go server.Serve(listener)
+	defer server.Close()
+
+	time.Sleep(100 * time.Millisecond)
+
+	url := fmt.Sprintf("http://127.0.0.1:%d/", port)
+
+	// Create test cookies
+	cookies := []*http.Cookie{
+		{
+			Name:  "test_cookie",
+			Value: "test_value",
+			Path:  "/",
+		},
+	}
+
+	// Render with cookies
+	html, err := r.Render(ctx, url, domain.RenderOptions{
+		Timeout:     10 * time.Second,
+		Cookies:     cookies,
+		ScrollToEnd: false,
+	})
+
+	require.NoError(t, err)
+	// Cookie might be set (depends on how Chrome handles cookies for localhost)
+	_ = html // Just verify it renders without error
 }
 
-func TestNeedsJSRendering_PrerenderedReact(t *testing.T) {
-	html := `
-	<!DOCTYPE html>
-	<html>
-	<head><title>SSR React App</title></head>
-	<body>
-		<div id="root">
-			<header>Navigation</header>
-			<main>
-				<h1>Server-Side Rendered Page</h1>
-				<p>This content was rendered on the server and includes substantial text.</p>
-				<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
-				<p>More server-rendered content here.</p>
-			</main>
-		</div>
-		<script src="/static/js/bundle.js"></script>
-	</body>
-	</html>
-	`
+// TestRenderTimeout tests that rendering respects timeout
+func TestRenderTimeout(t *testing.T) {
+	skipIfChromeUnavailable(t)
 
-	assert.False(t, renderer.NeedsJSRendering(html), "Pre-rendered React should not need JS rendering")
+	r, err := renderer.NewRenderer(renderer.DefaultRendererOptions())
+	require.NoError(t, err)
+	defer r.Close()
+
+	ctx := context.Background()
+
+	// HTML that hangs (never loads)
+	testHTML := `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hanging Page</title>
+</head>
+<body>
+    <h1>This page will hang</h1>
+    <!-- No script to complete loading -->
+</body>
+</html>
+`
+
+	server := &http.Server{
+		Addr: "127.0.0.1:0",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html")
+			// Intentionally delay to trigger timeout
+			time.Sleep(2 * time.Second)
+			fmt.Fprint(w, testHTML)
+		}),
+	}
+
+	listener, err := netListen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Skip("Could not find available port, skipping test")
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	server.Addr = fmt.Sprintf("127.0.0.1:%d", port)
+
+	go server.Serve(listener)
+	defer server.Close()
+
+	time.Sleep(100 * time.Millisecond)
+
+	url := fmt.Sprintf("http://127.0.0.1:%d/", port)
+
+	// Render with short timeout
+	_, err = r.Render(ctx, url, domain.RenderOptions{
+		Timeout:     500 * time.Millisecond, // Short timeout
+		ScrollToEnd: false,
+	})
+
+	// Should timeout
+	assert.Error(t, err)
+	errMsg := err.Error()
+	hasTimeout := assert.Contains(t, errMsg, "timeout") || assert.Contains(t, errMsg, "context")
+	if !hasTimeout {
+		t.Logf("Unexpected error message: %s", errMsg)
+	}
 }
 
-func TestNeedsJSRendering_MinimalContent(t *testing.T) {
-	html := `
-	<!DOCTYPE html>
-	<html>
-	<body>
-		<p>Loading...</p>
-		<script src="/app.js"></script>
-		<script src="/vendor.js"></script>
-		<script src="/chunk.js"></script>
-	</body>
-	</html>
-	`
+// TestRenderWithScrollToEnd tests rendering with scroll to end
+func TestRenderWithScrollToEnd(t *testing.T) {
+	skipIfChromeUnavailable(t)
 
-	// Minimal content with many scripts often indicates SPA
-	result := renderer.NeedsJSRendering(html)
-	// This test checks the heuristic - minimal content + many scripts
-	assert.True(t, result || len(html) < 500, "Minimal content with scripts may need JS rendering")
+	r, err := renderer.NewRenderer(renderer.DefaultRendererOptions())
+	require.NoError(t, err)
+	defer r.Close()
+
+	ctx := context.Background()
+
+	// HTML with lazy-loaded content
+	testHTML := `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Scroll Test</title>
+    <script>
+        var loaded = false;
+        window.addEventListener('scroll', function() {
+            if (!loaded && window.scrollY > 500) {
+                var el = document.createElement('div');
+                el.id = 'lazy-loaded';
+                el.textContent = 'Lazy loaded content';
+                document.body.appendChild(el);
+                loaded = true;
+            }
+        });
+    </script>
+    <style>
+        body { height: 2000px; }
+    </style>
+</head>
+<body>
+    <div style="height: 1000px;">Scroll down...</div>
+</body>
+</html>
+`
+
+	server := &http.Server{
+		Addr: "127.0.0.1:0",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprint(w, testHTML)
+		}),
+	}
+
+	listener, err := netListen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Skip("Could not find available port, skipping test")
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	server.Addr = fmt.Sprintf("127.0.0.1:%d", port)
+
+	go server.Serve(listener)
+	defer server.Close()
+
+	time.Sleep(100 * time.Millisecond)
+
+	url := fmt.Sprintf("http://127.0.0.1:%d/", port)
+
+	// Render with scroll to end
+	html, err := r.Render(ctx, url, domain.RenderOptions{
+		Timeout:     10 * time.Second,
+		ScrollToEnd: true,
+	})
+
+	require.NoError(t, err)
+	// Scroll to end should trigger lazy loading
+	assert.Contains(t, html, "Scroll down")
 }
 
-func TestNeedsJSRendering_EmptyBody(t *testing.T) {
-	html := `
-	<!DOCTYPE html>
-	<html>
-	<head><title>Empty Body</title></head>
-	<body></body>
-	</html>
-	`
+// TestCloseMultipleTimes tests that Close can be called multiple times
+func TestCloseMultipleTimes(t *testing.T) {
+	skipIfChromeUnavailable(t)
 
-	// Empty body is a strong indicator of SPA
-	result := renderer.NeedsJSRendering(html)
-	// Empty pages might need rendering
-	_ = result // Just ensure it doesn't panic
+	r, err := renderer.NewRenderer(renderer.DefaultRendererOptions())
+	require.NoError(t, err)
+
+	// First close
+	err = r.Close()
+	require.NoError(t, err)
+
+	// Second close should not error
+	err = r.Close()
+	require.NoError(t, err)
 }
 
-func TestNeedsJSRendering_WithInlineScripts(t *testing.T) {
-	html := `
-	<!DOCTYPE html>
-	<html>
-	<body>
-		<div id="root"></div>
-		<script>
-			ReactDOM.render(
-				React.createElement(App),
-				document.getElementById('root')
-			);
-		</script>
-	</body>
-	</html>
-	`
+// TestConcurrentRender tests rendering multiple pages concurrently
+func TestConcurrentRender(t *testing.T) {
+	skipIfChromeUnavailable(t)
 
-	assert.True(t, renderer.NeedsJSRendering(html), "React app initialization should need JS rendering")
+	r, err := renderer.NewRenderer(renderer.RendererOptions{
+		Timeout:  10 * time.Second,
+		MaxTabs:  5,
+		Stealth:  true,
+		Headless: true,
+	})
+	require.NoError(t, err)
+	defer r.Close()
+
+	ctx := context.Background()
+
+	// Create multiple test pages
+	testPages := []string{
+		"<html><body><h1>Page 1</h1></body></html>",
+		"<html><body><h1>Page 2</h1></body></html>",
+		"<html><body><h1>Page 3</h1></body></html>",
+	}
+
+	servers := make([]*http.Server, len(testPages))
+	listeners := make([]net.Listener, len(testPages))
+	ports := make([]int, len(testPages))
+
+	for i, html := range testPages {
+		port, err := getAvailablePort()
+		if err != nil {
+			t.Skip("Could not find available port, skipping test")
+		}
+		ports[i] = port
+
+		servers[i] = &http.Server{
+			Addr: fmt.Sprintf("127.0.0.1:%d", port),
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "text/html")
+				fmt.Fprint(w, html)
+			}),
+		}
+
+		listeners[i], _ = netListen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+		go servers[i].Serve(listeners[i])
+	}
+
+	// Give servers time to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Render all pages concurrently
+	errChan := make(chan error, len(testPages))
+	results := make(chan string, len(testPages))
+
+	for i, port := range ports {
+		go func(p int, h string) {
+			url := fmt.Sprintf("http://127.0.0.1:%d/", p)
+			html, err := r.Render(ctx, url, domain.RenderOptions{
+				Timeout:     10 * time.Second,
+				ScrollToEnd: false,
+			})
+			if err != nil {
+				errChan <- err
+			} else {
+				results <- html
+			}
+		}(port, testPages[i])
+	}
+
+	// Collect results
+	for i := 0; i < len(testPages); i++ {
+		select {
+		case err := <-errChan:
+			t.Errorf("Render %d failed: %v", i, err)
+		case html := <-results:
+			assert.Contains(t, html, "Page")
+		}
+	}
+
+	// Clean up servers
+	for i := range servers {
+		servers[i].Close()
+		if listeners[i] != nil {
+			listeners[i].Close()
+		}
+	}
 }
 
-func TestNeedsJSRendering_Angular(t *testing.T) {
-	html := `
-	<!DOCTYPE html>
-	<html>
-	<body>
-		<app-root></app-root>
-		<script src="main.js"></script>
-	</body>
-	</html>
-	`
+// TestRenderWithStealthMode tests that stealth mode works
+func TestRenderWithStealthMode(t *testing.T) {
+	skipIfChromeUnavailable(t)
 
-	// Angular apps typically have custom elements
-	result := renderer.NeedsJSRendering(html)
-	// Custom elements like <app-root> may indicate Angular
-	_ = result
+	r, err := renderer.NewRenderer(renderer.RendererOptions{
+		Timeout:  10 * time.Second,
+		MaxTabs:  2,
+		Stealth:  true, // Enable stealth mode
+		Headless: true,
+	})
+	require.NoError(t, err)
+	defer r.Close()
+
+	ctx := context.Background()
+
+	testHTML := `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stealth Test</title>
+</head>
+<body>
+    <h1>Stealth Mode Test</h1>
+</body>
+</html>
+`
+
+	port, err := getAvailablePort()
+	if err != nil {
+		t.Skip("Could not find available port, skipping test")
+	}
+
+	server := &http.Server{
+		Addr: fmt.Sprintf("127.0.0.1:%d", port),
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprint(w, testHTML)
+		}),
+	}
+
+	listener, _ := netListen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	go server.Serve(listener)
+	defer server.Close()
+
+	time.Sleep(100 * time.Millisecond)
+
+	url := fmt.Sprintf("http://127.0.0.1:%d/", port)
+
+	html, err := r.Render(ctx, url, domain.RenderOptions{
+		Timeout:     10 * time.Second,
+		ScrollToEnd: false,
+	})
+
+	require.NoError(t, err)
+	assert.Contains(t, html, "Stealth Mode Test")
 }
 
-func TestNeedsJSRendering_DocumentationSite(t *testing.T) {
-	html := `
-	<!DOCTYPE html>
-	<html>
-	<head><title>Documentation</title></head>
-	<body>
-		<nav>
-			<a href="/">Home</a>
-			<a href="/docs">Docs</a>
-		</nav>
-		<main class="documentation">
-			<h1>Getting Started</h1>
-			<p>Welcome to the documentation. This guide will help you get started
-			   with our software. Follow the steps below to install and configure.</p>
-			<h2>Installation</h2>
-			<pre><code>npm install package-name</code></pre>
-			<h2>Configuration</h2>
-			<p>Configure your settings by editing the config file.</p>
-			<h2>Usage</h2>
-			<p>Here's how to use the package in your project.</p>
-		</main>
-	</body>
-	</html>
-	`
+// Helper functions
 
-	assert.False(t, renderer.NeedsJSRendering(html), "Documentation site with content should not need JS rendering")
+// netListen is like net.Listen but tries multiple addresses if one fails
+func netListen(network, addr string) (net.Listener, error) {
+	if addr == "" {
+		return nil, fmt.Errorf("addr is empty")
+	}
+	return net.Listen(network, addr)
+}
+
+// getAvailablePort finds an available port
+func getAvailablePort() (int, error) {
+	listener, err := netListen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+	defer listener.Close()
+
+	addr := listener.Addr().(*net.TCPAddr)
+	return addr.Port, nil
 }

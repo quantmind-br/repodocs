@@ -12,9 +12,10 @@ import (
 
 // Orchestrator coordinates the documentation extraction process
 type Orchestrator struct {
-	config *config.Config
-	deps   *strategies.Dependencies
-	logger *utils.Logger
+	config          *config.Config
+	deps            *strategies.Dependencies
+	logger          *utils.Logger
+	strategyFactory func(StrategyType, *strategies.Dependencies) strategies.Strategy
 }
 
 // OrchestratorOptions contains options for creating an orchestrator
@@ -30,6 +31,9 @@ type OrchestratorOptions struct {
 	ContentSelector string
 	ExcludePatterns []string
 	FilterURL       string
+	// StrategyFactory allows injecting custom strategy creation logic for testing
+	// If nil, uses default strategy creation
+	StrategyFactory func(StrategyType, *strategies.Dependencies) strategies.Strategy
 }
 
 // NewOrchestrator creates a new orchestrator with the given configuration
@@ -89,10 +93,19 @@ func NewOrchestrator(opts OrchestratorOptions) (*Orchestrator, error) {
 		return nil, fmt.Errorf("failed to create dependencies: %w", err)
 	}
 
+	// Set default strategy factory if none provided
+	strategyFactory := opts.StrategyFactory
+	if strategyFactory == nil {
+		strategyFactory = func(st StrategyType, d *strategies.Dependencies) strategies.Strategy {
+			return CreateStrategy(st, d)
+		}
+	}
+
 	return &Orchestrator{
-		config: cfg,
-		deps:   deps,
-		logger: logger,
+		config:          cfg,
+		deps:            deps,
+		logger:          logger,
+		strategyFactory: strategyFactory,
 	}, nil
 }
 
@@ -116,8 +129,8 @@ func (o *Orchestrator) Run(ctx context.Context, url string, opts OrchestratorOpt
 		return fmt.Errorf("unable to determine strategy for URL: %s", url)
 	}
 
-	// Create strategy
-	strategy := CreateStrategy(strategyType, o.deps)
+	// Create strategy using strategy factory (allows injection for testing)
+	strategy := o.strategyFactory(strategyType, o.deps)
 	if strategy == nil {
 		return fmt.Errorf("failed to create strategy for URL: %s", url)
 	}

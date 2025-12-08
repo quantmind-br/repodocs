@@ -61,7 +61,7 @@ func DefaultOptions() Options {
 // Dependencies contains shared dependencies for all strategies
 type Dependencies struct {
 	Fetcher   *fetcher.Client
-	Renderer  *renderer.Renderer
+	Renderer  domain.Renderer
 	Cache     domain.Cache
 	Converter *converter.Pipeline
 	Writer    *output.Writer
@@ -95,9 +95,9 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 	}
 
 	// Create renderer if needed
-	var rendererImpl *renderer.Renderer
+	var rendererImpl domain.Renderer
 	if opts.EnableRenderer {
-		rendererImpl, err = renderer.NewRenderer(renderer.RendererOptions{
+		r, err := renderer.NewRenderer(renderer.RendererOptions{
 			Timeout:  opts.RendererTimeout,
 			MaxTabs:  opts.Concurrency,
 			Stealth:  true,
@@ -106,6 +106,8 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 		if err != nil {
 			// Renderer is optional, continue without it
 			rendererImpl = nil
+		} else {
+			rendererImpl = r
 		}
 	}
 

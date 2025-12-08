@@ -8,6 +8,7 @@ import (
 
 	"github.com/gocolly/colly/v2"
 	"github.com/quantmind-br/repodocs-go/internal/converter"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/fetcher"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/renderer"
@@ -18,7 +19,7 @@ import (
 // CrawlerStrategy crawls websites to extract documentation
 type CrawlerStrategy struct {
 	fetcher   *fetcher.Client
-	renderer  *renderer.Renderer
+	renderer  domain.Renderer
 	converter *converter.Pipeline
 	writer    *output.Writer
 	logger    *utils.Logger
@@ -168,7 +169,7 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 		// Check if JS rendering is needed
 		if opts.RenderJS || renderer.NeedsJSRendering(html) {
 			if s.renderer != nil {
-				rendered, err := s.renderer.Render(ctx, r.Request.URL.String(), renderer.RenderOptions{
+				rendered, err := s.renderer.Render(ctx, r.Request.URL.String(), domain.RenderOptions{
 					Timeout:     60 * time.Second,
 					WaitStable:  2 * time.Second,
 					ScrollToEnd: true,

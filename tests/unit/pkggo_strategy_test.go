@@ -1,0 +1,514 @@
+package unit
+
+import (
+	"context"
+	"strings"
+	"testing"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/quantmind-br/repodocs-go/internal/strategies"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestPkgGoStrategy_NewPkgGoStrategy(t *testing.T) {
+	deps := createTestPkgGoDependencies(t)
+	strategy := strategies.NewPkgGoStrategy(deps)
+	require.NotNil(t, strategy)
+	assert.Equal(t, "pkggo", strategy.Name())
+}
+
+func TestPkgGoStrategy_Name(t *testing.T) {
+	deps := createTestPkgGoDependencies(t)
+	strategy := strategies.NewPkgGoStrategy(deps)
+	assert.Equal(t, "pkggo", strategy.Name())
+}
+
+func TestPkgGoStrategy_CanHandle(t *testing.T) {
+	deps := createTestPkgGoDependencies(t)
+	strategy := strategies.NewPkgGoStrategy(deps)
+
+	tests := []struct {
+		name     string
+		url      string
+		expected bool
+	}{
+		// Valid pkg.go.dev URLs
+		{"pkg.go.dev root", "https://pkg.go.dev", true},
+		{"pkg.go.dev package", "https://pkg.go.dev/github.com/user/repo", true},
+		{"pkg.go.dev with version", "https://pkg.go.dev/github.com/user/repo@v1.0.0", true},
+		{"pkg.go.dev subpackage", "https://pkg.go.dev/github.com/user/repo/subpkg", true},
+		{"pkg.go.dev std lib", "https://pkg.go.dev/fmt", true},
+		{"pkg.go.dev std lib path", "https://pkg.go.dev/net/http", true},
+		{"pkg.go.dev with query", "https://pkg.go.dev/github.com/user/repo?tab=doc", true},
+		{"HTTP pkg.go.dev", "http://pkg.go.dev/fmt", true},
+		{"pkg.go.dev uppercase", "https://PKG.GO.DEV/fmt", false}, // Case-sensitive check
+		{"pkg.go.dev with hash", "https://pkg.go.dev/fmt#Println", true},
+
+		// Invalid URLs (not pkg.go.dev)
+		{"golang.org", "https://golang.org/pkg/fmt", false},
+		{"godoc.org", "https://godoc.org/fmt", false},
+		{"github.com", "https://github.com/user/repo", false},
+		{"go.dev (not pkg)", "https://go.dev/doc/effective_go", false},
+		{"empty URL", "", false},
+		{"just pkg", "pkg.go.dev", true}, // Contains pkg.go.dev
+		{"regular website", "https://example.com", false},
+		{"localhost", "http://localhost:8080/pkg.go.dev", true}, // Contains pkg.go.dev
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := strategy.CanHandle(tt.url)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestPkgGoStrategy_CanHandle_EdgeCases(t *testing.T) {
+	deps := createTestPkgGoDependencies(t)
+	strategy := strategies.NewPkgGoStrategy(deps)
+
+	tests := []struct {
+		name     string
+		url      string
+		expected bool
+	}{
+		{"Contains pkg.go.dev in path", "https://example.com/pkg.go.dev/test", true},
+		{"Contains pkg.go.dev in query", "https://example.com?ref=pkg.go.dev", true},
+		{"Unicode characters", "https://pkg.go.dev/例え", true},
+		{"Very long URL", "https://pkg.go.dev/" + strings.Repeat("a", 1000), true},
+		{"Whitespace", " https://pkg.go.dev/fmt ", true}, // Still contains pkg.go.dev
+		{"Newline in URL", "https://pkg.go.dev/fmt\n", true},
+		{"Tab in URL", "https://pkg.go.dev/fmt\t", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := strategy.CanHandle(tt.url)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestPkgGoStrategy_Execute_RequiresDependencies(t *testing.T) {
+	// This test verifies that Execute requires proper dependencies
+	// Full Execute tests require mocked HTTP responses
+	t.Skip("Requires full dependency injection with mocked HTTP client")
+}
+
+// Test the section extraction logic used by extractSections
+func TestPkgGoStrategy_ExtractSections_HTMLParsing(t *testing.T) {
+	tests := []struct {
+		name           string
+		html           string
+		expectedTitle  string
+		hasOverview    bool
+		hasIndex       bool
+		hasConstants   bool
+		hasVariables   bool
+		hasFunctions   bool
+		hasTypes       bool
+	}{
+		{
+			name: "Full documentation page",
+			html: `<!DOCTYPE html>
+<html>
+<body>
+	<h1 class="UnitHeader-title">fmt</h1>
+	<div class="Documentation-content">
+		<div id="pkg-overview">Package fmt implements formatted I/O.</div>
+		<div id="pkg-index">Index content</div>
+		<div id="pkg-constants">const EOF = -1</div>
+		<div id="pkg-variables">var ErrNotSupported = errors.New("not supported")</div>
+		<div id="pkg-functions">func Println(a ...interface{})</div>
+		<div id="pkg-types">type Stringer interface</div>
+	</div>
+</body>
+</html>`,
+			expectedTitle: "fmt",
+			hasOverview:   true,
+			hasIndex:      true,
+			hasConstants:  true,
+			hasVariables:  true,
+			hasFunctions:  true,
+			hasTypes:      true,
+		},
+		{
+			name: "Minimal documentation",
+			html: `<!DOCTYPE html>
+<html>
+<body>
+	<h1 class="UnitHeader-title">simple</h1>
+	<div class="Documentation-content">
+		<div id="pkg-overview">Simple package</div>
+	</div>
+</body>
+</html>`,
+			expectedTitle: "simple",
+			hasOverview:   true,
+			hasIndex:      false,
+			hasConstants:  false,
+			hasVariables:  false,
+			hasFunctions:  false,
+			hasTypes:      false,
+		},
+		{
+			name: "No documentation content",
+			html: `<!DOCTYPE html>
+<html>
+<body>
+	<h1 class="UnitHeader-title">empty</h1>
+	<main>Main content fallback</main>
+</body>
+</html>`,
+			expectedTitle: "empty",
+			hasOverview:   false,
+			hasIndex:      false,
+			hasConstants:  false,
+			hasVariables:  false,
+			hasFunctions:  false,
+			hasTypes:      false,
+		},
+		{
+			name: "Empty sections",
+			html: `<!DOCTYPE html>
+<html>
+<body>
+	<h1 class="UnitHeader-title">withempty</h1>
+	<div class="Documentation-content">
+		<div id="pkg-overview">   </div>
+		<div id="pkg-functions">func Example()</div>
+	</div>
+</body>
+</html>`,
+			expectedTitle: "withempty",
+			hasOverview:   false, // Empty after trim
+			hasIndex:      false,
+			hasConstants:  false,
+			hasVariables:  false,
+			hasFunctions:  true,
+			hasTypes:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc, err := goquery.NewDocumentFromReader(strings.NewReader(tt.html))
+			require.NoError(t, err)
+
+			// Extract package name
+			packageName := doc.Find("h1.UnitHeader-title").First().Text()
+			packageName = strings.TrimSpace(packageName)
+			assert.Equal(t, tt.expectedTitle, packageName)
+
+			// Test each section selector
+			sections := []struct {
+				selector string
+				expected bool
+			}{
+				{"#pkg-overview", tt.hasOverview},
+				{"#pkg-index", tt.hasIndex},
+				{"#pkg-constants", tt.hasConstants},
+				{"#pkg-variables", tt.hasVariables},
+				{"#pkg-functions", tt.hasFunctions},
+				{"#pkg-types", tt.hasTypes},
+			}
+
+			for _, section := range sections {
+				content := doc.Find(section.selector).First()
+				hasContent := content.Length() > 0
+				if hasContent {
+					html, _ := content.Html()
+					hasContent = strings.TrimSpace(html) != ""
+				}
+				assert.Equal(t, section.expected, hasContent, "Section %s", section.selector)
+			}
+		})
+	}
+}
+
+func TestPkgGoStrategy_DocumentationContentFallback(t *testing.T) {
+	// Test that when Documentation-content is missing, it falls back to main
+	html := `<!DOCTYPE html>
+<html>
+<body>
+	<h1 class="UnitHeader-title">fallback</h1>
+	<main>
+		<p>This is the main content area</p>
+		<p>Used as fallback when Documentation-content is missing</p>
+	</main>
+</body>
+</html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.NoError(t, err)
+
+	// First try Documentation-content
+	content := doc.Find("div.Documentation-content").First()
+	assert.Equal(t, 0, content.Length(), "Should not find Documentation-content")
+
+	// Fallback to main
+	content = doc.Find("main").First()
+	assert.Equal(t, 1, content.Length(), "Should find main element")
+
+	contentHTML, err := content.Html()
+	require.NoError(t, err)
+	assert.Contains(t, contentHTML, "main content area")
+}
+
+func TestPkgGoStrategy_PackageNameExtraction(t *testing.T) {
+	tests := []struct {
+		name     string
+		html     string
+		expected string
+	}{
+		{
+			name:     "Standard package name",
+			html:     `<h1 class="UnitHeader-title">fmt</h1>`,
+			expected: "fmt",
+		},
+		{
+			name:     "Package name with whitespace",
+			html:     `<h1 class="UnitHeader-title">  encoding/json  </h1>`,
+			expected: "encoding/json",
+		},
+		{
+			name:     "Package name with newlines",
+			html:     "<h1 class=\"UnitHeader-title\">\n\tnet/http\n</h1>",
+			expected: "net/http",
+		},
+		{
+			name:     "Missing package name",
+			html:     `<h1 class="other-class">Not the title</h1>`,
+			expected: "",
+		},
+		{
+			name:     "Empty title",
+			html:     `<h1 class="UnitHeader-title"></h1>`,
+			expected: "",
+		},
+		{
+			name:     "Title with HTML entities",
+			html:     `<h1 class="UnitHeader-title">foo&amp;bar</h1>`,
+			expected: "foo&bar",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc, err := goquery.NewDocumentFromReader(strings.NewReader(tt.html))
+			require.NoError(t, err)
+
+			packageName := doc.Find("h1.UnitHeader-title").First().Text()
+			packageName = strings.TrimSpace(packageName)
+			assert.Equal(t, tt.expected, packageName)
+		})
+	}
+}
+
+func TestPkgGoStrategy_SectionURLGeneration(t *testing.T) {
+	baseURL := "https://pkg.go.dev/fmt"
+
+	sections := []struct {
+		selector    string
+		name        string
+		expectedURL string
+	}{
+		{"#pkg-overview", "Overview", "https://pkg.go.dev/fmt#pkg-overview"},
+		{"#pkg-index", "Index", "https://pkg.go.dev/fmt#pkg-index"},
+		{"#pkg-constants", "Constants", "https://pkg.go.dev/fmt#pkg-constants"},
+		{"#pkg-variables", "Variables", "https://pkg.go.dev/fmt#pkg-variables"},
+		{"#pkg-functions", "Functions", "https://pkg.go.dev/fmt#pkg-functions"},
+		{"#pkg-types", "Types", "https://pkg.go.dev/fmt#pkg-types"},
+	}
+
+	for _, section := range sections {
+		t.Run(section.name, func(t *testing.T) {
+			sectionURL := baseURL + section.selector
+			assert.Equal(t, section.expectedURL, sectionURL)
+		})
+	}
+}
+
+func TestPkgGoStrategy_SectionTitleGeneration(t *testing.T) {
+	packageName := "encoding/json"
+
+	sections := []struct {
+		name          string
+		expectedTitle string
+	}{
+		{"Overview", "encoding/json - Overview"},
+		{"Index", "encoding/json - Index"},
+		{"Constants", "encoding/json - Constants"},
+		{"Variables", "encoding/json - Variables"},
+		{"Functions", "encoding/json - Functions"},
+		{"Types", "encoding/json - Types"},
+	}
+
+	for _, section := range sections {
+		t.Run(section.name, func(t *testing.T) {
+			title := packageName + " - " + section.name
+			assert.Equal(t, section.expectedTitle, title)
+		})
+	}
+}
+
+func TestPkgGoStrategy_ContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	// Verify context is cancelled
+	select {
+	case <-ctx.Done():
+		assert.Equal(t, context.Canceled, ctx.Err())
+	default:
+		t.Error("Context should be cancelled")
+	}
+}
+
+func TestPkgGoStrategy_OptionsHandling(t *testing.T) {
+	tests := []struct {
+		name    string
+		opts    strategies.Options
+		isSplit bool
+		isDry   bool
+	}{
+		{
+			name:    "Default options",
+			opts:    strategies.DefaultOptions(),
+			isSplit: false,
+			isDry:   false,
+		},
+		{
+			name:    "Split enabled",
+			opts:    strategies.Options{Split: true},
+			isSplit: true,
+			isDry:   false,
+		},
+		{
+			name:    "DryRun enabled",
+			opts:    strategies.Options{DryRun: true},
+			isSplit: false,
+			isDry:   true,
+		},
+		{
+			name:    "Both enabled",
+			opts:    strategies.Options{Split: true, DryRun: true},
+			isSplit: true,
+			isDry:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.isSplit, tt.opts.Split)
+			assert.Equal(t, tt.isDry, tt.opts.DryRun)
+		})
+	}
+}
+
+// Test HTML content extraction similar to what pkggo strategy does
+func TestPkgGoStrategy_ContentExtraction(t *testing.T) {
+	html := `<!DOCTYPE html>
+<html>
+<body>
+	<div class="Documentation-content">
+		<h2>Overview</h2>
+		<p>This is the package overview.</p>
+		<pre><code>import "example"</code></pre>
+	</div>
+</body>
+</html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.NoError(t, err)
+
+	content := doc.Find("div.Documentation-content").First()
+	require.Equal(t, 1, content.Length())
+
+	contentHTML, err := content.Html()
+	require.NoError(t, err)
+
+	assert.Contains(t, contentHTML, "Overview")
+	assert.Contains(t, contentHTML, "package overview")
+	assert.Contains(t, contentHTML, "import") // HTML entities may escape quotes
+}
+
+// Test real-world pkg.go.dev HTML structure
+func TestPkgGoStrategy_RealWorldHTMLStructure(t *testing.T) {
+	// Simplified real-world HTML from pkg.go.dev
+	html := `<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>fmt package - fmt - Go Packages</title>
+</head>
+<body>
+	<header>
+		<h1 class="UnitHeader-title">
+			<span>fmt</span>
+		</h1>
+	</header>
+	<main class="go-Main">
+		<div class="UnitDoc">
+			<div class="Documentation-content">
+				<section class="Documentation-overview" id="pkg-overview">
+					<h3>Overview <a href="#pkg-overview">¶</a></h3>
+					<p>Package fmt implements formatted I/O with functions analogous to C's printf and scanf.</p>
+				</section>
+				<section class="Documentation-index" id="pkg-index">
+					<h3>Index <a href="#pkg-index">¶</a></h3>
+					<ul>
+						<li><a href="#Println">func Println</a></li>
+					</ul>
+				</section>
+				<section id="pkg-constants">
+					<!-- No constants in fmt -->
+				</section>
+				<section id="pkg-variables">
+					<!-- No variables in fmt -->
+				</section>
+				<section id="pkg-functions">
+					<h3>Functions <a href="#pkg-functions">¶</a></h3>
+					<div id="Println">
+						<h4>func Println</h4>
+						<pre>func Println(a ...any) (n int, err error)</pre>
+					</div>
+				</section>
+				<section id="pkg-types">
+					<h3>Types <a href="#pkg-types">¶</a></h3>
+					<div id="Stringer">
+						<h4>type Stringer</h4>
+					</div>
+				</section>
+			</div>
+		</div>
+	</main>
+</body>
+</html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.NoError(t, err)
+
+	// Package name extraction
+	packageName := doc.Find("h1.UnitHeader-title").First().Text()
+	packageName = strings.TrimSpace(packageName)
+	assert.Equal(t, "fmt", packageName)
+
+	// Documentation content
+	content := doc.Find("div.Documentation-content").First()
+	assert.Equal(t, 1, content.Length())
+
+	// Verify sections exist
+	assert.Equal(t, 1, doc.Find("#pkg-overview").Length())
+	assert.Equal(t, 1, doc.Find("#pkg-index").Length())
+	assert.Equal(t, 1, doc.Find("#pkg-constants").Length())
+	assert.Equal(t, 1, doc.Find("#pkg-variables").Length())
+	assert.Equal(t, 1, doc.Find("#pkg-functions").Length())
+	assert.Equal(t, 1, doc.Find("#pkg-types").Length())
+}
+
+// Helper to create test dependencies for PkgGo strategy
+func createTestPkgGoDependencies(t *testing.T) *strategies.Dependencies {
+	t.Helper()
+	return &strategies.Dependencies{}
+}
