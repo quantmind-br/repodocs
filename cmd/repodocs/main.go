@@ -126,9 +126,13 @@ func run(cmd *cobra.Command, args []string) error {
 
 	url := args[0]
 
-	// Generate dynamic output directory if not explicitly set
-	outputChanged := cmd.Flags().Changed("output")
-	if !outputChanged {
+	// Handle output directory:
+	// 1. If user explicitly provided -o flag, use that value
+	// 2. Otherwise, generate from URL
+	if cmd.Flags().Changed("output") {
+		// User explicitly set output directory via -o flag
+		cfg.Output.Directory, _ = cmd.Flags().GetString("output")
+	} else {
 		// Use URL-based output directory
 		cfg.Output.Directory = utils.GenerateOutputDirFromURL(url)
 	}
