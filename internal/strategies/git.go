@@ -1,15 +1,23 @@
 package strategies
 
 import (
+	"archive/tar"
+	"bufio"
+	"compress/gzip"
 	"context"
+	"fmt"
+	"io"
 	"io/fs"
+	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
@@ -18,10 +26,10 @@ import (
 
 // DocumentExtensions are file extensions to process
 var DocumentExtensions = map[string]bool{
-	".md":    true,
-	".txt":   true,
-	".rst":   true,
-	".adoc":  true,
+	".md":       true,
+	".txt":      true,
+	".rst":      true,
+	".adoc":     true,
 	".asciidoc": true,
 }
 
@@ -40,9 +48,11 @@ var IgnoreDirs = map[string]bool{
 }
 
 // GitStrategy extracts documentation from git repositories
+// Uses archive download as primary method (faster) with git clone as fallback
 type GitStrategy struct {
-	writer *output.Writer
-	logger *utils.Logger
+	writer     *output.Writer
+	logger     *utils.Logger
+	httpClient *http.Client
 }
 
 // NewGitStrategy creates a new git strategy
@@ -50,6 +60,15 @@ func NewGitStrategy(deps *Dependencies) *GitStrategy {
 	return &GitStrategy{
 		writer: deps.Writer,
 		logger: deps.Logger,
+		httpClient: &http.Client{
+			Timeout: 10 * time.Minute,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if len(via) >= 10 {
+					return fmt.Errorf("too many redirects")
+				}
+				return nil
+			},
+		},
 	}
 }
 
@@ -68,51 +87,304 @@ func (s *GitStrategy) CanHandle(url string) bool {
 }
 
 // Execute runs the git extraction strategy
+// It tries archive download first (faster), falls back to git clone if needed
 func (s *GitStrategy) Execute(ctx context.Context, url string, opts Options) error {
-	s.logger.Info().Str("url", url).Msg("Cloning repository")
+	s.logger.Info().Str("url", url).Msg("Starting git extraction")
 
 	// Create temporary directory
 	tmpDir, err := os.MkdirTemp("", "repodocs-git-*")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create temp dir: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Clone repository (shallow clone for speed)
+	// Try archive download first (faster)
+	branch, method, err := s.tryArchiveDownload(ctx, url, tmpDir)
+	if err != nil {
+		// Fallback to git clone
+		s.logger.Info().Err(err).Msg("Archive download failed, using git clone")
+		branch, err = s.cloneRepository(ctx, url, tmpDir)
+		if err != nil {
+			return fmt.Errorf("failed to acquire repository: %w", err)
+		}
+		method = "clone"
+	}
+
+	s.logger.Info().
+		Str("method", method).
+		Str("branch", branch).
+		Msg("Repository acquired successfully")
+
+	// Find documentation files
+	files, err := s.findDocumentationFiles(tmpDir)
+	if err != nil {
+		return err
+	}
+
+	s.logger.Info().Int("count", len(files)).Msg("Found documentation files")
+
+	// Apply limit
+	if opts.Limit > 0 && len(files) > opts.Limit {
+		files = files[:opts.Limit]
+	}
+
+	// Process files in parallel
+	return s.processFiles(ctx, files, tmpDir, url, branch, opts)
+}
+
+// repoInfo contains parsed repository information
+type repoInfo struct {
+	platform string // github, gitlab, bitbucket
+	owner    string
+	repo     string
+}
+
+// tryArchiveDownload attempts to download and extract repository as archive
+// Returns branch name, method used ("archive"), and error if failed
+func (s *GitStrategy) tryArchiveDownload(ctx context.Context, url, destDir string) (branch, method string, err error) {
+	// SSH URLs not supported for archive download
+	if strings.HasPrefix(url, "git@") {
+		return "", "", fmt.Errorf("SSH URLs not supported for archive download")
+	}
+
+	// Parse URL
+	info, err := s.parseGitURL(url)
+	if err != nil {
+		return "", "", err
+	}
+
+	// Detect default branch
+	branch, err = s.detectDefaultBranch(ctx, url)
+	if err != nil {
+		s.logger.Warn().Err(err).Msg("Failed to detect branch, using 'main'")
+		branch = "main"
+	}
+
+	// Build archive URL
+	archiveURL := s.buildArchiveURL(info, branch)
+	s.logger.Debug().Str("archive_url", archiveURL).Msg("Downloading archive")
+
+	// Download and extract
+	if err := s.downloadAndExtract(ctx, archiveURL, destDir); err != nil {
+		// If failed with 'main', try 'master'
+		if branch == "main" {
+			s.logger.Debug().Msg("Trying 'master' branch")
+			archiveURL = s.buildArchiveURL(info, "master")
+			if err2 := s.downloadAndExtract(ctx, archiveURL, destDir); err2 == nil {
+				return "master", "archive", nil
+			}
+		}
+		return "", "", err
+	}
+
+	return branch, "archive", nil
+}
+
+// parseGitURL extracts owner and repo from various git URL formats
+func (s *GitStrategy) parseGitURL(url string) (*repoInfo, error) {
+	patterns := []struct {
+		platform string
+		regex    *regexp.Regexp
+	}{
+		{"github", regexp.MustCompile(`github\.com[:/]([^/]+)/([^/.]+)`)},
+		{"gitlab", regexp.MustCompile(`gitlab\.com[:/]([^/]+)/([^/.]+)`)},
+		{"bitbucket", regexp.MustCompile(`bitbucket\.org[:/]([^/]+)/([^/.]+)`)},
+	}
+
+	for _, p := range patterns {
+		if matches := p.regex.FindStringSubmatch(url); len(matches) == 3 {
+			return &repoInfo{
+				platform: p.platform,
+				owner:    matches[1],
+				repo:     strings.TrimSuffix(matches[2], ".git"),
+			}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("unsupported git URL format: %s", url)
+}
+
+// detectDefaultBranch uses git ls-remote to find the default branch
+func (s *GitStrategy) detectDefaultBranch(ctx context.Context, url string) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", "ls-remote", "--symref", url, "HEAD")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("git ls-remote failed: %w", err)
+	}
+
+	// Output format: "ref: refs/heads/master\tHEAD"
+	scanner := bufio.NewScanner(strings.NewReader(string(output)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "ref: refs/heads/") {
+			// Split by tab first, then extract branch from first part
+			parts := strings.Split(line, "\t")
+			if len(parts) >= 1 {
+				// parts[0] = "ref: refs/heads/master"
+				branch := strings.TrimPrefix(parts[0], "ref: refs/heads/")
+				return branch, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("could not determine default branch")
+}
+
+// buildArchiveURL constructs the archive download URL for the platform
+func (s *GitStrategy) buildArchiveURL(info *repoInfo, branch string) string {
+	switch info.platform {
+	case "github":
+		return fmt.Sprintf("https://github.com/%s/%s/archive/refs/heads/%s.tar.gz",
+			info.owner, info.repo, branch)
+	case "gitlab":
+		return fmt.Sprintf("https://gitlab.com/%s/%s/-/archive/%s/%s-%s.tar.gz",
+			info.owner, info.repo, branch, info.repo, branch)
+	case "bitbucket":
+		return fmt.Sprintf("https://bitbucket.org/%s/%s/get/%s.tar.gz",
+			info.owner, info.repo, branch)
+	default:
+		// Fallback to GitHub format
+		return fmt.Sprintf("https://github.com/%s/%s/archive/refs/heads/%s.tar.gz",
+			info.owner, info.repo, branch)
+	}
+}
+
+// downloadAndExtract downloads a tar.gz archive and extracts it
+func (s *GitStrategy) downloadAndExtract(ctx context.Context, archiveURL, destDir string) error {
+	req, err := http.NewRequestWithContext(ctx, "GET", archiveURL, nil)
+	if err != nil {
+		return err
+	}
+
+	// Add authentication if available
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		req.Header.Set("Authorization", "token "+token)
+	}
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("download request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("archive not found (404)")
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		return fmt.Errorf("authentication required (401)")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download failed with status: %d", resp.StatusCode)
+	}
+
+	return s.extractTarGz(resp.Body, destDir)
+}
+
+// extractTarGz extracts a tar.gz archive to destDir
+func (s *GitStrategy) extractTarGz(r io.Reader, destDir string) error {
+	gzr, err := gzip.NewReader(r)
+	if err != nil {
+		return fmt.Errorf("gzip reader failed: %w", err)
+	}
+	defer gzr.Close()
+
+	tr := tar.NewReader(gzr)
+
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("tar read failed: %w", err)
+		}
+
+		// Skip the root directory (GitHub adds repo-branch/ prefix)
+		parts := strings.SplitN(header.Name, "/", 2)
+		if len(parts) < 2 || parts[1] == "" {
+			continue
+		}
+		relativePath := parts[1]
+
+		targetPath := filepath.Join(destDir, relativePath)
+
+		// Security check: prevent path traversal
+		if !strings.HasPrefix(filepath.Clean(targetPath), filepath.Clean(destDir)) {
+			continue
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(targetPath, 0755); err != nil {
+				return fmt.Errorf("mkdir failed: %w", err)
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+				return fmt.Errorf("mkdir failed: %w", err)
+			}
+
+			f, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(header.Mode))
+			if err != nil {
+				return fmt.Errorf("create file failed: %w", err)
+			}
+
+			if _, err := io.Copy(f, tr); err != nil {
+				f.Close()
+				return fmt.Errorf("copy failed: %w", err)
+			}
+			f.Close()
+		}
+	}
+
+	return nil
+}
+
+// cloneRepository clones the repository using git (fallback method)
+func (s *GitStrategy) cloneRepository(ctx context.Context, url, destDir string) (string, error) {
+	s.logger.Info().Str("url", url).Msg("Cloning repository")
+
 	cloneOpts := &git.CloneOptions{
 		URL:      url,
 		Depth:    1, // Shallow clone
 		Progress: os.Stdout,
 	}
 
-	// Use HTTPS auth if available (for private repos in future)
+	// Use HTTPS auth if available
 	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
-		cloneOpts.Auth = &http.BasicAuth{
+		cloneOpts.Auth = &githttp.BasicAuth{
 			Username: "token",
 			Password: token,
 		}
 	}
 
-	repo, err := git.PlainCloneContext(ctx, tmpDir, false, cloneOpts)
+	repo, err := git.PlainCloneContext(ctx, destDir, false, cloneOpts)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Get default branch name
-	defaultBranch := getDefaultBranch(repo)
-	s.logger.Info().Str("branch", defaultBranch).Msg("Repository cloned, processing files")
+	head, err := repo.Head()
+	if err == nil {
+		refName := head.Name().String()
+		if strings.HasPrefix(refName, "refs/heads/") {
+			return strings.TrimPrefix(refName, "refs/heads/"), nil
+		}
+	}
 
-	// Find all documentation files
+	return "main", nil
+}
+
+// findDocumentationFiles walks the directory and finds all documentation files
+func (s *GitStrategy) findDocumentationFiles(dir string) ([]string, error) {
 	var files []string
-	err = filepath.WalkDir(tmpDir, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
 		// Skip ignored directories
 		if d.IsDir() {
-			name := d.Name()
-			if IgnoreDirs[name] {
+			if IgnoreDirs[d.Name()] {
 				return fs.SkipDir
 			}
 			return nil
@@ -126,36 +398,31 @@ func (s *GitStrategy) Execute(ctx context.Context, url string, opts Options) err
 
 		return nil
 	})
-	if err != nil {
-		return err
-	}
 
-	s.logger.Info().Int("count", len(files)).Msg("Found documentation files")
+	return files, err
+}
 
-	// Apply limit
-	if opts.Limit > 0 && len(files) > opts.Limit {
-		files = files[:opts.Limit]
-	}
-
+// processFiles processes all documentation files in parallel
+func (s *GitStrategy) processFiles(ctx context.Context, files []string, tmpDir, repoURL, branch string, opts Options) error {
 	// Create progress bar
 	bar := progressbar.NewOptions(len(files),
 		progressbar.OptionSetDescription("Processing"),
 		progressbar.OptionShowCount(),
 	)
 
-	// Process files
-	for _, file := range files {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
+	// Process files in parallel using existing infrastructure
+	errors := utils.ParallelForEach(ctx, files, opts.Concurrency, func(ctx context.Context, file string) error {
+		defer bar.Add(1)
 
-		bar.Add(1)
-
-		if err := s.processFile(ctx, file, tmpDir, url, defaultBranch, opts); err != nil {
+		if err := s.processFile(ctx, file, tmpDir, repoURL, branch, opts); err != nil {
 			s.logger.Warn().Err(err).Str("file", file).Msg("Failed to process file")
 		}
+		return nil
+	})
+
+	// Check for critical errors (context cancellation)
+	if err := utils.FirstError(errors); err != nil {
+		return err
 	}
 
 	s.logger.Info().Msg("Git extraction completed")
@@ -190,14 +457,12 @@ func (s *GitStrategy) processFile(ctx context.Context, path, tmpDir, repoURL, br
 		WordCount:      len(strings.Fields(string(content))),
 		CharCount:      len(content),
 		SourceStrategy: s.Name(),
-		RelativePath:   relPath, // Store relative path for output structure
+		RelativePath:   relPath,
 	}
 
 	// For markdown files, the content is already markdown
 	ext := strings.ToLower(filepath.Ext(path))
-	if ext == ".md" {
-		// Content is already markdown
-	} else {
+	if ext != ".md" {
 		// For other formats, wrap in code block
 		doc.Content = "```\n" + string(content) + "\n```"
 	}
@@ -227,20 +492,4 @@ func extractTitleFromPath(path string) string {
 	}
 
 	return name
-}
-
-// getDefaultBranch returns the default branch name from the cloned repository
-func getDefaultBranch(repo *git.Repository) string {
-	// Try to get HEAD reference
-	head, err := repo.Head()
-	if err == nil {
-		// Extract branch name from refs/heads/branch-name
-		refName := head.Name().String()
-		if strings.HasPrefix(refName, "refs/heads/") {
-			return strings.TrimPrefix(refName, "refs/heads/")
-		}
-	}
-
-	// Fallback to "main" if we can't determine the branch
-	return "main"
 }

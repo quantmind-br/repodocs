@@ -126,7 +126,7 @@ func TestE2E_CrawlMockSite(t *testing.T) {
 		BaseDir:      tmpDir,
 		Flat:         false,
 		JSONMetadata: true,
-		Force:    true,
+		Force:        true,
 	})
 
 	deps := &strategies.Dependencies{
@@ -220,8 +220,8 @@ func TestE2E_CrawlWithLimit(t *testing.T) {
 	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	pipeline := converter.NewPipeline(converter.PipelineOptions{BaseURL: server.URL})
 	writer := output.NewWriter(output.WriterOptions{
-		BaseDir:   tmpDir,
-		Force: true,
+		BaseDir: tmpDir,
+		Force:   true,
 	})
 
 	deps := &strategies.Dependencies{

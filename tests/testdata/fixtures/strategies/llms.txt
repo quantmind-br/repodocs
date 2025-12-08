@@ -1,0 +1,4 @@
+https://docs.example.com/api
+https://docs.example.com/guides/getting-started
+https://docs.example.com/guides/advanced
+https://docs.example.com/reference

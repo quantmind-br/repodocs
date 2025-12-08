@@ -73,7 +73,7 @@ func NewFetchError(url string, statusCode int, err error) *FetchError {
 
 // RetryableError indicates an error that can be retried
 type RetryableError struct {
-	Err       error
+	Err        error
 	RetryAfter int // Seconds to wait before retry, 0 if unknown
 }
 

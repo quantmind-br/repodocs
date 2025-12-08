@@ -16,34 +16,34 @@ import (
 
 // Client is a stealth HTTP client using tls-client
 type Client struct {
-	tlsClient   tls_client.HttpClient
-	userAgent   string
-	retrier     *Retrier
-	cache       domain.Cache
+	tlsClient    tls_client.HttpClient
+	userAgent    string
+	retrier      *Retrier
+	cache        domain.Cache
 	cacheEnabled bool
-	cacheTTL    time.Duration
+	cacheTTL     time.Duration
 }
 
 // ClientOptions contains options for creating a Client
 type ClientOptions struct {
-	Timeout      time.Duration
-	MaxRetries   int
-	EnableCache  bool
-	CacheTTL     time.Duration
-	Cache        domain.Cache
-	UserAgent    string
-	ProxyURL     string
+	Timeout     time.Duration
+	MaxRetries  int
+	EnableCache bool
+	CacheTTL    time.Duration
+	Cache       domain.Cache
+	UserAgent   string
+	ProxyURL    string
 }
 
 // DefaultClientOptions returns default client options
 func DefaultClientOptions() ClientOptions {
 	return ClientOptions{
-		Timeout:      30 * time.Second,
-		MaxRetries:   3,
-		EnableCache:  true,
-		CacheTTL:     24 * time.Hour,
-		UserAgent:    "",
-		ProxyURL:     "",
+		Timeout:     30 * time.Second,
+		MaxRetries:  3,
+		EnableCache: true,
+		CacheTTL:    24 * time.Hour,
+		UserAgent:   "",
+		ProxyURL:    "",
 	}
 }
 

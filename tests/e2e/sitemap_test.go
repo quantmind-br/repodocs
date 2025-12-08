@@ -131,9 +131,9 @@ func TestE2E_SitemapParsing(t *testing.T) {
 	})
 
 	writer := output.NewWriter(output.WriterOptions{
-		BaseDir:   tmpDir,
-		Flat:      false,
-		Force: true,
+		BaseDir: tmpDir,
+		Flat:    false,
+		Force:   true,
 	})
 
 	deps := &strategies.Dependencies{

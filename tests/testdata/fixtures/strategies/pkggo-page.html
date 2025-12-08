@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>pkg.go.dev - github.com/example/package</title>
+    <link rel="stylesheet" href="/static/pkg/styles.css">
+</head>
+<body>
+    <header class="pkg-header">
+        <h1 class="pkg-name">github.com/example/package</h1>
+        <p class="pkg-synopsis">This is an example package for testing</p>
+    </header>
+
+    <main class="pkg-main">
+        <section class="pkg-overview">
+            <h2>Overview</h2>
+            <p>Package example provides example functionality.</p>
+        </section>
+
+        <section class="pkg-index">
+            <h2>Index</h2>
+            <ul>
+                <li><a href="#type-T">type T</a></li>
+                <li><a href="#func-FuncA">func FuncA</a></li>
+                <li><a href="#func-FuncB">func FuncB</a></li>
+            </ul>
+        </section>
+
+        <section class="pkg-doc">
+            <h2 id="type-T">type T</h2>
+            <pre><code>type T struct {
+    Field string
+}</code></pre>
+            <p>T represents an example type.</p>
+
+            <h2 id="func-FuncA">func FuncA</h2>
+            <pre><code>func FuncA() error</code></pre>
+            <p>FuncA performs operation A.</p>
+
+            <h2 id="func-FuncB">func FuncB</h2>
+            <pre><code>func FuncB(ctx context.Context, input string) (string, error)</code></pre>
+            <p>FuncB performs operation B with context.</p>
+        </section>
+
+        <section class="pkg-examples">
+            <h2>Examples</h2>
+            <pre><code>package main
+
+import "github.com/example/package"
+
+func main() {
+    package.FuncA()
+}</code></pre>
+        </section>
+    </main>
+</body>
+</html>

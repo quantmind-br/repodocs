@@ -1,0 +1,25 @@
+# Cache-specific test configuration
+output:
+  directory: "./test-output-cache"
+  flat: false
+  overwrite: true
+  json_metadata: true
+
+concurrency:
+  workers: 1
+  max_depth: 2
+  timeout: 30s
+
+cache:
+  enabled: true
+  ttl: 1h
+  directory: "./test-cache-memory"
+
+rendering:
+  force_js: false
+  js_timeout: 5s
+  scroll_to_end: false
+
+logging:
+  level: "debug"
+  format: "text"

@@ -232,12 +232,31 @@ func isHTMLContentType(contentType string) bool {
 		contains(contentType, "application/xhtml")
 }
 
-// contains checks if a string contains a substring (case-insensitive)
+// contains checks if a string contains a substring (case-sensitive)
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsLower(lower(s), lower(substr)))
+	if len(s) < len(substr) {
+		return false
+	}
+	// Check for exact match first
+	if s == substr {
+		return true
+	}
+	// Check for case-sensitive substring match
+	return containsCaseSensitive(s, substr)
+}
+
+// containsCaseSensitive checks if s contains substr (case-sensitive)
+func containsCaseSensitive(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 func containsLower(s, substr string) bool {
+	// s and substr should already be lowercased by the caller
 	for i := 0; i <= len(s)-len(substr); i++ {
 		if s[i:i+len(substr)] == substr {
 			return true

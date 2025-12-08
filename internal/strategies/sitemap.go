@@ -186,8 +186,8 @@ func (s *SitemapStrategy) processSitemapIndex(ctx context.Context, sitemap *doma
 
 // sitemapXML represents the XML structure of a sitemap
 type sitemapXML struct {
-	XMLName xml.Name      `xml:"urlset"`
-	URLs    []sitemapURL  `xml:"url"`
+	XMLName xml.Name     `xml:"urlset"`
+	URLs    []sitemapURL `xml:"url"`
 }
 
 type sitemapURL struct {

@@ -126,10 +126,10 @@ func TestRetrier_DefaultOptions(t *testing.T) {
 func TestRetrier_InvalidOptions(t *testing.T) {
 	// Test that invalid options are corrected to defaults
 	retrier := fetcher.NewRetrier(fetcher.RetrierOptions{
-		MaxRetries:      0,  // Invalid
-		InitialInterval: 0,  // Invalid
-		MaxInterval:     0,  // Invalid
-		Multiplier:      0,  // Invalid
+		MaxRetries:      0, // Invalid
+		InitialInterval: 0, // Invalid
+		MaxInterval:     0, // Invalid
+		Multiplier:      0, // Invalid
 	})
 
 	// Should still work with defaults

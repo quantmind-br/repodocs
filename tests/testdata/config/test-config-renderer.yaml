@@ -1,0 +1,25 @@
+# Renderer-specific test configuration
+output:
+  directory: "./test-output-renderer"
+  flat: true
+  overwrite: false
+  json_metadata: false
+
+concurrency:
+  workers: 2
+  max_depth: 1
+  timeout: 60s
+
+cache:
+  enabled: false
+  ttl: 0s
+  directory: "./test-cache-disabled"
+
+rendering:
+  force_js: true
+  js_timeout: 30s
+  scroll_to_end: true
+
+logging:
+  level: "info"
+  format: "text"

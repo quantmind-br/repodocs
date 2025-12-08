@@ -1,0 +1,25 @@
+# Default test configuration
+output:
+  directory: "./test-output"
+  flat: false
+  overwrite: false
+  json_metadata: false
+
+concurrency:
+  workers: 5
+  max_depth: 3
+  timeout: 30s
+
+cache:
+  enabled: true
+  ttl: 24h
+  directory: "./test-cache"
+
+rendering:
+  force_js: false
+  js_timeout: 10s
+  scroll_to_end: true
+
+logging:
+  level: "error"
+  format: "text"
