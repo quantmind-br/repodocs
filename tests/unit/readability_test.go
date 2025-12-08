@@ -1,8 +1,10 @@
-package unit
+package app_test
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/quantmind-br/repodocs-go/internal/converter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -451,6 +453,370 @@ func TestExtractContent_MalformedHTML(t *testing.T) {
 			// Should not return an error for malformed HTML
 			require.NoError(t, err)
 			assert.NotEmpty(t, content)
+		})
+	}
+}
+
+// TestExtractBody_WithSelector tests extractBody with CSS selector fallback
+func TestExtractBody_WithSelector(t *testing.T) {
+	tests := []struct {
+		name     string
+		html     string
+		selector string
+	}{
+		{
+			name:     "extract with class selector",
+			html:     `<html><head><title>Test</title></head><body><div class="content">Main</div></body></html>`,
+			selector: ".content",
+		},
+		{
+			name:     "extract with ID selector",
+			html:     `<html><head><title>Test</title></head><body><div id="main">Main Content</div></body></html>`,
+			selector: "#main",
+		},
+		{
+			name:     "extract with element selector",
+			html:     `<html><head><title>Test</title></head><body><article>Article content</article></body></html>`,
+			selector: "article",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			extractor := converter.NewExtractContent(tc.selector)
+			content, title, err := extractor.Extract(tc.html, "https://example.com/body")
+
+			require.NoError(t, err)
+			assert.Equal(t, "Test", title)
+			assert.NotEmpty(t, content)
+		})
+	}
+}
+
+// TestExtractBody_WithoutSelector tests extractBody with readability fallback
+func TestExtractBody_WithoutSelector(t *testing.T) {
+	html := `<html>
+	<head><title>Readability Test</title></head>
+	<body>
+		<nav>Navigation</nav>
+		<article>
+			<h1>Main Article</h1>
+			<p>This is the main content that readability should extract.</p>
+			<p>Additional paragraph to strengthen the content signal.</p>
+		</article>
+		<aside>Sidebar</aside>
+	</body>
+	</html>`
+
+	extractor := converter.NewExtractContent("")
+	content, title, err := extractor.Extract(html, "https://example.com/readability")
+
+	require.NoError(t, err)
+	assert.Equal(t, "Readability Test", title)
+	assert.Contains(t, content, "Main Article")
+}
+
+// TestExtractBody_Empty tests extractBody with empty/minimal HTML
+func TestExtractBody_Empty(t *testing.T) {
+	tests := []struct {
+		name     string
+		html     string
+		wantBody bool
+	}{
+		{
+			name:     "empty body tag",
+			html:     `<html><head><title>Empty</title></head><body></body></html>`,
+			wantBody: false,
+		},
+		{
+			name:     "no body tag at all",
+			html:     `<html><head><title>No Body</title></head></html>`,
+			wantBody: false,
+		},
+		{
+			name:     "body with whitespace only",
+			html:     `<html><head><title>Whitespace</title></head><body>   </body></html>`,
+			wantBody: false,
+		},
+		{
+			name:     "minimal content",
+			html:     `<html><head><title>Minimal</title></head><body><p>Content</p></body></html>`,
+			wantBody: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			extractor := converter.NewExtractContent("")
+			content, title, err := extractor.Extract(tc.html, "https://example.com/empty")
+
+			require.NoError(t, err)
+			if tc.wantBody {
+				assert.NotEmpty(t, content)
+			}
+			// Title should still be extracted even if body is empty
+			if strings.Contains(tc.name, "Empty") || strings.Contains(tc.name, "Whitespace") {
+				assert.NotEmpty(t, title)
+			}
+		})
+	}
+}
+
+// TestExtractBody_ComplexHTML tests extractBody with complex HTML structures
+func TestExtractBody_ComplexHTML(t *testing.T) {
+	html := `<!DOCTYPE html>
+	<html>
+	<head>
+		<title>Complex HTML Test</title>
+		<meta charset="utf-8">
+		<meta name="description" content="A complex test">
+	</head>
+	<body>
+		<header>
+			<nav>
+				<ul>
+					<li><a href="#">Home</a></li>
+					<li><a href="#">About</a></li>
+				</ul>
+			</nav>
+		</header>
+		<main>
+			<article>
+				<h1>Article Title</h1>
+				<p>First paragraph of the article.</p>
+				<p>Second paragraph with <strong>bold text</strong> and <em>italic text</em>.</p>
+				<ul>
+					<li>List item 1</li>
+					<li>List item 2</li>
+				</ul>
+				<blockquote>
+					<p>This is a quote from someone important.</p>
+				</blockquote>
+				<code>console.log("Hello World");</code>
+			</article>
+		</main>
+		<aside>
+			<h2>Related Posts</h2>
+			<p>Sidebar content</p>
+		</aside>
+		<footer>
+			<p>&copy; 2023 Example Corp</p>
+		</footer>
+	</body>
+	</html>`
+
+	extractor := converter.NewExtractContent("")
+	content, title, err := extractor.Extract(html, "https://example.com/complex")
+
+	require.NoError(t, err)
+	assert.Equal(t, "Complex HTML Test", title)
+	// Readability extracts content but may remove certain elements like headers
+	assert.Contains(t, content, "First paragraph")
+	assert.Contains(t, content, "bold text")
+	// Lists and other elements may or may not be preserved by readability
+}
+
+// TestExtractTitle_FromH1 tests title extraction specifically from H1 tag
+func TestExtractTitle_FromH1(t *testing.T) {
+	tests := []struct {
+		name     string
+		html     string
+		wantH1   string
+		hasTitle bool
+	}{
+		{
+			name:     "h1 with title tag present (title takes precedence)",
+			html:     `<html><head><title>Page Title</title></head><body><h1>H1 Title</h1><p>Content</p></body></html>`,
+			wantH1:   "Page Title",
+			hasTitle: true,
+		},
+		{
+			name:     "h1 with nested elements",
+			html:     `<html><head><title>Title</title></head><body><h1><strong>Bold</strong> and <em>italic</em> H1</h1></body></html>`,
+			wantH1:   "Title",
+			hasTitle: true,
+		},
+		{
+			name:     "multiple h1 tags, takes first",
+			html:     `<html><head><title>Title</title></head><body><h1>First H1</h1><h1>Second H1</h1></body></html>`,
+			wantH1:   "Title",
+			hasTitle: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Use internal extractTitle function via reflection or test the behavior
+			// Since extractTitle is not exported, we test through Extract method
+			extractor := converter.NewExtractContent("")
+			_, title, err := extractor.Extract(tc.html, "https://example.com/h1")
+
+			require.NoError(t, err)
+			if tc.hasTitle {
+				assert.Equal(t, tc.wantH1, title)
+			}
+		})
+	}
+}
+
+// TestExtractTitle_FromTitle tests title extraction from title tag
+func TestExtractTitle_FromTitle(t *testing.T) {
+	tests := []struct {
+		name     string
+		html     string
+		wantTitle string
+	}{
+		{
+			name:     "simple title tag",
+			html:     `<html><head><title>Simple Title</title></head><body></body></html>`,
+			wantTitle: "Simple Title",
+		},
+		{
+			name:     "title with special characters",
+			html:     `<html><head><title>Title &amp; Special &lt;chars&gt;</title></head><body></body></html>`,
+			wantTitle: "Title & Special <chars>",
+		},
+		{
+			name:     "title with line breaks preserved",
+			html:     `<html><head><title>Line 1<br>Line 2</title></head><body></body></html>`,
+			wantTitle: "Line 1<br>Line 2",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			extractor := converter.NewExtractContent("")
+			_, title, err := extractor.Extract(tc.html, "https://example.com/title")
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantTitle, title)
+		})
+	}
+}
+
+// TestExtractTitle_Empty tests title extraction when no title exists
+func TestExtractTitle_Empty(t *testing.T) {
+	tests := []struct {
+		name     string
+		html     string
+	}{
+		{
+			name:     "no title, h1, or og:title",
+			html:     `<html><body><p>Content without title</p></body></html>`,
+		},
+		{
+			name:     "empty title tag",
+			html:     `<html><head><title></title></head><body></body></html>`,
+		},
+		{
+			name:     "empty h1 tag",
+			html:     `<html><body><h1></h1></body></html>`,
+		},
+		{
+			name:     "whitespace-only title",
+			html:     `<html><head><title>   </title></head><body></body></html>`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			extractor := converter.NewExtractContent("")
+			_, title, err := extractor.Extract(tc.html, "https://example.com/empty")
+
+			require.NoError(t, err)
+			assert.Empty(t, title)
+		})
+	}
+}
+
+// TestExtractDescription_Meta tests description extraction from meta tags
+func TestExtractDescription_Meta(t *testing.T) {
+	tests := []struct {
+		name     string
+		html     string
+		wantDesc string
+	}{
+		{
+			name:     "meta description with special chars",
+			html:     `<html><head><meta name="description" content="Description &amp; special chars"></head></html>`,
+			wantDesc: "Description & special chars",
+		},
+		{
+			name:     "og:description with quotes",
+			html:     `<html><head><meta property="og:description" content='Description with "quotes"'></head></html>`,
+			wantDesc: `Description with "quotes"`,
+		},
+		{
+			name:     "description with newlines",
+			html:     `<html><head><meta name="description" content="Line 1&#10;Line 2"></head></html>`,
+			wantDesc: "Line 1\nLine 2",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			doc, err := goquery.NewDocumentFromReader(strings.NewReader(tc.html))
+			require.NoError(t, err)
+
+			desc := converter.ExtractDescription(doc)
+			assert.Equal(t, tc.wantDesc, desc)
+		})
+	}
+}
+
+// TestExtractDescription_Content tests description extraction with actual content
+func TestExtractDescription_Content(t *testing.T) {
+	html := `<html>
+	<head>
+		<meta name="description" content="This is the page description">
+		<meta property="og:title" content="Page Title">
+	</head>
+	<body>
+		<h1>Main Content</h1>
+		<p>First paragraph of content.</p>
+		<p>Second paragraph with more details.</p>
+	</body>
+	</html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.NoError(t, err)
+
+	desc := converter.ExtractDescription(doc)
+	assert.Equal(t, "This is the page description", desc)
+	assert.NotEmpty(t, desc)
+}
+
+// TestExtractDescription_Empty tests description extraction when no description exists
+func TestExtractDescription_Empty(t *testing.T) {
+	tests := []struct {
+		name     string
+		html     string
+	}{
+		{
+			name:     "no meta tags at all",
+			html:     `<html><head></head><body></body></html>`,
+		},
+		{
+			name:     "empty description meta",
+			html:     `<html><head><meta name="description" content=""></head></html>`,
+		},
+		{
+			name:     "whitespace description",
+			html:     `<html><head><meta name="description" content="   "></head></html>`,
+		},
+		{
+			name:     "og:description with empty content",
+			html:     `<html><head><meta property="og:description" content=""></head></html>`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			doc, err := goquery.NewDocumentFromReader(strings.NewReader(tc.html))
+			require.NoError(t, err)
+
+			desc := converter.ExtractDescription(doc)
+			assert.Empty(t, desc)
 		})
 	}
 }

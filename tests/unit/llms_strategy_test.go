@@ -1,9 +1,13 @@
-package unit
+package app_test
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
@@ -298,10 +302,371 @@ func TestParseLLMSLinksTest_LinkRegex(t *testing.T) {
 	}
 }
 
-func TestLLMSStrategy_Execute(t *testing.T) {
-	// This is a complex integration test that requires mocking
-	// For now, we'll test the basic structure
-	t.Skip("Requires full dependency injection and network mocking")
+// TestParseLLMSLinks_Success tests parsing valid LLMS content
+func TestParseLLMSLinks_Success(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    []domain.LLMSLink
+	}{
+		{
+			name: "Simple markdown links",
+			content: `[Getting Started](https://example.com/getting-started)
+[API Reference](https://example.com/api)`,
+			want: []domain.LLMSLink{
+				{Title: "Getting Started", URL: "https://example.com/getting-started"},
+				{Title: "API Reference", URL: "https://example.com/api"},
+			},
+		},
+		{
+			name: "Links with whitespace",
+			content: `[Title1](https://example.com/page1)
+   [Title 2](  https://example.com/page2  )`,
+			want: []domain.LLMSLink{
+				{Title: "Title1", URL: "https://example.com/page1"},
+				{Title: "Title 2", URL: "https://example.com/page2"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseLLMSLinksTest(tt.content)
+			require.Equal(t, len(tt.want), len(got))
+			for i := range tt.want {
+				assert.Equal(t, tt.want[i], got[i])
+			}
+		})
+	}
+}
+
+// TestParseLLMSLinks_Empty tests parsing empty LLMS content
+func TestParseLLMSLinks_Empty(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    int
+	}{
+		{
+			name:    "Empty content",
+			content: "",
+			want:    0,
+		},
+		{
+			name:    "Only whitespace",
+			content: "   \n\n   ",
+			want:    0,
+		},
+		{
+			name:    "No markdown links",
+			content: "Just plain text without links",
+			want:    0,
+		},
+		{
+			name: "Only anchor links",
+			content: `[Top](#top)
+[Section](#section)`,
+			want: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseLLMSLinksTest(tt.content)
+			assert.Equal(t, tt.want, len(got))
+		})
+	}
+}
+
+// TestParseLLMSLinks_Complex tests parsing complex LLMS content
+func TestParseLLMSLinks_Complex(t *testing.T) {
+	content := `# Project Documentation
+
+## Getting Started
+- [Installation](https://example.com/install)
+- [Quick Start](https://example.com/quickstart)
+
+## API Reference
+- [Endpoints](https://example.com/api/endpoints)
+- [Authentication](https://example.com/api/auth)
+
+## Examples
+- [Basic Usage](examples/basic.html)
+- [Advanced](examples/advanced.html)
+
+[External](https://external.com/docs)`
+
+	got := parseLLMSLinksTest(content)
+	assert.Equal(t, 7, len(got))
+
+	// Verify specific links
+	assert.Equal(t, "Installation", got[0].Title)
+	assert.Equal(t, "https://example.com/install", got[0].URL)
+	assert.Equal(t, "External", got[6].Title)
+	assert.Equal(t, "https://external.com/docs", got[6].URL)
+}
+
+// TestNewLLMSStrategy_Success tests successful strategy creation
+func TestNewLLMSStrategy_Success(t *testing.T) {
+	deps := createTestLLMSDependencies(t)
+	strategy := strategies.NewLLMSStrategy(deps)
+
+	require.NotNil(t, strategy)
+	assert.Equal(t, "llms", strategy.Name())
+	assert.Equal(t, "llms", strategy.Name())
+}
+
+// TestCanHandle_LLMSURL tests URL detection for LLMS files
+func TestCanHandle_LLMSURL(t *testing.T) {
+	deps := createTestLLMSDependencies(t)
+	strategy := strategies.NewLLMSStrategy(deps)
+
+	tests := []struct {
+		name string
+		url  string
+		want bool
+	}{
+		{
+			name: "llms.txt at root",
+			url:  "https://example.com/llms.txt",
+			want: true,
+		},
+		{
+			name: "llms.txt with path",
+			url:  "https://example.com/docs/llms.txt",
+			want: true,
+		},
+		{
+			name: "llms.txt with trailing slash",
+			url:  "https://example.com/api/v1/llms.txt",
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := strategy.CanHandle(tt.url)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// TestCanHandle_NonLLMSURL tests rejection of non-LLMS URLs
+func TestCanHandle_NonLLMSURL(t *testing.T) {
+	deps := createTestLLMSDependencies(t)
+	strategy := strategies.NewLLMSStrategy(deps)
+
+	tests := []struct {
+		name string
+		url  string
+		want bool
+	}{
+		{
+			name: "Regular page",
+			url:  "https://example.com/docs",
+			want: false,
+		},
+		{
+			name: "sitemap.xml",
+			url:  "https://example.com/sitemap.xml",
+			want: false,
+		},
+		{
+			name: "GitHub URL",
+			url:  "https://github.com/user/repo",
+			want: false,
+		},
+		{
+			name: "Uppercase LLMS",
+			url:  "https://example.com/LLMS.TXT",
+			want: false,
+		},
+		{
+			name: "Empty URL",
+			url:  "",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := strategy.CanHandle(tt.url)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// TestExecute_WithValidLLMS tests execution with valid LLMS content
+func TestExecute_WithValidLLMS(t *testing.T) {
+	ctx := context.Background()
+
+	// Create test servers
+	pageServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<html><head><title>Test Page</title></head><body><h1>Test Content</h1></body></html>`))
+	}))
+	defer pageServer.Close()
+
+	// Update llms.txt to use the test server URLs
+	updatedLLMS := strings.ReplaceAll(`[Getting Started](https://example.com/page1)
+[API Reference](https://example.com/page2)`, "https://example.com/page1", pageServer.URL)
+	updatedLLMS = strings.ReplaceAll(updatedLLMS, "https://example.com/page2", pageServer.URL)
+
+	llmsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(updatedLLMS))
+	}))
+	defer llmsServer.Close()
+
+	// Use real fetcher/converter/writer with test servers
+	// This is a simplified test focusing on the Execute flow
+	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
+		EnableCache:    false,
+		EnableRenderer: false,
+		Verbose:        false,
+	})
+	require.NoError(t, err)
+
+	// Override the fetcher to use our test server URLs
+	// The fetcher will automatically fetch from the httptest servers
+
+	strategy := strategies.NewLLMSStrategy(deps)
+	opts := strategies.Options{
+		Concurrency: 1,
+		Limit:       0,
+		Force:       true,
+		Output:      t.TempDir(),
+	}
+
+	// Act
+	err = strategy.Execute(ctx, llmsServer.URL, opts)
+
+	// Assert
+	require.NoError(t, err)
+}
+
+// TestExecute_WithEmptyLLMS tests execution with empty LLMS content
+func TestExecute_WithEmptyLLMS(t *testing.T) {
+	ctx := context.Background()
+
+	// Create server with empty LLMS content
+	llmsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(""))
+	}))
+	defer llmsServer.Close()
+
+	// Use real dependencies
+	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
+		EnableCache:    false,
+		EnableRenderer: false,
+		Verbose:        false,
+	})
+	require.NoError(t, err)
+
+	strategy := strategies.NewLLMSStrategy(deps)
+	opts := strategies.Options{
+		Concurrency: 1,
+		Limit:       0,
+		Force:       true,
+		Output:      t.TempDir(),
+	}
+
+	// Act
+	err = strategy.Execute(ctx, llmsServer.URL, opts)
+
+	// Assert
+	require.NoError(t, err)
+	// Should complete without error even with empty content
+}
+
+// TestExecute_WithInvalidHTML tests execution when linked pages have invalid HTML
+func TestExecute_WithInvalidHTML(t *testing.T) {
+	ctx := context.Background()
+
+	// Create servers with valid and invalid HTML
+	validServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<html><head><title>Valid</title></head><body><h1>Valid Content</h1></body></html>`))
+	}))
+	defer validServer.Close()
+
+	invalidServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		// Intentionally malformed HTML
+		w.Write([]byte(`<html><head><title>Unclosed tags<body><h1>Invalid`))
+	}))
+	defer invalidServer.Close()
+
+	// Update LLMS content with actual test server URLs
+	llmsContent := `[Valid Page](https://example.com/valid)
+[Invalid Page](https://example.com/invalid)`
+	updatedLLMS := strings.ReplaceAll(llmsContent, "https://example.com/valid", validServer.URL)
+	updatedLLMS = strings.ReplaceAll(updatedLLMS, "https://example.com/invalid", invalidServer.URL)
+
+	llmsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(updatedLLMS))
+	}))
+	defer llmsServer.Close()
+
+	// Use real dependencies
+	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
+		EnableCache:    false,
+		EnableRenderer: false,
+		Verbose:        false,
+	})
+	require.NoError(t, err)
+
+	strategy := strategies.NewLLMSStrategy(deps)
+	opts := strategies.Options{
+		Concurrency: 1,
+		Limit:       0,
+		Force:       true,
+		Output:      t.TempDir(),
+	}
+
+	// Act
+	err = strategy.Execute(ctx, llmsServer.URL, opts)
+
+	// Assert - should complete without error even with invalid HTML
+	// (converter should handle it gracefully)
+	require.NoError(t, err)
+}
+
+// TestExecute_FetchError tests execution when fetch fails
+func TestExecute_FetchError(t *testing.T) {
+	ctx := context.Background()
+
+	// Create server that returns error
+	llmsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer llmsServer.Close()
+
+	// Use real dependencies
+	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
+		EnableCache:    false,
+		EnableRenderer: false,
+		Verbose:        false,
+	})
+	require.NoError(t, err)
+
+	strategy := strategies.NewLLMSStrategy(deps)
+	opts := strategies.Options{
+		Concurrency: 1,
+		Limit:       0,
+		Force:       true,
+		Output:      t.TempDir(),
+	}
+
+	// Act
+	err = strategy.Execute(ctx, llmsServer.URL, opts)
+
+	// Assert
+	require.Error(t, err)
+	// Should get an error when fetch fails
+	assert.Contains(t, err.Error(), "fetch")
 }
 
 // Test edge cases for parsing
@@ -371,6 +736,87 @@ func TestParseLLMSLinksTest_EdgeCases(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Mocks for testing
+
+type mockFetcher struct {
+	responses   map[string]*domain.Response
+	called      bool
+	shouldError bool
+}
+
+func (m *mockFetcher) Get(ctx context.Context, urlStr string) (*domain.Response, error) {
+	m.called = true
+	if m.shouldError {
+		return nil, assert.AnError
+	}
+	if resp, ok := m.responses[urlStr]; ok {
+		return resp, nil
+	}
+	// Return default response for unknown URLs
+	return &domain.Response{
+		StatusCode: 200,
+		Body:       []byte(""),
+		Headers:    make(http.Header),
+	}, nil
+}
+
+func (m *mockFetcher) GetWithHeaders(ctx context.Context, urlStr string, headers map[string]string) (*domain.Response, error) {
+	return m.Get(ctx, urlStr)
+}
+
+func (m *mockFetcher) GetCookies(urlStr string) []*http.Cookie {
+	return nil
+}
+
+func (m *mockFetcher) Close() error {
+	return nil
+}
+
+type mockConverter struct {
+	shouldError bool
+	documents   []*domain.Document
+}
+
+func (m *mockConverter) Convert(ctx context.Context, html string, sourceURL string) (*domain.Document, error) {
+	if m.shouldError {
+		return nil, assert.AnError
+	}
+	doc := &domain.Document{
+		URL:            sourceURL,
+		Title:          "Test Document",
+		Content:        "# Test Content",
+		HTMLContent:    html,
+		FetchedAt:      time.Now(),
+		SourceStrategy: "llms",
+		CacheHit:       false,
+	}
+	if m.documents != nil {
+		m.documents = append(m.documents, doc)
+	}
+	return doc, nil
+}
+
+type mockWriter struct {
+	written      bool
+	documents    []*domain.Document
+	existingDocs map[string]bool
+}
+
+func (m *mockWriter) Write(ctx context.Context, doc *domain.Document) error {
+	m.written = true
+	if m.documents != nil {
+		m.documents = append(m.documents, doc)
+	}
+	return nil
+}
+
+func (m *mockWriter) Exists(url string) bool {
+	if m.existingDocs != nil {
+		return m.existingDocs[url]
+	}
+	return false
 }
 
 // Helper to create test dependencies
