@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"time"
 
 	md "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
@@ -67,27 +66,9 @@ func (c *MarkdownConverter) cleanMarkdown(markdown string) string {
 	return markdown
 }
 
-// Frontmatter represents YAML frontmatter
-type Frontmatter struct {
-	Title      string    `yaml:"title"`
-	URL        string    `yaml:"url"`
-	Source     string    `yaml:"source"`
-	FetchedAt  time.Time `yaml:"fetched_at"`
-	RenderedJS bool      `yaml:"rendered_js"`
-	WordCount  int       `yaml:"word_count"`
-}
-
 // GenerateFrontmatter generates YAML frontmatter for a document
 func GenerateFrontmatter(doc *domain.Document) (string, error) {
-	fm := Frontmatter{
-		Title:      doc.Title,
-		URL:        doc.URL,
-		Source:     doc.SourceStrategy,
-		FetchedAt:  doc.FetchedAt,
-		RenderedJS: doc.RenderedWithJS,
-		WordCount:  doc.WordCount,
-	}
-
+	fm := doc.ToFrontmatter()
 	data, err := yaml.Marshal(fm)
 	if err != nil {
 		return "", err

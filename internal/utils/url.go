@@ -9,6 +9,12 @@ import (
 
 // NormalizeURL normalizes a URL for consistent handling
 func NormalizeURL(rawURL string) (string, error) {
+	// If no scheme is present, prepend https:// before parsing
+	// This ensures the host is correctly identified
+	if !strings.Contains(rawURL, "://") && !strings.HasPrefix(rawURL, "//") {
+		rawURL = "https://" + rawURL
+	}
+
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return "", err
@@ -43,10 +49,15 @@ func NormalizeURL(rawURL string) (string, error) {
 	// Remove fragment
 	u.Fragment = ""
 
-	// Sort query parameters for consistency
-	// Note: We keep query params as some sites need them for content
+	// Build the result manually to ensure trailing slash for root path
+	result := u.String()
+	
+	// Ensure root path has trailing slash
+	if u.Path == "/" && u.RawQuery == "" && !strings.HasSuffix(result, "/") {
+		result += "/"
+	}
 
-	return u.String(), nil
+	return result, nil
 }
 
 // NormalizeURLWithoutQuery normalizes a URL and removes query parameters
@@ -97,18 +108,17 @@ func GetBaseDomain(rawURL string) string {
 		return ""
 	}
 
-	parts := strings.Split(host, ".")
-	if len(parts) <= 2 {
-		return host
+	// Only strip "www." prefix, keep other subdomains
+	if strings.HasPrefix(strings.ToLower(host), "www.") {
+		return host[4:]
 	}
 
-	// Return last two parts (e.g., "example.com" from "www.example.com")
-	return strings.Join(parts[len(parts)-2:], ".")
+	return host
 }
 
 // IsSameDomain checks if two URLs have the same domain
 func IsSameDomain(url1, url2 string) bool {
-	return GetDomain(url1) == GetDomain(url2)
+	return strings.EqualFold(GetDomain(url1), GetDomain(url2))
 }
 
 // IsSameBaseDomain checks if two URLs have the same base domain
@@ -118,6 +128,11 @@ func IsSameBaseDomain(url1, url2 string) bool {
 
 // IsAbsoluteURL checks if a URL is absolute
 func IsAbsoluteURL(rawURL string) bool {
+	// Protocol-relative URLs (starting with //) are considered absolute
+	if strings.HasPrefix(rawURL, "//") {
+		return true
+	}
+	
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return false
@@ -153,8 +168,9 @@ func IsSitemapURL(rawURL string) bool {
 
 // IsLLMSURL checks if a URL points to an llms.txt file
 func IsLLMSURL(rawURL string) bool {
-	return strings.HasSuffix(rawURL, "/llms.txt") ||
-		strings.HasSuffix(rawURL, "llms.txt")
+	lower := strings.ToLower(rawURL)
+	return strings.HasSuffix(lower, "/llms.txt") ||
+		strings.HasSuffix(lower, "llms.txt")
 }
 
 // IsPkgGoDevURL checks if a URL is a pkg.go.dev URL

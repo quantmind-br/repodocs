@@ -211,28 +211,3 @@ func (s *Sanitizer) removeEmptyElements(doc *goquery.Document) {
 		})
 	}
 }
-
-// SanitizeFilename sanitizes a string for use as a filename
-func SanitizeFilename(name string) string {
-	// Remove or replace invalid characters
-	invalidChars := regexp.MustCompile(`[<>:"/\\|?*\x00-\x1f]`)
-	name = invalidChars.ReplaceAllString(name, "-")
-
-	// Replace multiple dashes/spaces with single dash
-	multiDash := regexp.MustCompile(`[-\s]+`)
-	name = multiDash.ReplaceAllString(name, "-")
-
-	// Trim leading/trailing dashes and spaces
-	name = strings.Trim(name, "- ")
-
-	// Limit length
-	if len(name) > 200 {
-		name = name[:200]
-	}
-
-	if name == "" {
-		name = "untitled"
-	}
-
-	return name
-}

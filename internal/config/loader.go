@@ -13,8 +13,8 @@ func Load() (*Config, error) {
 	// Use global viper instance to get CLI flag bindings
 	v := viper.GetViper()
 
-	// Set defaults (only if not already set by CLI flags)
-	setDefaultsIfNotSet(v)
+	// Set defaults
+	setDefaults(v)
 
 	// Config file settings
 	v.SetConfigName("config")
@@ -122,12 +122,6 @@ func setDefaults(v *viper.Viper) {
 	// Logging defaults
 	v.SetDefault("logging.level", DefaultLogLevel)
 	v.SetDefault("logging.format", DefaultLogFormat)
-}
-
-// setDefaultsIfNotSet sets default values only if they haven't been set by CLI flags
-// This is the same as setDefaults but used with the global viper instance
-func setDefaultsIfNotSet(v *viper.Viper) {
-	setDefaults(v)
 }
 
 // EnsureConfigDir creates the config directory if it doesn't exist

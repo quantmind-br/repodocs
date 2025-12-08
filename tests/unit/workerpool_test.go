@@ -322,7 +322,6 @@ func TestPool_Process_ContextDone(t *testing.T) {
 func TestPool_ConcurrentSubmissions(t *testing.T) {
 	ctx := context.Background()
 
-	counter := make(chan int, 100)
 	var mu sync.Mutex
 	processedCount := 0
 
@@ -330,12 +329,25 @@ func TestPool_ConcurrentSubmissions(t *testing.T) {
 		mu.Lock()
 		processedCount++
 		mu.Unlock()
-		counter <- data
 		return data * 2, nil
 	}
 
 	pool := utils.NewPool(5, worker)
 	pool.Start(ctx)
+
+	// Consumer goroutine - must consume results to prevent blocking
+	resultCount := 0
+	var resultWg sync.WaitGroup
+	resultWg.Add(1)
+	go func() {
+		defer resultWg.Done()
+		for range pool.Results() {
+			resultCount++
+			if resultCount >= 100 {
+				return
+			}
+		}
+	}()
 
 	// Submit tasks concurrently from multiple goroutines
 	var wg sync.WaitGroup
@@ -351,10 +363,11 @@ func TestPool_ConcurrentSubmissions(t *testing.T) {
 
 	wg.Wait()
 	pool.Stop()
+	resultWg.Wait()
 
 	// Verify all tasks were processed
 	assert.Equal(t, 100, processedCount)
-	assert.Equal(t, 100, len(counter))
+	assert.Equal(t, 100, resultCount)
 }
 
 func TestPool_PartialResults(t *testing.T) {

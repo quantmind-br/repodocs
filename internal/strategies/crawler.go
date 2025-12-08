@@ -3,6 +3,7 @@ package strategies
 import (
 	"context"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -231,53 +232,7 @@ func isHTMLContentType(contentType string) bool {
 	if contentType == "" {
 		return true
 	}
-	// Use case-insensitive comparison for content types
-	lowerCT := lower(contentType)
-	return contains(lowerCT, "text/html") ||
-		contains(lowerCT, "application/xhtml")
-}
-
-// contains checks if a string contains a substring (case-sensitive)
-func contains(s, substr string) bool {
-	if len(s) < len(substr) {
-		return false
-	}
-	// Check for exact match first
-	if s == substr {
-		return true
-	}
-	// Check for case-sensitive substring match
-	return containsCaseSensitive(s, substr)
-}
-
-// containsCaseSensitive checks if s contains substr (case-sensitive)
-func containsCaseSensitive(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
-func containsLower(s, substr string) bool {
-	// s and substr should already be lowercased by the caller
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
-func lower(s string) string {
-	b := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c >= 'A' && c <= 'Z' {
-			c += 'a' - 'A'
-		}
-		b[i] = c
-	}
-	return string(b)
+	lower := strings.ToLower(contentType)
+	return strings.Contains(lower, "text/html") ||
+		strings.Contains(lower, "application/xhtml")
 }

@@ -22,6 +22,7 @@ type Pool[T any] struct {
 	resultChan chan *Task[T]
 	wg         sync.WaitGroup
 	worker     Worker[T]
+	stopOnce   sync.Once
 }
 
 // NewPool creates a new worker pool
@@ -79,13 +80,20 @@ func (p *Pool[T]) Results() <-chan *Task[T] {
 
 // Stop stops the pool and waits for workers to finish
 func (p *Pool[T]) Stop() {
-	close(p.taskQueue)
-	p.wg.Wait()
-	close(p.resultChan)
+	p.stopOnce.Do(func() {
+		close(p.taskQueue)
+		p.wg.Wait()
+		close(p.resultChan)
+	})
 }
 
 // Process processes a slice of data items concurrently
 func (p *Pool[T]) Process(ctx context.Context, items []T) ([]*Task[T], error) {
+	// Handle empty slice case
+	if len(items) == 0 {
+		return []*Task[T]{}, nil
+	}
+
 	p.Start(ctx)
 
 	// Submit all items
@@ -101,16 +109,32 @@ func (p *Pool[T]) Process(ctx context.Context, items []T) ([]*Task[T], error) {
 		close(p.taskQueue)
 	}()
 
-	// Collect results
+	// Collect results with context awareness
 	results := make([]*Task[T], 0, len(items))
-	for task := range p.resultChan {
-		results = append(results, task)
-		if len(results) == len(items) {
-			break
+	collectDone := false
+	for !collectDone {
+		select {
+		case <-ctx.Done():
+			collectDone = true
+		case task, ok := <-p.resultChan:
+			if !ok {
+				collectDone = true
+			} else {
+				results = append(results, task)
+				if len(results) == len(items) {
+					collectDone = true
+				}
+			}
 		}
 	}
 
 	p.wg.Wait()
+
+	// Drain remaining results to avoid goroutine leak
+	go func() {
+		for range p.resultChan {
+		}
+	}()
 	close(p.resultChan)
 
 	// Check for context error
