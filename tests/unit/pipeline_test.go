@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/quantmind-br/repodocs-go/internal/converter"
@@ -527,4 +528,165 @@ func TestStripMarkdown(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPipeline_ContentSelector_MultipleMatches(t *testing.T) {
+	html := `<!DOCTYPE html>
+	<html>
+	<head><title>Multiple Articles</title></head>
+	<body>
+		<article class="post">First article content</article>
+		<article class="post">Second article content</article>
+		<aside>Sidebar content</aside>
+	</body>
+	</html>`
+
+	pipeline := converter.NewPipeline(converter.PipelineOptions{
+		ContentSelector: "article.post",
+	})
+
+	doc, err := pipeline.Convert(context.Background(), html, "https://example.com/multi")
+	require.NoError(t, err)
+	require.NotNil(t, doc)
+
+	assert.Contains(t, doc.Content, "First article")
+	assert.Contains(t, doc.Content, "Second article")
+}
+
+func TestPipeline_ContentSelector_CommaSeparated(t *testing.T) {
+	html := `<!DOCTYPE html>
+	<html>
+	<head><title>Comma Separated</title></head>
+	<body>
+		<div id="title">Page Title</div>
+		<nav>Navigation</nav>
+		<div id="body">Main content</div>
+	</body>
+	</html>`
+
+	pipeline := converter.NewPipeline(converter.PipelineOptions{
+		ContentSelector: "#title, #body",
+	})
+
+	doc, err := pipeline.Convert(context.Background(), html, "https://example.com/comma")
+	require.NoError(t, err)
+	require.NotNil(t, doc)
+
+	assert.Contains(t, doc.Content, "Page Title")
+	assert.Contains(t, doc.Content, "Main content")
+}
+
+func TestPipeline_ExcludeSelector(t *testing.T) {
+	html := `<!DOCTYPE html>
+	<html>
+	<head><title>Exclude Test</title></head>
+	<body>
+		<article>
+			<h1>Title</h1>
+			<div class="warning">Warning box to exclude</div>
+			<p>Main content paragraph</p>
+		</article>
+	</body>
+	</html>`
+
+	pipeline := converter.NewPipeline(converter.PipelineOptions{
+		ContentSelector: "article",
+		ExcludeSelector: ".warning",
+	})
+
+	doc, err := pipeline.Convert(context.Background(), html, "https://example.com/exclude")
+	require.NoError(t, err)
+	require.NotNil(t, doc)
+
+	assert.Contains(t, doc.Content, "Title")
+	assert.Contains(t, doc.Content, "Main content")
+	assert.NotContains(t, doc.Content, "Warning box")
+}
+
+func TestPipeline_ExcludeSelector_MultipleElements(t *testing.T) {
+	html := `<!DOCTYPE html>
+	<html>
+	<head><title>Multi Exclude</title></head>
+	<body>
+		<article>
+			<h1>Article Title</h1>
+			<div class="ad">Advertisement 1</div>
+			<p>Good content here</p>
+			<div class="ad">Advertisement 2</div>
+			<p>More good content</p>
+		</article>
+	</body>
+	</html>`
+
+	pipeline := converter.NewPipeline(converter.PipelineOptions{
+		ContentSelector: "article",
+		ExcludeSelector: ".ad",
+	})
+
+	doc, err := pipeline.Convert(context.Background(), html, "https://example.com/multi-exclude")
+	require.NoError(t, err)
+	require.NotNil(t, doc)
+
+	assert.Contains(t, doc.Content, "Article Title")
+	assert.Contains(t, doc.Content, "Good content")
+	assert.Contains(t, doc.Content, "More good content")
+	assert.NotContains(t, doc.Content, "Advertisement")
+}
+
+func TestPipeline_ExcludeSelector_CommaSeparated(t *testing.T) {
+	html := `<!DOCTYPE html>
+	<html>
+	<head><title>Exclude Multiple Types</title></head>
+	<body>
+		<article>
+			<h1>Title</h1>
+			<nav>Navigation to exclude</nav>
+			<p>Main content</p>
+			<aside>Sidebar to exclude</aside>
+			<footer>Footer to exclude</footer>
+		</article>
+	</body>
+	</html>`
+
+	pipeline := converter.NewPipeline(converter.PipelineOptions{
+		ContentSelector: "article",
+		ExcludeSelector: "nav, aside, footer",
+	})
+
+	doc, err := pipeline.Convert(context.Background(), html, "https://example.com/exclude-multi")
+	require.NoError(t, err)
+	require.NotNil(t, doc)
+
+	assert.Contains(t, doc.Content, "Title")
+	assert.Contains(t, doc.Content, "Main content")
+	assert.NotContains(t, doc.Content, "Navigation to exclude")
+	assert.NotContains(t, doc.Content, "Sidebar to exclude")
+	assert.NotContains(t, doc.Content, "Footer to exclude")
+}
+
+func TestPipeline_ExcludeSelector_EmptyDoesNothing(t *testing.T) {
+	html := `<!DOCTYPE html>
+	<html>
+	<head><title>No Exclude</title></head>
+	<body>
+		<article>
+			<h1>Title</h1>
+			<div class="note">Note content</div>
+			<p>Main content</p>
+		</article>
+	</body>
+	</html>`
+
+	pipeline := converter.NewPipeline(converter.PipelineOptions{
+		ContentSelector: "article",
+		ExcludeSelector: "",
+	})
+
+	doc, err := pipeline.Convert(context.Background(), html, "https://example.com/no-exclude")
+	require.NoError(t, err)
+	require.NotNil(t, doc)
+
+	assert.Contains(t, doc.Content, "Title")
+	assert.Contains(t, doc.Content, "Note content")
+	assert.Contains(t, doc.Content, "Main content")
 }

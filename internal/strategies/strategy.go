@@ -38,6 +38,7 @@ type Options struct {
 	Split           bool
 	IncludeAssets   bool
 	ContentSelector string
+	ExcludeSelector string
 	CacheTTL        string
 	FilterURL       string // Base URL filter - only crawl URLs starting with this path
 }
@@ -115,6 +116,7 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 	converterPipeline := converter.NewPipeline(converter.PipelineOptions{
 		BaseURL:         "",
 		ContentSelector: opts.ContentSelector,
+		ExcludeSelector: opts.ExcludeSelector,
 	})
 
 	// Create writer
@@ -168,6 +170,7 @@ type DependencyOptions struct {
 	RendererTimeout time.Duration
 	Concurrency     int
 	ContentSelector string
+	ExcludeSelector string
 	OutputDir       string
 	Flat            bool
 	JSONMetadata    bool

@@ -6,6 +6,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-shiori/go-readability"
+	"github.com/rs/zerolog/log"
 )
 
 // ExtractContent extracts the main content from HTML
@@ -42,23 +43,36 @@ func (e *ExtractContent) extractWithSelector(html, sourceURL string) (string, st
 		return "", "", err
 	}
 
-	// Find the content element
-	content := doc.Find(e.selector).First()
-	if content.Length() == 0 {
-		// Fallback to readability if selector doesn't match
+	// Find all matching content elements
+	content := doc.Find(e.selector)
+	matchCount := content.Length()
+
+	log.Debug().
+		Str("selector", e.selector).
+		Int("matches", matchCount).
+		Str("url", sourceURL).
+		Msg("Content selector applied")
+
+	if matchCount == 0 {
+		log.Debug().
+			Str("selector", e.selector).
+			Str("url", sourceURL).
+			Msg("Selector not found, falling back to Readability algorithm")
 		return e.extractWithReadability(html, sourceURL)
 	}
 
 	// Get title
 	title := extractTitle(doc)
 
-	// Get content HTML
-	contentHTML, err := content.Html()
-	if err != nil {
-		return "", "", err
-	}
+	// Combine all matching elements instead of just the first
+	var combined strings.Builder
+	content.Each(func(i int, sel *goquery.Selection) {
+		if h, err := sel.Html(); err == nil {
+			combined.WriteString(h)
+		}
+	})
 
-	return contentHTML, title, nil
+	return combined.String(), title, nil
 }
 
 // extractWithReadability extracts content using the readability algorithm

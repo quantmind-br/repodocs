@@ -13,15 +13,17 @@ import (
 
 // Pipeline orchestrates the HTML to Markdown conversion process
 type Pipeline struct {
-	sanitizer   *Sanitizer
-	extractor   *ExtractContent
-	mdConverter *MarkdownConverter
+	sanitizer       *Sanitizer
+	extractor       *ExtractContent
+	mdConverter     *MarkdownConverter
+	excludeSelector string
 }
 
 // PipelineOptions contains options for the conversion pipeline
 type PipelineOptions struct {
 	BaseURL         string
 	ContentSelector string
+	ExcludeSelector string
 }
 
 // NewPipeline creates a new conversion pipeline
@@ -42,9 +44,10 @@ func NewPipeline(opts PipelineOptions) *Pipeline {
 	})
 
 	return &Pipeline{
-		sanitizer:   sanitizer,
-		extractor:   extractor,
-		mdConverter: mdConverter,
+		sanitizer:       sanitizer,
+		extractor:       extractor,
+		mdConverter:     mdConverter,
+		excludeSelector: opts.ExcludeSelector,
 	}
 }
 
@@ -61,6 +64,11 @@ func (p *Pipeline) Convert(ctx context.Context, html string, sourceURL string) (
 	content, title, err := p.extractor.Extract(html, sourceURL)
 	if err != nil {
 		return nil, err
+	}
+
+	// Step 2.5: Apply exclusion selector (remove unwanted elements)
+	if p.excludeSelector != "" {
+		content = p.removeExcluded(content)
 	}
 
 	// Step 3: Sanitize HTML
@@ -133,4 +141,29 @@ func ConvertHTMLWithSelector(html, sourceURL, selector string) (*domain.Document
 		ContentSelector: selector,
 	})
 	return pipeline.Convert(context.Background(), html, sourceURL)
+}
+
+// removeExcluded removes elements matching the exclude selector from HTML content
+func (p *Pipeline) removeExcluded(html string) string {
+	if p.excludeSelector == "" {
+		return html
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		return html
+	}
+
+	doc.Find(p.excludeSelector).Remove()
+
+	result, err := doc.Find("body").Html()
+	if err != nil {
+		// If body extraction fails, try getting the whole document
+		result, err = doc.Html()
+		if err != nil {
+			return html
+		}
+	}
+
+	return result
 }

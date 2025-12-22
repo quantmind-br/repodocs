@@ -786,6 +786,91 @@ func TestExtractDescription_Content(t *testing.T) {
 	assert.NotEmpty(t, desc)
 }
 
+// TestExtractBody_ReadabilityFallback tests the extractBody fallback when readability fails
+// This tests the extractBody function (line 95 in readability.go) which is used when
+// the go-readability library fails to extract content
+func TestExtractBody_ReadabilityFallback(t *testing.T) {
+	tests := []struct {
+		name        string
+		html        string
+		wantTitle   string
+		wantContent string
+	}{
+		{
+			name: "empty document triggers body fallback",
+			html: `<!DOCTYPE html>
+			<html>
+			<head><title>Empty Doc</title></head>
+			<body>
+				<p>Simple paragraph</p>
+			</body>
+			</html>`,
+			wantTitle:   "Empty Doc",
+			wantContent: "Simple paragraph",
+		},
+		{
+			name: "minimal content with body only",
+			html: `<html>
+			<head><title>Minimal</title></head>
+			<body><span>Just a span</span></body>
+			</html>`,
+			wantTitle:   "Minimal",
+			wantContent: "span",
+		},
+		{
+			name: "body with nested divs",
+			html: `<html>
+			<head><title>Nested</title></head>
+			<body>
+				<div><div><p>Deeply nested content</p></div></div>
+			</body>
+			</html>`,
+			wantTitle:   "Nested",
+			wantContent: "nested",
+		},
+		{
+			name: "no body returns original html",
+			html: `<!DOCTYPE html><html><head><title>No Body Tag</title></head></html>`,
+			wantTitle: "No Body Tag",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			extractor := converter.NewExtractContent("")
+			content, title, err := extractor.Extract(tc.html, "https://example.com/fallback")
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantTitle, title)
+			if tc.wantContent != "" {
+				assert.Contains(t, strings.ToLower(content), strings.ToLower(tc.wantContent))
+			}
+		})
+	}
+}
+
+// TestExtractBody_GoqueryParseFallback tests the case where goquery parsing fails
+// and the function returns raw HTML
+func TestExtractBody_GoqueryParseFallback(t *testing.T) {
+	// Test with extremely malformed content that readability can still handle
+	// but goquery might have issues with
+	html := `<html>
+	<head><title>Malformed</title></head>
+	<body>
+		<p>First paragraph
+		<p>Second paragraph without closing
+		<div>Unclosed div
+	</body>
+	</html>`
+
+	extractor := converter.NewExtractContent("")
+	content, title, err := extractor.Extract(html, "https://example.com/malformed")
+
+	require.NoError(t, err)
+	assert.Equal(t, "Malformed", title)
+	assert.NotEmpty(t, content)
+}
+
 // TestExtractDescription_Empty tests description extraction when no description exists
 func TestExtractDescription_Empty(t *testing.T) {
 	tests := []struct {

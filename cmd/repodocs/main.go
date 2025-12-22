@@ -77,6 +77,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("include-assets", false, "Include referenced images (git)")
 	rootCmd.PersistentFlags().String("user-agent", "", "Custom User-Agent")
 	rootCmd.PersistentFlags().String("content-selector", "", "CSS selector for main content")
+	rootCmd.PersistentFlags().String("exclude-selector", "", "CSS selector for elements to exclude from content")
 
 	// Bind flags to viper
 	_ = viper.BindPFlag("output.directory", rootCmd.PersistentFlags().Lookup("output"))
@@ -158,6 +159,7 @@ func run(cmd *cobra.Command, args []string) error {
 	split, _ := cmd.Flags().GetBool("split")
 	includeAssets, _ := cmd.Flags().GetBool("include-assets")
 	contentSelector, _ := cmd.Flags().GetString("content-selector")
+	excludeSelector, _ := cmd.Flags().GetString("exclude-selector")
 	excludePatterns, _ := cmd.Flags().GetStringSlice("exclude")
 	renderJS, _ := cmd.Flags().GetBool("render-js")
 	force, _ := cmd.Flags().GetBool("force")
@@ -174,6 +176,7 @@ func run(cmd *cobra.Command, args []string) error {
 		IncludeAssets:   includeAssets,
 		Limit:           limit,
 		ContentSelector: contentSelector,
+		ExcludeSelector: excludeSelector,
 		ExcludePatterns: excludePatterns,
 		FilterURL:       filterURL,
 	}

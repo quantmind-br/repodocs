@@ -29,6 +29,7 @@ type OrchestratorOptions struct {
 	IncludeAssets   bool
 	Limit           int
 	ContentSelector string
+	ExcludeSelector string
 	ExcludePatterns []string
 	FilterURL       string
 	// StrategyFactory allows injecting custom strategy creation logic for testing
@@ -82,6 +83,7 @@ func NewOrchestrator(opts OrchestratorOptions) (*Orchestrator, error) {
 		RendererTimeout: cfg.Rendering.JSTimeout,
 		Concurrency:     cfg.Concurrency.Workers,
 		ContentSelector: opts.ContentSelector,
+		ExcludeSelector: opts.ExcludeSelector,
 		OutputDir:       cfg.Output.Directory,
 		Flat:            cfg.Output.Flat,
 		JSONMetadata:    cfg.Output.JSONMetadata,
@@ -154,6 +156,7 @@ func (o *Orchestrator) Run(ctx context.Context, url string, opts OrchestratorOpt
 		Split:           opts.Split,
 		IncludeAssets:   opts.IncludeAssets,
 		ContentSelector: opts.ContentSelector,
+		ExcludeSelector: opts.ExcludeSelector,
 		FilterURL:       opts.FilterURL,
 	}
 
