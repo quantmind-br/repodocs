@@ -25,14 +25,15 @@ The primary goal of `repodocs-go` is to provide a reliable, configurable pipelin
 ## Table of Contents
 
 1.  [Project Overview](#project-overview)
-2.  [Architecture](#architecture)
-3.  [C4 Model Architecture](#c4-model-architecture)
-4.  [Repository Structure](#repository-structure)
-5.  [Dependencies and Integration](#dependencies-and-integration)
-6.  [API Documentation](#api-documentation)
-7.  [Development Notes](#development-notes)
-8.  [Known Issues and Limitations](#known-issues-and-limitations)
-9.  [Additional Documentation](#additional-documentation)
+2.  [Installation and Usage](#installation-and-usage)
+3.  [Architecture](#architecture)
+4.  [C4 Model Architecture](#c4-model-architecture)
+5.  [Repository Structure](#repository-structure)
+6.  [Dependencies and Integration](#dependencies-and-integration)
+7.  [API Documentation](#api-documentation)
+8.  [Development Notes](#development-notes)
+9.  [Known Issues and Limitations](#known-issues-and-limitations)
+10. [Additional Documentation](#additional-documentation)
 
 ## Architecture
 
@@ -155,6 +156,126 @@ C4Container
     cli --> filesystem "Writes final Markdown documentation"
 ```
 </details>
+
+## Installation and Usage
+
+### Prerequisites
+
+- **Go 1.21+** (for building from source)
+- **Chromium/Chrome** (optional, for JavaScript rendering)
+- **Git** (for cloning repositories)
+
+### Installation
+
+#### Option 1: User Installation (~/.local/bin)
+
+Install for the current user without sudo:
+
+```bash
+git clone https://github.com/quantmind-br/repodocs-go.git
+cd repodocs-go/repodocs-go
+make install
+```
+
+This installs the binary to `~/.local/bin/repodocs`. Make sure this directory is in your PATH:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+# Add to ~/.bashrc or ~/.zshrc to persist
+```
+
+#### Option 2: Global Installation (/usr/local/bin)
+
+Install system-wide (requires sudo):
+
+```bash
+git clone https://github.com/quantmind-br/repodocs-go.git
+cd repodocs-go/repodocs-go
+make install-global
+```
+
+#### Option 3: Build Only
+
+Build without installing:
+
+```bash
+make build
+# Binary will be in ./build/repodocs
+./build/repodocs --help
+```
+
+### Uninstallation
+
+```bash
+# Remove user installation
+make uninstall
+
+# Remove global installation (requires sudo)
+make uninstall-global
+
+# Check installation status
+make check-install
+```
+
+### Quick Start
+
+```bash
+# Extract documentation from a website
+repodocs https://example.com/docs
+
+# Extract from a Git repository
+repodocs https://github.com/user/repo
+
+# Extract from a sitemap
+repodocs https://example.com/sitemap.xml
+
+# Specify output directory
+repodocs https://example.com/docs -o ./my-docs
+
+# Enable JavaScript rendering for SPAs
+repodocs https://spa-app.com --render-js
+
+# Limit crawl depth and pages
+repodocs https://example.com/docs --max-depth 2 --limit 50
+
+# Check system dependencies
+repodocs doctor
+```
+
+### Configuration
+
+Configuration can be provided via:
+1. Command-line flags
+2. Configuration file (`~/.repodocs/config.yaml`)
+3. Environment variables
+
+Example config file:
+
+```yaml
+output:
+  directory: "./docs"
+  flat: false
+  overwrite: false
+
+concurrency:
+  workers: 5
+  max_depth: 4
+  timeout: 30s
+
+cache:
+  enabled: true
+  ttl: 24h
+
+rendering:
+  force_js: false
+  wait_stable: 2s
+```
+
+For more options, run:
+
+```bash
+repodocs --help
+```
 
 ## Repository Structure
 

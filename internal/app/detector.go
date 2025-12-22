@@ -40,11 +40,16 @@ func DetectStrategy(url string) StrategyType {
 	}
 
 	// Check for Git repository
-	if strings.HasPrefix(url, "git@") ||
+	// Exclude known documentation/pages subdomains
+	isDocsSubdomain := strings.Contains(lower, "docs.github.com") ||
+		strings.Contains(lower, "pages.github.io") ||
+		strings.Contains(lower, "github.io")
+
+	if !isDocsSubdomain && (strings.HasPrefix(url, "git@") ||
 		strings.HasSuffix(lower, ".git") ||
 		(strings.Contains(lower, "github.com") && !strings.Contains(lower, "/blob/") && !strings.Contains(lower, "/tree/")) ||
 		(strings.Contains(lower, "gitlab.com") && !strings.Contains(lower, "/-/blob/") && !strings.Contains(lower, "/-/tree/")) ||
-		strings.Contains(lower, "bitbucket.org") {
+		strings.Contains(lower, "bitbucket.org")) {
 		return StrategyGit
 	}
 

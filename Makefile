@@ -20,8 +20,9 @@ CMD_DIR=./cmd/repodocs
 BUILD_DIR=./build
 COVERAGE_DIR=./coverage
 INSTALL_DIR=$(HOME)/.local/bin
+INSTALL_DIR_GLOBAL=/usr/local/bin
 
-.PHONY: all build clean test coverage lint fmt vet deps help
+.PHONY: all build clean test coverage lint fmt vet deps help install uninstall install-global uninstall-global
 
 ## Main commands
 
@@ -111,11 +112,45 @@ dev: ## Watch mode (requires air)
 
 ## Installation
 
-install: build ## Install to ~/.local/bin
+install: build ## Install to ~/.local/bin (user installation)
 	@echo "Installing $(BINARY_NAME) to $(INSTALL_DIR)..."
 	@mkdir -p $(INSTALL_DIR)
-	@cp $(BUILD_DIR)/$(BINARY_NAME) $(INSTALL_DIR)/
-	@echo "Installed! Make sure $(INSTALL_DIR) is in your PATH"
+	@install -m 755 $(BUILD_DIR)/$(BINARY_NAME) $(INSTALL_DIR)/
+	@echo "✓ Installed $(BINARY_NAME) to $(INSTALL_DIR)"
+	@echo "  Make sure $(INSTALL_DIR) is in your PATH"
+	@echo "  Run: export PATH=\"$(INSTALL_DIR):\$$PATH\" (add to ~/.bashrc or ~/.zshrc)"
+
+uninstall: ## Remove from ~/.local/bin
+	@echo "Uninstalling $(BINARY_NAME) from $(INSTALL_DIR)..."
+	@rm -f $(INSTALL_DIR)/$(BINARY_NAME)
+	@echo "✓ Uninstalled $(BINARY_NAME)"
+
+install-global: build ## Install to /usr/local/bin (requires sudo)
+	@echo "Installing $(BINARY_NAME) to $(INSTALL_DIR_GLOBAL) (requires sudo)..."
+	@sudo install -m 755 $(BUILD_DIR)/$(BINARY_NAME) $(INSTALL_DIR_GLOBAL)/
+	@echo "✓ Installed $(BINARY_NAME) to $(INSTALL_DIR_GLOBAL)"
+	@which $(BINARY_NAME) > /dev/null && echo "  $(BINARY_NAME) is now available globally" || echo "  Warning: $(INSTALL_DIR_GLOBAL) not in PATH"
+
+uninstall-global: ## Remove from /usr/local/bin (requires sudo)
+	@echo "Uninstalling $(BINARY_NAME) from $(INSTALL_DIR_GLOBAL) (requires sudo)..."
+	@sudo rm -f $(INSTALL_DIR_GLOBAL)/$(BINARY_NAME)
+	@echo "✓ Uninstalled $(BINARY_NAME)"
+
+check-install: ## Check installation status
+	@echo "Checking $(BINARY_NAME) installation..."
+	@if [ -f "$(INSTALL_DIR)/$(BINARY_NAME)" ]; then \
+		echo "✓ User installation found: $(INSTALL_DIR)/$(BINARY_NAME)"; \
+		echo "  Version: $$($(INSTALL_DIR)/$(BINARY_NAME) version 2>/dev/null || echo 'unknown')"; \
+	else \
+		echo "✗ Not installed in $(INSTALL_DIR)"; \
+	fi
+	@if [ -f "$(INSTALL_DIR_GLOBAL)/$(BINARY_NAME)" ]; then \
+		echo "✓ Global installation found: $(INSTALL_DIR_GLOBAL)/$(BINARY_NAME)"; \
+		echo "  Version: $$($(INSTALL_DIR_GLOBAL)/$(BINARY_NAME) version 2>/dev/null || echo 'unknown')"; \
+	else \
+		echo "✗ Not installed in $(INSTALL_DIR_GLOBAL)"; \
+	fi
+	@which $(BINARY_NAME) > /dev/null && echo "✓ $(BINARY_NAME) is in PATH: $$(which $(BINARY_NAME))" || echo "✗ $(BINARY_NAME) not found in PATH"
 
 ## Help
 

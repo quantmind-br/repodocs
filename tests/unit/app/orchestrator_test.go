@@ -238,6 +238,15 @@ func TestDetectStrategy(t *testing.T) {
 		{"Unknown URL", "ftp://example.com", app.StrategyUnknown},
 		{"File URL", "file:///path/to/file", app.StrategyUnknown},
 		{"Empty URL", "", app.StrategyUnknown},
+		// GitHub documentation sites should use crawler, not git
+		{"docs.github.com", "https://docs.github.com/en/get-started", app.StrategyCrawler},
+		{"docs.github.com with locale", "https://docs.github.com/pt/copilot/concepts/agents/about-copilot-cli", app.StrategyCrawler},
+		{"github.io pages", "https://user.github.io/project", app.StrategyCrawler},
+		{"pages.github.io", "https://pages.github.io/docs", app.StrategyCrawler},
+		{"GitHub blob view", "https://github.com/user/repo/blob/main/README.md", app.StrategyCrawler},
+		{"GitHub tree view", "https://github.com/user/repo/tree/main/docs", app.StrategyCrawler},
+		{"GitLab blob view", "https://gitlab.com/user/repo/-/blob/main/README.md", app.StrategyCrawler},
+		{"GitLab tree view", "https://gitlab.com/user/repo/-/tree/main/docs", app.StrategyCrawler},
 	}
 
 	for _, tt := range tests {
