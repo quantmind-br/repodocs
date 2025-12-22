@@ -79,11 +79,23 @@ func (s *GitStrategy) Name() string {
 
 // CanHandle returns true if this strategy can handle the given URL
 func (s *GitStrategy) CanHandle(url string) bool {
+	lower := strings.ToLower(url)
+
+	// Exclude known documentation/pages subdomains
+	isDocsSubdomain := strings.Contains(lower, "docs.github.com") ||
+		strings.Contains(lower, "pages.github.io") ||
+		strings.Contains(lower, "github.io")
+
+	if isDocsSubdomain {
+		return false
+	}
+
+	// Check if it's a Git repository URL
 	return strings.HasPrefix(url, "git@") ||
-		strings.HasSuffix(url, ".git") ||
-		strings.Contains(url, "github.com") ||
-		strings.Contains(url, "gitlab.com") ||
-		strings.Contains(url, "bitbucket.org")
+		strings.HasSuffix(lower, ".git") ||
+		(strings.Contains(lower, "github.com") && !strings.Contains(lower, "/blob/") && !strings.Contains(lower, "/tree/")) ||
+		(strings.Contains(lower, "gitlab.com") && !strings.Contains(lower, "/-/blob/") && !strings.Contains(lower, "/-/tree/")) ||
+		strings.Contains(lower, "bitbucket.org")
 }
 
 // Execute runs the git extraction strategy

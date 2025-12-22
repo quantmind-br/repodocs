@@ -279,46 +279,91 @@ func TestDetectStrategy_CaseInsensitive(t *testing.T) {
 }
 
 func TestCreateStrategy(t *testing.T) {
-	// Arrange
-	cfg := config.Default()
-	cfg.Cache.Enabled = false // Disable cache to avoid BadgerDB lock issues in tests
-	deps, err := app.NewOrchestrator(app.OrchestratorOptions{
-		Config: cfg,
-	})
-	require.NoError(t, err)
-	require.NotNil(t, deps)
-
-	// Note: CreateStrategy requires *strategies.Dependencies
-	// In a real test, we'd need to create proper dependencies
-	// This is a simplified test structure
+	deps := testutil.NewMinimalDependencies(t)
 
 	tests := []struct {
-		name     string
-		strategy app.StrategyType
+		name         string
+		strategyType app.StrategyType
+		expectNil    bool
 	}{
-		{"LLMS Strategy", app.StrategyLLMS},
-		{"Sitemap Strategy", app.StrategySitemap},
-		{"Git Strategy", app.StrategyGit},
-		{"PkgGo Strategy", app.StrategyPkgGo},
-		{"Crawler Strategy", app.StrategyCrawler},
-		{"Unknown Strategy", app.StrategyUnknown},
+		{"LLMS Strategy", app.StrategyLLMS, false},
+		{"Sitemap Strategy", app.StrategySitemap, false},
+		{"Git Strategy", app.StrategyGit, false},
+		{"PkgGo Strategy", app.StrategyPkgGo, false},
+		{"Crawler Strategy", app.StrategyCrawler, false},
+		{"Unknown Strategy", app.StrategyUnknown, true},
+		{"Invalid Strategy", app.StrategyType("invalid"), true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// This test would require proper strategies.Dependencies setup
-			// Skipping for now - would be covered in integration tests
-			t.Skip("Requires full dependency injection setup")
+			strategy := app.CreateStrategy(tt.strategyType, deps)
+
+			if tt.expectNil {
+				assert.Nil(t, strategy, "Expected nil strategy for %s", tt.strategyType)
+			} else {
+				assert.NotNil(t, strategy, "Expected non-nil strategy for %s", tt.strategyType)
+
+				// Verify the strategy has the correct name
+				expectedName := string(tt.strategyType)
+				assert.Equal(t, expectedName, strategy.Name(), "Strategy name mismatch")
+			}
 		})
 	}
 }
 
-func TestFindMatchingStrategy(t *testing.T) {
-	// This test would require full dependency setup
-	t.Skip("Requires full dependency injection setup")
+func TestGetAllStrategies(t *testing.T) {
+	deps := testutil.NewMinimalDependencies(t)
+
+	strategies := app.GetAllStrategies(deps)
+
+	// Should return all 5 strategy types
+	assert.Len(t, strategies, 5, "Expected 5 strategies")
+
+	// Verify all strategies are non-nil
+	for i, strategy := range strategies {
+		assert.NotNil(t, strategy, "Strategy at index %d should not be nil", i)
+	}
+
+	// Verify strategy names
+	expectedNames := []string{"llms", "sitemap", "git", "pkggo", "crawler"}
+	actualNames := make([]string, len(strategies))
+	for i, strategy := range strategies {
+		actualNames[i] = strategy.Name()
+	}
+
+	assert.ElementsMatch(t, expectedNames, actualNames, "Strategy names don't match expected")
 }
 
-func TestGetAllStrategies(t *testing.T) {
-	// This test would require full dependency setup
-	t.Skip("Requires full dependency injection setup")
+func TestFindMatchingStrategy(t *testing.T) {
+	deps := testutil.NewMinimalDependencies(t)
+
+	tests := []struct {
+		name             string
+		url              string
+		expectedStrategy string // strategy name, or empty for nil
+	}{
+		{"LLMS txt file", "https://example.com/llms.txt", "llms"},
+		{"pkg.go.dev URL", "https://pkg.go.dev/github.com/user/repo", "pkggo"},
+		{"Sitemap XML", "https://example.com/sitemap.xml", "sitemap"},
+		{"GitHub repo", "https://github.com/user/repo", "git"},
+		{"Regular website", "https://example.com/docs", "crawler"},
+		{"docs.github.com", "https://docs.github.com/en/actions", "crawler"},
+		{"Unknown protocol", "ftp://example.com", ""},
+		{"Empty URL", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			strategy := app.FindMatchingStrategy(tt.url, deps)
+
+			if tt.expectedStrategy == "" {
+				assert.Nil(t, strategy, "Expected nil strategy for URL: %s", tt.url)
+			} else {
+				require.NotNil(t, strategy, "Expected non-nil strategy for URL: %s", tt.url)
+				assert.Equal(t, tt.expectedStrategy, strategy.Name(),
+					"Strategy name mismatch for URL: %s", tt.url)
+			}
+		})
+	}
 }

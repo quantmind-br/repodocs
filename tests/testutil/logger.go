@@ -4,20 +4,21 @@ import (
 	"io"
 	"testing"
 
+	"github.com/quantmind-br/repodocs-go/internal/utils"
 	"github.com/rs/zerolog"
 )
 
 // NewTestLogger creates a test logger that writes to testing.T
-func NewTestLogger(t *testing.T) *zerolog.Logger {
+func NewTestLogger(t *testing.T) *utils.Logger {
 	t.Helper()
 
 	// Create a logger that writes to the test output
-	logger := zerolog.New(io.Discard).With().
+	zlogger := zerolog.New(io.Discard).With().
 		Timestamp().
 		Str("test", t.Name()).
 		Logger()
 
-	return &logger
+	return &utils.Logger{Logger: zlogger}
 }
 
 // NewNoOpLogger creates a logger that discards all output

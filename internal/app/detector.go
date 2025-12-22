@@ -80,13 +80,14 @@ func CreateStrategy(strategyType StrategyType, deps *strategies.Dependencies) st
 }
 
 // GetAllStrategies returns all available strategies
+// Strategies are ordered from most specific to least specific
 func GetAllStrategies(deps *strategies.Dependencies) []strategies.Strategy {
 	return []strategies.Strategy{
-		strategies.NewLLMSStrategy(deps),
-		strategies.NewSitemapStrategy(deps),
-		strategies.NewGitStrategy(deps),
-		strategies.NewPkgGoStrategy(deps),
-		strategies.NewCrawlerStrategy(deps),
+		strategies.NewLLMSStrategy(deps),     // Most specific: /llms.txt
+		strategies.NewPkgGoStrategy(deps),    // Specific: pkg.go.dev (must come before Git!)
+		strategies.NewSitemapStrategy(deps),  // Specific: sitemap.xml
+		strategies.NewGitStrategy(deps),      // General: github.com, gitlab.com, etc
+		strategies.NewCrawlerStrategy(deps),  // Catch-all: any HTTP URL
 	}
 }
 
