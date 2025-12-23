@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/go-rod/rod"
@@ -29,6 +30,7 @@ type RendererOptions struct {
 	Stealth     bool
 	Headless    bool
 	BrowserPath string
+	NoSandbox   bool // Required for running in CI/Docker environments
 }
 
 // DefaultRendererOptions returns default renderer options
@@ -39,7 +41,13 @@ func DefaultRendererOptions() RendererOptions {
 		Stealth:     true,
 		Headless:    true,
 		BrowserPath: "",
+		NoSandbox:   isCI(), // Auto-detect CI environment
 	}
+}
+
+// isCI returns true if running in a CI environment
+func isCI() bool {
+	return os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") != ""
 }
 
 // NewRenderer creates a new headless browser renderer
@@ -65,6 +73,11 @@ func NewRenderer(opts RendererOptions) (*Renderer, error) {
 	// Additional flags for stealth
 	if opts.Stealth {
 		l = l.Set("disable-blink-features", "AutomationControlled")
+	}
+
+	// NoSandbox is required for running in CI/Docker environments
+	if opts.NoSandbox {
+		l = l.NoSandbox(true)
 	}
 
 	// Launch browser
