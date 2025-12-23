@@ -86,11 +86,15 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 	})
 
 	// Create progress bar (unknown total)
+	// Note: Setting -1 with spinner creates race condition with -race flag
+	// Using a simpler counter-based progress bar
 	bar := progressbar.NewOptions(-1,
 		progressbar.OptionSetDescription("Crawling"),
 		progressbar.OptionShowCount(),
 		progressbar.OptionSpinnerType(14),
+		progressbar.OptionSetRenderBlankState(true),
 	)
+	var barMu sync.Mutex
 
 	// Handle links
 	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
@@ -157,7 +161,9 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 		processedCount++
 		mu.Unlock()
 
+		barMu.Lock()
 		bar.Add(1)
+		barMu.Unlock()
 
 		// Check if already exists
 		if !opts.Force && s.writer.Exists(r.Request.URL.String()) {
