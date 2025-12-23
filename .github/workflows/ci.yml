@@ -28,6 +28,11 @@ jobs:
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
           golangci-lint run ./...
 
+      - name: Install Chromium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+
       - name: Test
         run: make test
 
