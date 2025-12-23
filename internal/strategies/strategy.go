@@ -98,12 +98,10 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 	// Create renderer if needed
 	var rendererImpl domain.Renderer
 	if opts.EnableRenderer {
-		r, err := renderer.NewRenderer(renderer.RendererOptions{
-			Timeout:  opts.RendererTimeout,
-			MaxTabs:  opts.Concurrency,
-			Stealth:  true,
-			Headless: true,
-		})
+		rendererOpts := renderer.DefaultRendererOptions()
+		rendererOpts.Timeout = opts.RendererTimeout
+		rendererOpts.MaxTabs = opts.Concurrency
+		r, err := renderer.NewRenderer(rendererOpts)
 		if err != nil {
 			// Renderer is optional, continue without it
 			rendererImpl = nil

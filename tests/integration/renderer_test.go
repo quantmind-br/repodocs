@@ -398,12 +398,10 @@ func TestCloseMultipleTimes(t *testing.T) {
 func TestConcurrentRender(t *testing.T) {
 	skipIfChromeUnavailable(t)
 
-	r, err := renderer.NewRenderer(renderer.RendererOptions{
-		Timeout:  10 * time.Second,
-		MaxTabs:  5,
-		Stealth:  true,
-		Headless: true,
-	})
+	opts := renderer.DefaultRendererOptions()
+	opts.Timeout = 10 * time.Second
+	opts.MaxTabs = 5
+	r, err := renderer.NewRenderer(opts)
 	require.NoError(t, err)
 	defer r.Close()
 
@@ -484,12 +482,10 @@ func TestConcurrentRender(t *testing.T) {
 func TestRenderWithStealthMode(t *testing.T) {
 	skipIfChromeUnavailable(t)
 
-	r, err := renderer.NewRenderer(renderer.RendererOptions{
-		Timeout:  10 * time.Second,
-		MaxTabs:  2,
-		Stealth:  true, // Enable stealth mode
-		Headless: true,
-	})
+	opts := renderer.DefaultRendererOptions()
+	opts.Timeout = 10 * time.Second
+	opts.MaxTabs = 2
+	r, err := renderer.NewRenderer(opts)
 	require.NoError(t, err)
 	defer r.Close()
 
