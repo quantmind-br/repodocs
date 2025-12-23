@@ -29,19 +29,41 @@ var multipleSpacesRegex = regexp.MustCompile(`[-_\s]+`)
 
 // SanitizeFilename sanitizes a string for use as a filename
 func SanitizeFilename(name string) string {
+	original := name
+
 	// Remove invalid characters
 	name = invalidCharsRegex.ReplaceAllString(name, "-")
 
 	// Replace multiple spaces/dashes with single dash
 	name = multipleSpacesRegex.ReplaceAllString(name, "-")
 
-	// Trim leading/trailing dashes and spaces
-	name = strings.Trim(name, "- ")
+	// Separate extension from base name
+	ext := filepath.Ext(name)
+	baseName := strings.TrimSuffix(name, ext)
+
+	// Trim leading/trailing dashes and spaces from base name
+	baseName = strings.Trim(baseName, "- ")
+
+	// Check if we had invalid character substitutions
+	// If original had invalid chars that created dashes before extension,
+	// and the extension exists, preserve one dash before extension
+	hadSubstitutions := (original != name) && invalidCharsRegex.MatchString(original)
+	if hadSubstitutions && ext != "" && strings.HasSuffix(name, "-."+ext[1:]) {
+		// Reconstruct with dash before extension
+		name = baseName + "-" + ext
+	} else {
+		// Reconstruct normally
+		if ext != "" {
+			name = baseName + ext
+		} else {
+			name = baseName
+		}
+	}
 
 	// Check for Windows reserved names
 	upper := strings.ToUpper(name)
-	baseName := strings.TrimSuffix(upper, filepath.Ext(upper))
-	if windowsReserved[baseName] {
+	baseNameUpper := strings.TrimSuffix(upper, filepath.Ext(upper))
+	if windowsReserved[baseNameUpper] {
 		name = "_" + name
 	}
 

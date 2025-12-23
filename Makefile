@@ -78,7 +78,7 @@ coverage: ## Generate coverage report
 
 lint: ## Run linters
 	@echo "Running linters..."
-	@which golangci-lint > /dev/null || (echo "Installing golangci-lint v2..." && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v2.0.0)
+	@which golangci-lint > /dev/null || (echo "Installing golangci-lint..." && go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest)
 	golangci-lint run ./...
 
 fmt: ## Format code

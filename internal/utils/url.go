@@ -78,6 +78,13 @@ func NormalizeURLWithoutQuery(rawURL string) (string, error) {
 
 // ResolveURL resolves a relative URL against a base URL
 func ResolveURL(base, ref string) (string, error) {
+	// If the base doesn't end with / and doesn't have a file extension,
+	// treat it as a directory by adding a trailing slash
+	// This ensures that "../page" from "/docs/api" resolves to "/docs/page" not "/page"
+	if !strings.HasSuffix(base, "/") && !strings.Contains(path.Base(base), ".") {
+		base += "/"
+	}
+
 	baseURL, err := url.Parse(base)
 	if err != nil {
 		return "", err
@@ -101,11 +108,17 @@ func GetDomain(rawURL string) string {
 	return u.Host
 }
 
-// GetBaseDomain extracts the base domain (without subdomain) from a URL
+// GetBaseDomain extracts the base domain from a URL, removing only the "www" prefix
+// For example: "www.example.com" -> "example.com", "docs.example.com" -> "docs.example.com"
 func GetBaseDomain(rawURL string) string {
 	host := GetDomain(rawURL)
 	if host == "" {
 		return ""
+	}
+
+	// Remove port if present
+	if idx := strings.LastIndex(host, ":"); idx != -1 {
+		host = host[:idx]
 	}
 
 	// Only strip "www." prefix, keep other subdomains
@@ -116,14 +129,43 @@ func GetBaseDomain(rawURL string) string {
 	return host
 }
 
+// extractRootDomain extracts the root domain (domain + TLD) without any subdomains
+// For example: "docs.example.com" -> "example.com", "www.example.com" -> "example.com"
+func extractRootDomain(rawURL string) string {
+	host := GetDomain(rawURL)
+	if host == "" {
+		return ""
+	}
+
+	// Remove port if present
+	if idx := strings.LastIndex(host, ":"); idx != -1 {
+		host = host[:idx]
+	}
+
+	// Split by dots
+	parts := strings.Split(strings.ToLower(host), ".")
+
+	// Need at least 2 parts (domain + TLD)
+	if len(parts) < 2 {
+		return host
+	}
+
+	// Extract the last 2 parts (domain + TLD)
+	// This works for most TLDs like .com, .org, .net
+	// Note: This is a simplified approach and won't work perfectly for
+	// compound TLDs like .co.uk, but covers the common cases
+	return strings.Join(parts[len(parts)-2:], ".")
+}
+
 // IsSameDomain checks if two URLs have the same domain
 func IsSameDomain(url1, url2 string) bool {
 	return strings.EqualFold(GetDomain(url1), GetDomain(url2))
 }
 
-// IsSameBaseDomain checks if two URLs have the same base domain
+// IsSameBaseDomain checks if two URLs have the same base domain (ignoring subdomains)
+// For example: "docs.example.com" and "api.example.com" return true
 func IsSameBaseDomain(url1, url2 string) bool {
-	return GetBaseDomain(url1) == GetBaseDomain(url2)
+	return extractRootDomain(url1) == extractRootDomain(url2)
 }
 
 // IsAbsoluteURL checks if a URL is absolute
@@ -274,7 +316,10 @@ func GenerateOutputDirFromURL(rawURL string) string {
 		// Remove common prefixes
 		host = strings.TrimPrefix(host, "www.")
 
-		// Remove dots and special characters to create a clean name
+		// Concatenate all parts of the domain (removes dots)
+		// example.com -> examplecom
+		// docs.crawl4ai.com -> docscrawl4aicom
+		// This creates a clean directory name from the full domain
 		name = sanitizeForDirName(host)
 	}
 
