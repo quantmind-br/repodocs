@@ -46,17 +46,23 @@ func (s *LLMSStrategy) CanHandle(url string) bool {
 func (s *LLMSStrategy) Execute(ctx context.Context, url string, opts Options) error {
 	s.logger.Info().Str("url", url).Msg("Fetching llms.txt")
 
-	// Fetch llms.txt content
+	if opts.FilterURL != "" {
+		s.logger.Info().Str("filter", opts.FilterURL).Msg("URL filter active - only downloading URLs under this path")
+	}
+
 	resp, err := s.fetcher.Get(ctx, url)
 	if err != nil {
 		return err
 	}
 
-	// Parse links from llms.txt
 	links := parseLLMSLinks(string(resp.Body))
 	s.logger.Info().Int("count", len(links)).Msg("Found links in llms.txt")
 
-	// Apply limit
+	if opts.FilterURL != "" {
+		links = filterLLMSLinks(links, opts.FilterURL)
+		s.logger.Info().Int("count", len(links)).Str("filter", opts.FilterURL).Msg("Links after filter")
+	}
+
 	if opts.Limit > 0 && len(links) > opts.Limit {
 		links = links[:opts.Limit]
 	}
@@ -124,7 +130,6 @@ func (s *LLMSStrategy) Execute(ctx context.Context, url string, opts Options) er
 // linkRegex matches markdown links: [Title](url)
 var linkRegex = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
 
-// parseLLMSLinks parses markdown links from llms.txt content
 func parseLLMSLinks(content string) []domain.LLMSLink {
 	var links []domain.LLMSLink
 
@@ -134,7 +139,6 @@ func parseLLMSLinks(content string) []domain.LLMSLink {
 			title := strings.TrimSpace(match[1])
 			url := strings.TrimSpace(match[2])
 
-			// Skip empty URLs or anchors
 			if url == "" || strings.HasPrefix(url, "#") {
 				continue
 			}
@@ -147,4 +151,14 @@ func parseLLMSLinks(content string) []domain.LLMSLink {
 	}
 
 	return links
+}
+
+func filterLLMSLinks(links []domain.LLMSLink, filterURL string) []domain.LLMSLink {
+	filtered := make([]domain.LLMSLink, 0, len(links))
+	for _, link := range links {
+		if utils.HasBaseURL(link.URL, filterURL) {
+			filtered = append(filtered, link)
+		}
+	}
+	return filtered
 }

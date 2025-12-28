@@ -102,10 +102,10 @@ func TestLLMSStrategy_Name(t *testing.T) {
 
 func TestParseLLMSLinksTest(t *testing.T) {
 	tests := []struct {
-		name         string
-		content      string
-		expected     []domain.LLMSLink
-		expectedErr  bool
+		name        string
+		content     string
+		expected    []domain.LLMSLink
+		expectedErr bool
 	}{
 		{
 			name: "Simple markdown links",
@@ -135,14 +135,14 @@ func TestParseLLMSLinksTest(t *testing.T) {
 			name: "Empty links - skipped",
 			content: `[Empty]()
 [Also Empty](   )`,
-			expected: []domain.LLMSLink{},
+			expected:    []domain.LLMSLink{},
 			expectedErr: false,
 		},
 		{
 			name: "Anchor links (should be skipped)",
 			content: `[Top](#top)
 [Section](#section)`,
-			expected: []domain.LLMSLink{},
+			expected:    []domain.LLMSLink{},
 			expectedErr: false,
 		},
 		{
@@ -176,15 +176,15 @@ func TestParseLLMSLinksTest(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name: "No links",
-			content: `This is just plain text without any links.`,
-			expected: []domain.LLMSLink{},
+			name:        "No links",
+			content:     `This is just plain text without any links.`,
+			expected:    []domain.LLMSLink{},
 			expectedErr: false,
 		},
 		{
-			name: "Empty content",
-			content: ``,
-			expected: []domain.LLMSLink{},
+			name:        "Empty content",
+			content:     ``,
+			expected:    []domain.LLMSLink{},
 			expectedErr: false,
 		},
 		{
@@ -253,10 +253,10 @@ func TestParseLLMSLinksTest_LinkRegex(t *testing.T) {
 	linkRegex := regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
 
 	tests := []struct {
-		name     string
-		input    string
-		matches  int
-		first    []string
+		name    string
+		input   string
+		matches int
+		first   []string
 	}{
 		{
 			name:    "Single link",
@@ -682,8 +682,8 @@ func TestParseLLMSLinksTest_EdgeCases(t *testing.T) {
 			expected: []domain.LLMSLink{},
 		},
 		{
-			name:     "Title with newlines - regex matches across newlines",
-			content:  "[Title\nWith Newlines](https://example.com)",
+			name:    "Title with newlines - regex matches across newlines",
+			content: "[Title\nWith Newlines](https://example.com)",
 			expected: []domain.LLMSLink{
 				{Title: "Title\nWith Newlines", URL: "https://example.com"},
 			},
@@ -714,8 +714,8 @@ func TestParseLLMSLinksTest_EdgeCases(t *testing.T) {
 			expected: []domain.LLMSLink{{Title: "Local", URL: "http://localhost:8080"}},
 		},
 		{
-			name:     "HTTPS and HTTP",
-			content:  `[HTTPS](https://secure.com) [HTTP](http://insecure.com)`,
+			name:    "HTTPS and HTTP",
+			content: `[HTTPS](https://secure.com) [HTTP](http://insecure.com)`,
 			expected: []domain.LLMSLink{
 				{Title: "HTTPS", URL: "https://secure.com"},
 				{Title: "HTTP", URL: "http://insecure.com"},
@@ -832,7 +832,6 @@ func createTestLLMSDependencies(t *testing.T) *strategies.Dependencies {
 // linkRegex matches markdown links: [Title](url) (mirror from llms.go)
 var linkRegex = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
 
-// parseLLMSLinks parses markdown links from llms.txt content (mirror from llms.go)
 func parseLLMSLinksTest(content string) []domain.LLMSLink {
 	var links []domain.LLMSLink
 
@@ -842,7 +841,6 @@ func parseLLMSLinksTest(content string) []domain.LLMSLink {
 			title := strings.TrimSpace(match[1])
 			url := strings.TrimSpace(match[2])
 
-			// Skip empty URLs or anchors
 			if url == "" || strings.HasPrefix(url, "#") {
 				continue
 			}
@@ -855,4 +853,144 @@ func parseLLMSLinksTest(content string) []domain.LLMSLink {
 	}
 
 	return links
+}
+
+func filterLLMSLinksTest(links []domain.LLMSLink, filterURL string) []domain.LLMSLink {
+	filtered := make([]domain.LLMSLink, 0, len(links))
+	for _, link := range links {
+		if filterURL == "" || strings.HasPrefix(link.URL, filterURL) {
+			filtered = append(filtered, link)
+		}
+	}
+	return filtered
+}
+
+func TestFilterLLMSLinks(t *testing.T) {
+	tests := []struct {
+		name      string
+		links     []domain.LLMSLink
+		filterURL string
+		expected  []domain.LLMSLink
+	}{
+		{
+			name: "Filter by path prefix",
+			links: []domain.LLMSLink{
+				{Title: "Agents", URL: "https://platform.claude.com/docs/en/agents-and-tools/agents"},
+				{Title: "Tools", URL: "https://platform.claude.com/docs/en/agents-and-tools/tools"},
+				{Title: "Overview", URL: "https://platform.claude.com/docs/en/overview"},
+				{Title: "API", URL: "https://platform.claude.com/docs/en/api"},
+			},
+			filterURL: "https://platform.claude.com/docs/en/agents-and-tools/",
+			expected: []domain.LLMSLink{
+				{Title: "Agents", URL: "https://platform.claude.com/docs/en/agents-and-tools/agents"},
+				{Title: "Tools", URL: "https://platform.claude.com/docs/en/agents-and-tools/tools"},
+			},
+		},
+		{
+			name: "Empty filter returns all links",
+			links: []domain.LLMSLink{
+				{Title: "Page1", URL: "https://example.com/page1"},
+				{Title: "Page2", URL: "https://example.com/page2"},
+			},
+			filterURL: "",
+			expected: []domain.LLMSLink{
+				{Title: "Page1", URL: "https://example.com/page1"},
+				{Title: "Page2", URL: "https://example.com/page2"},
+			},
+		},
+		{
+			name: "Filter excludes all links",
+			links: []domain.LLMSLink{
+				{Title: "Blog", URL: "https://example.com/blog/post1"},
+				{Title: "News", URL: "https://example.com/news/article1"},
+			},
+			filterURL: "https://example.com/docs/",
+			expected:  []domain.LLMSLink{},
+		},
+		{
+			name: "Filter with exact match",
+			links: []domain.LLMSLink{
+				{Title: "Exact", URL: "https://example.com/docs"},
+				{Title: "SubPath", URL: "https://example.com/docs/api"},
+			},
+			filterURL: "https://example.com/docs",
+			expected: []domain.LLMSLink{
+				{Title: "Exact", URL: "https://example.com/docs"},
+				{Title: "SubPath", URL: "https://example.com/docs/api"},
+			},
+		},
+		{
+			name: "Filter different domains",
+			links: []domain.LLMSLink{
+				{Title: "Internal", URL: "https://platform.claude.com/docs/en/api"},
+				{Title: "External", URL: "https://external.com/docs/en/api"},
+			},
+			filterURL: "https://platform.claude.com/docs/",
+			expected: []domain.LLMSLink{
+				{Title: "Internal", URL: "https://platform.claude.com/docs/en/api"},
+			},
+		},
+		{
+			name:      "Empty links",
+			links:     []domain.LLMSLink{},
+			filterURL: "https://example.com/docs/",
+			expected:  []domain.LLMSLink{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := filterLLMSLinksTest(tt.links, tt.filterURL)
+			assert.Equal(t, len(tt.expected), len(result), "Number of filtered links mismatch")
+
+			for i, expectedLink := range tt.expected {
+				if i < len(result) {
+					assert.Equal(t, expectedLink.Title, result[i].Title)
+					assert.Equal(t, expectedLink.URL, result[i].URL)
+				}
+			}
+		})
+	}
+}
+
+func TestExecute_WithFilterURL(t *testing.T) {
+	ctx := context.Background()
+
+	pageServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<html><head><title>Test Page</title></head><body><h1>Content</h1></body></html>`))
+	}))
+	defer pageServer.Close()
+
+	llmsContent := `# Documentation
+
+- [Agents Overview](https://platform.claude.com/docs/en/agents-and-tools/overview)
+- [Tools Guide](https://platform.claude.com/docs/en/agents-and-tools/tools)
+- [API Reference](https://platform.claude.com/docs/en/api/reference)
+- [Getting Started](https://platform.claude.com/docs/en/getting-started)`
+
+	llmsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(llmsContent))
+	}))
+	defer llmsServer.Close()
+
+	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
+		EnableCache:    false,
+		EnableRenderer: false,
+		Verbose:        false,
+	})
+	require.NoError(t, err)
+
+	strategy := strategies.NewLLMSStrategy(deps)
+	opts := strategies.Options{
+		Concurrency: 1,
+		Limit:       0,
+		Force:       true,
+		Output:      t.TempDir(),
+		FilterURL:   "https://platform.claude.com/docs/en/agents-and-tools/",
+	}
+
+	err = strategy.Execute(ctx, llmsServer.URL, opts)
+	require.NoError(t, err)
 }
