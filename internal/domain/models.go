@@ -119,3 +119,47 @@ func (d *Document) ToFrontmatter() *Frontmatter {
 		WordCount:  d.WordCount,
 	}
 }
+
+// =============================================================================
+// LLM Types
+// =============================================================================
+
+// MessageRole represents the role in a conversation
+type MessageRole string
+
+const (
+	// RoleSystem represents a system message
+	RoleSystem MessageRole = "system"
+	// RoleUser represents a user message
+	RoleUser MessageRole = "user"
+	// RoleAssistant represents an assistant message
+	RoleAssistant MessageRole = "assistant"
+)
+
+// LLMMessage represents a message in the conversation
+type LLMMessage struct {
+	Role    MessageRole
+	Content string
+}
+
+// LLMRequest represents a completion request
+type LLMRequest struct {
+	Messages    []LLMMessage
+	MaxTokens   int      // 0 = use provider default
+	Temperature *float64 // nil = use provider default
+}
+
+// LLMResponse represents the LLM response
+type LLMResponse struct {
+	Content      string
+	Model        string
+	FinishReason string
+	Usage        LLMUsage
+}
+
+// LLMUsage contains token usage statistics
+type LLMUsage struct {
+	PromptTokens     int
+	CompletionTokens int
+	TotalTokens      int
+}

@@ -31,6 +31,12 @@ const (
 	// Logging defaults
 	DefaultLogLevel  = "info"
 	DefaultLogFormat = "pretty"
+
+	// LLM defaults (only for optional parameters)
+	DefaultLLMMaxTokens   = 4096
+	DefaultLLMTemperature = 0.7
+	DefaultLLMTimeout     = 60 * time.Second
+	DefaultLLMMaxRetries  = 3
 )
 
 // Default exclude patterns
@@ -95,6 +101,12 @@ func Default() *Config {
 		Logging: LoggingConfig{
 			Level:  DefaultLogLevel,
 			Format: DefaultLogFormat,
+		},
+		LLM: LLMConfig{
+			MaxTokens:   DefaultLLMMaxTokens,
+			Temperature: DefaultLLMTemperature,
+			Timeout:     DefaultLLMTimeout,
+			MaxRetries:  DefaultLLMMaxRetries,
 		},
 	}
 }

@@ -152,3 +152,66 @@ func NewStrategyError(strategy, url string, err error) *StrategyError {
 		Err:      err,
 	}
 }
+
+// =============================================================================
+// LLM Errors
+// =============================================================================
+
+// LLM sentinel errors
+var (
+	// ErrLLMNotConfigured indicates LLM provider is not configured
+	ErrLLMNotConfigured = errors.New("LLM provider not configured")
+
+	// ErrLLMMissingAPIKey indicates API key is required but not provided
+	ErrLLMMissingAPIKey = errors.New("LLM API key is required")
+
+	// ErrLLMMissingBaseURL indicates base URL is required but not provided
+	ErrLLMMissingBaseURL = errors.New("LLM base URL is required")
+
+	// ErrLLMMissingModel indicates model is required but not provided
+	ErrLLMMissingModel = errors.New("LLM model is required")
+
+	// ErrLLMInvalidProvider indicates an invalid provider type
+	ErrLLMInvalidProvider = errors.New("invalid LLM provider")
+
+	// ErrLLMRequestFailed indicates the LLM request failed
+	ErrLLMRequestFailed = errors.New("LLM request failed")
+
+	// ErrLLMRateLimited indicates rate limit was exceeded
+	ErrLLMRateLimited = errors.New("LLM rate limit exceeded")
+
+	// ErrLLMAuthFailed indicates authentication failed
+	ErrLLMAuthFailed = errors.New("LLM authentication failed")
+
+	// ErrLLMContextTooLong indicates context length was exceeded
+	ErrLLMContextTooLong = errors.New("LLM context length exceeded")
+)
+
+// LLMError represents an LLM-specific error
+type LLMError struct {
+	Provider   string
+	StatusCode int
+	Message    string
+	Err        error
+}
+
+func (e *LLMError) Error() string {
+	if e.StatusCode > 0 {
+		return fmt.Sprintf("%s error (HTTP %d): %s", e.Provider, e.StatusCode, e.Message)
+	}
+	return fmt.Sprintf("%s error: %s", e.Provider, e.Message)
+}
+
+func (e *LLMError) Unwrap() error {
+	return e.Err
+}
+
+// NewLLMError creates a new LLMError
+func NewLLMError(provider string, statusCode int, message string, err error) *LLMError {
+	return &LLMError{
+		Provider:   provider,
+		StatusCode: statusCode,
+		Message:    message,
+		Err:        err,
+	}
+}

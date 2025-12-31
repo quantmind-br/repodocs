@@ -11,6 +11,19 @@ type Config struct {
 	Stealth     StealthConfig     `mapstructure:"stealth"`
 	Exclude     []string          `mapstructure:"exclude"`
 	Logging     LoggingConfig     `mapstructure:"logging"`
+	LLM         LLMConfig         `mapstructure:"llm"`
+}
+
+// LLMConfig contains LLM provider settings
+type LLMConfig struct {
+	Provider    string        `mapstructure:"provider"`
+	APIKey      string        `mapstructure:"api_key"`
+	BaseURL     string        `mapstructure:"base_url"`
+	Model       string        `mapstructure:"model"`
+	MaxTokens   int           `mapstructure:"max_tokens"`
+	Temperature float64       `mapstructure:"temperature"`
+	Timeout     time.Duration `mapstructure:"timeout"`
+	MaxRetries  int           `mapstructure:"max_retries"`
 }
 
 // OutputConfig contains output-related settings

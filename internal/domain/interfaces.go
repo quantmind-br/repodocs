@@ -97,3 +97,13 @@ type Writer interface {
 	// Write saves a document to the output directory
 	Write(ctx context.Context, doc *Document) error
 }
+
+// LLMProvider defines the interface for LLM interactions
+type LLMProvider interface {
+	// Name returns the provider name (openai, anthropic, google)
+	Name() string
+	// Complete sends a request and returns the response
+	Complete(ctx context.Context, req *LLMRequest) (*LLMResponse, error)
+	// Close releases resources
+	Close() error
+}

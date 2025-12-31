@@ -436,3 +436,70 @@ func (m *SimpleMockCache) Close() error {
 	m.data = nil
 	return nil
 }
+
+// MockLLMProvider is a mock of LLMProvider interface
+type MockLLMProvider struct {
+	ctrl     *gomock.Controller
+	recorder *MockLLMProviderMockRecorder
+	isgomock struct{}
+}
+
+// MockLLMProviderMockRecorder is the mock recorder for MockLLMProvider
+type MockLLMProviderMockRecorder struct {
+	mock *MockLLMProvider
+}
+
+// NewMockLLMProvider creates a new mock instance
+func NewMockLLMProvider(ctrl *gomock.Controller) *MockLLMProvider {
+	mock := &MockLLMProvider{ctrl: ctrl}
+	mock.recorder = &MockLLMProviderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use
+func (m *MockLLMProvider) EXPECT() *MockLLMProviderMockRecorder {
+	return m.recorder
+}
+
+// Name mocks base method
+func (m *MockLLMProvider) Name() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Name")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Name indicates an expected call of Name
+func (mr *MockLLMProviderMockRecorder) Name() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockLLMProvider)(nil).Name))
+}
+
+// Complete mocks base method
+func (m *MockLLMProvider) Complete(ctx context.Context, req *domain.LLMRequest) (*domain.LLMResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Complete", ctx, req)
+	ret0, _ := ret[0].(*domain.LLMResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Complete indicates an expected call of Complete
+func (mr *MockLLMProviderMockRecorder) Complete(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Complete", reflect.TypeOf((*MockLLMProvider)(nil).Complete), ctx, req)
+}
+
+// Close mocks base method
+func (m *MockLLMProvider) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close
+func (mr *MockLLMProviderMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockLLMProvider)(nil).Close))
+}
