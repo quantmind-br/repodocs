@@ -18,6 +18,7 @@ import (
 
 // WikiStrategy extracts documentation from GitHub wiki repositories
 type WikiStrategy struct {
+	deps   *Dependencies
 	writer *output.Writer
 	logger *utils.Logger
 }
@@ -25,6 +26,7 @@ type WikiStrategy struct {
 // NewWikiStrategy creates a new wiki strategy
 func NewWikiStrategy(deps *Dependencies) *WikiStrategy {
 	return &WikiStrategy{
+		deps:   deps,
 		writer: deps.Writer,
 		logger: deps.Logger,
 	}
@@ -271,9 +273,8 @@ func (s *WikiStrategy) processPage(
 		RelativePath:   relativePath,
 	}
 
-	// Write document
 	if !opts.DryRun {
-		return s.writer.Write(ctx, doc)
+		return s.deps.WriteDocument(ctx, doc)
 	}
 
 	return nil

@@ -19,6 +19,11 @@ type Document struct {
 	SourceStrategy string              `json:"source_strategy"`
 	CacheHit       bool                `json:"cache_hit"`
 	RelativePath   string              `json:"-"` // Relative path for Git-sourced files (used for output structure)
+
+	// LLM-enhanced metadata fields
+	Summary  string   `json:"summary,omitempty"`  // AI-generated summary
+	Tags     []string `json:"tags,omitempty"`     // AI-generated tags
+	Category string   `json:"category,omitempty"` // AI-generated category
 }
 
 // Page represents a raw fetched page before conversion
@@ -78,6 +83,9 @@ type Metadata struct {
 	RenderedWithJS bool                `json:"rendered_with_js"`
 	SourceStrategy string              `json:"source_strategy"`
 	CacheHit       bool                `json:"cache_hit"`
+	Summary        string              `json:"summary,omitempty"`
+	Tags           []string            `json:"tags,omitempty"`
+	Category       string              `json:"category,omitempty"`
 }
 
 // ToMetadata converts a Document to Metadata
@@ -95,6 +103,9 @@ func (d *Document) ToMetadata() *Metadata {
 		RenderedWithJS: d.RenderedWithJS,
 		SourceStrategy: d.SourceStrategy,
 		CacheHit:       d.CacheHit,
+		Summary:        d.Summary,
+		Tags:           d.Tags,
+		Category:       d.Category,
 	}
 }
 
@@ -106,6 +117,9 @@ type Frontmatter struct {
 	FetchedAt  time.Time `yaml:"fetched_at"`
 	RenderedJS bool      `yaml:"rendered_js"`
 	WordCount  int       `yaml:"word_count"`
+	Summary    string    `yaml:"summary,omitempty"`
+	Tags       []string  `yaml:"tags,omitempty"`
+	Category   string    `yaml:"category,omitempty"`
 }
 
 // ToFrontmatter converts a Document to Frontmatter
@@ -117,6 +131,9 @@ func (d *Document) ToFrontmatter() *Frontmatter {
 		FetchedAt:  d.FetchedAt,
 		RenderedJS: d.RenderedWithJS,
 		WordCount:  d.WordCount,
+		Summary:    d.Summary,
+		Tags:       d.Tags,
+		Category:   d.Category,
 	}
 }
 

@@ -16,14 +16,36 @@ type Config struct {
 
 // LLMConfig contains LLM provider settings
 type LLMConfig struct {
-	Provider    string        `mapstructure:"provider"`
-	APIKey      string        `mapstructure:"api_key"`
-	BaseURL     string        `mapstructure:"base_url"`
-	Model       string        `mapstructure:"model"`
-	MaxTokens   int           `mapstructure:"max_tokens"`
-	Temperature float64       `mapstructure:"temperature"`
-	Timeout     time.Duration `mapstructure:"timeout"`
-	MaxRetries  int           `mapstructure:"max_retries"`
+	Provider        string          `mapstructure:"provider"`
+	APIKey          string          `mapstructure:"api_key"`
+	BaseURL         string          `mapstructure:"base_url"`
+	Model           string          `mapstructure:"model"`
+	MaxTokens       int             `mapstructure:"max_tokens"`
+	Temperature     float64         `mapstructure:"temperature"`
+	Timeout         time.Duration   `mapstructure:"timeout"`
+	MaxRetries      int             `mapstructure:"max_retries"` // Deprecated: use RateLimit.MaxRetries
+	EnhanceMetadata bool            `mapstructure:"enhance_metadata"`
+	RateLimit       RateLimitConfig `mapstructure:"rate_limit"`
+}
+
+// RateLimitConfig contains rate limiting settings for LLM requests
+type RateLimitConfig struct {
+	Enabled           bool                 `mapstructure:"enabled"`
+	RequestsPerMinute int                  `mapstructure:"requests_per_minute"`
+	BurstSize         int                  `mapstructure:"burst_size"`
+	MaxRetries        int                  `mapstructure:"max_retries"`
+	InitialDelay      time.Duration        `mapstructure:"initial_delay"`
+	MaxDelay          time.Duration        `mapstructure:"max_delay"`
+	Multiplier        float64              `mapstructure:"multiplier"`
+	CircuitBreaker    CircuitBreakerConfig `mapstructure:"circuit_breaker"`
+}
+
+// CircuitBreakerConfig contains circuit breaker settings
+type CircuitBreakerConfig struct {
+	Enabled                  bool          `mapstructure:"enabled"`
+	FailureThreshold         int           `mapstructure:"failure_threshold"`
+	SuccessThresholdHalfOpen int           `mapstructure:"success_threshold_half_open"`
+	ResetTimeout             time.Duration `mapstructure:"reset_timeout"`
 }
 
 // OutputConfig contains output-related settings

@@ -37,6 +37,21 @@ const (
 	DefaultLLMTemperature = 0.7
 	DefaultLLMTimeout     = 60 * time.Second
 	DefaultLLMMaxRetries  = 3
+
+	// Rate limiting defaults
+	DefaultRateLimitEnabled           = true
+	DefaultRateLimitRequestsPerMinute = 60
+	DefaultRateLimitBurstSize         = 10
+	DefaultRateLimitMaxRetries        = 3
+	DefaultRateLimitInitialDelay      = 1 * time.Second
+	DefaultRateLimitMaxDelay          = 60 * time.Second
+	DefaultRateLimitMultiplier        = 2.0
+
+	// Circuit breaker defaults
+	DefaultCircuitBreakerEnabled                  = true
+	DefaultCircuitBreakerFailureThreshold         = 5
+	DefaultCircuitBreakerSuccessThresholdHalfOpen = 1
+	DefaultCircuitBreakerResetTimeout             = 30 * time.Second
 )
 
 // Default exclude patterns
@@ -107,6 +122,21 @@ func Default() *Config {
 			Temperature: DefaultLLMTemperature,
 			Timeout:     DefaultLLMTimeout,
 			MaxRetries:  DefaultLLMMaxRetries,
+			RateLimit: RateLimitConfig{
+				Enabled:           DefaultRateLimitEnabled,
+				RequestsPerMinute: DefaultRateLimitRequestsPerMinute,
+				BurstSize:         DefaultRateLimitBurstSize,
+				MaxRetries:        DefaultRateLimitMaxRetries,
+				InitialDelay:      DefaultRateLimitInitialDelay,
+				MaxDelay:          DefaultRateLimitMaxDelay,
+				Multiplier:        DefaultRateLimitMultiplier,
+				CircuitBreaker: CircuitBreakerConfig{
+					Enabled:                  DefaultCircuitBreakerEnabled,
+					FailureThreshold:         DefaultCircuitBreakerFailureThreshold,
+					SuccessThresholdHalfOpen: DefaultCircuitBreakerSuccessThresholdHalfOpen,
+					ResetTimeout:             DefaultCircuitBreakerResetTimeout,
+				},
+			},
 		},
 	}
 }

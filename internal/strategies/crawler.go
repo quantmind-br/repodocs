@@ -19,6 +19,7 @@ import (
 
 // CrawlerStrategy crawls websites to extract documentation
 type CrawlerStrategy struct {
+	deps      *Dependencies
 	fetcher   *fetcher.Client
 	renderer  domain.Renderer
 	converter *converter.Pipeline
@@ -29,6 +30,7 @@ type CrawlerStrategy struct {
 // NewCrawlerStrategy creates a new crawler strategy
 func NewCrawlerStrategy(deps *Dependencies) *CrawlerStrategy {
 	return &CrawlerStrategy{
+		deps:      deps,
 		fetcher:   deps.Fetcher,
 		renderer:  deps.Renderer,
 		converter: deps.Converter,
@@ -198,9 +200,8 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 		doc.SourceStrategy = s.Name()
 		doc.FetchedAt = time.Now()
 
-		// Write document
 		if !opts.DryRun {
-			if err := s.writer.Write(ctx, doc); err != nil {
+			if err := s.deps.WriteDocument(ctx, doc); err != nil {
 				s.logger.Warn().Err(err).Str("url", r.Request.URL.String()).Msg("Failed to write document")
 			}
 		}

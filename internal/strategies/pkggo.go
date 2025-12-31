@@ -14,6 +14,7 @@ import (
 
 // PkgGoStrategy extracts documentation from pkg.go.dev
 type PkgGoStrategy struct {
+	deps      *Dependencies
 	fetcher   *fetcher.Client
 	converter *converter.Pipeline
 	writer    *output.Writer
@@ -23,6 +24,7 @@ type PkgGoStrategy struct {
 // NewPkgGoStrategy creates a new pkg.go.dev strategy
 func NewPkgGoStrategy(deps *Dependencies) *PkgGoStrategy {
 	return &PkgGoStrategy{
+		deps:      deps,
 		fetcher:   deps.Fetcher,
 		converter: deps.Converter,
 		writer:    deps.Writer,
@@ -89,9 +91,8 @@ func (s *PkgGoStrategy) Execute(ctx context.Context, url string, opts Options) e
 	document.CacheHit = resp.FromCache
 	document.FetchedAt = time.Now()
 
-	// Write document
 	if !opts.DryRun {
-		return s.writer.Write(ctx, document)
+		return s.deps.WriteDocument(ctx, document)
 	}
 
 	return nil
@@ -149,9 +150,8 @@ func (s *PkgGoStrategy) extractSections(ctx context.Context, doc *goquery.Docume
 		document.SourceStrategy = s.Name()
 		document.FetchedAt = time.Now()
 
-		// Write document
 		if !opts.DryRun {
-			if err := s.writer.Write(ctx, document); err != nil {
+			if err := s.deps.WriteDocument(ctx, document); err != nil {
 				s.logger.Warn().Err(err).Str("section", section.name).Msg("Failed to write section")
 			}
 		}

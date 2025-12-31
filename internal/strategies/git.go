@@ -50,6 +50,7 @@ var IgnoreDirs = map[string]bool{
 // GitStrategy extracts documentation from git repositories
 // Uses archive download as primary method (faster) with git clone as fallback
 type GitStrategy struct {
+	deps       *Dependencies
 	writer     *output.Writer
 	logger     *utils.Logger
 	httpClient *http.Client
@@ -58,6 +59,7 @@ type GitStrategy struct {
 // NewGitStrategy creates a new git strategy
 func NewGitStrategy(deps *Dependencies) *GitStrategy {
 	return &GitStrategy{
+		deps:   deps,
 		writer: deps.Writer,
 		logger: deps.Logger,
 		httpClient: &http.Client{
@@ -479,9 +481,8 @@ func (s *GitStrategy) processFile(ctx context.Context, path, tmpDir, repoURL, br
 		doc.Content = "```\n" + string(content) + "\n```"
 	}
 
-	// Write document
 	if !opts.DryRun {
-		return s.writer.Write(ctx, doc)
+		return s.deps.WriteDocument(ctx, doc)
 	}
 
 	return nil

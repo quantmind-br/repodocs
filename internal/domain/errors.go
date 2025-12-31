@@ -185,6 +185,12 @@ var (
 
 	// ErrLLMContextTooLong indicates context length was exceeded
 	ErrLLMContextTooLong = errors.New("LLM context length exceeded")
+
+	// ErrLLMCircuitOpen indicates the circuit breaker is open
+	ErrLLMCircuitOpen = errors.New("LLM circuit breaker is open")
+
+	// ErrLLMMaxRetriesExceeded indicates all retry attempts failed
+	ErrLLMMaxRetriesExceeded = errors.New("LLM max retries exceeded")
 )
 
 // LLMError represents an LLM-specific error

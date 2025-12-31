@@ -37,6 +37,36 @@ llm:
   timeout: 60s
   max_retries: 3
 
+  # Enable LLM-enhanced metadata generation (summary, tags, category)
+  enhance_metadata: false
+
+  # Rate limiting configuration for LLM API requests
+  rate_limit:
+    # Enable rate limiting (recommended for API quotas)
+    enabled: true
+
+    # Maximum requests per minute (adjust based on your API tier)
+    # OpenAI: 60-10000+ RPM depending on tier
+    # Google Gemini: 60-1000+ RPM depending on plan
+    # Anthropic: 60-4000 RPM depending on tier
+    requests_per_minute: 60
+
+    # Burst size (max concurrent requests before throttling)
+    burst_size: 10
+
+    # Retry configuration for transient errors (429, 5xx)
+    max_retries: 3
+    initial_delay: 1s
+    max_delay: 60s
+    multiplier: 2.0
+
+    # Circuit breaker configuration (prevents cascading failures)
+    circuit_breaker:
+      enabled: true
+      failure_threshold: 5
+      success_threshold_half_open: 1
+      reset_timeout: 30s
+
 # =============================================================================
 # Output Configuration
 # =============================================================================

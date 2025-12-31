@@ -90,6 +90,7 @@ func NewOrchestrator(opts OrchestratorOptions) (*Orchestrator, error) {
 		Force:           opts.Force || cfg.Output.Overwrite,
 		DryRun:          opts.DryRun,
 		Verbose:         opts.Verbose,
+		LLMConfig:       &cfg.LLM,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create dependencies: %w", err)

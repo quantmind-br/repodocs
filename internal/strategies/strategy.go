@@ -5,9 +5,11 @@ import (
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/cache"
+	"github.com/quantmind-br/repodocs-go/internal/config"
 	"github.com/quantmind-br/repodocs-go/internal/converter"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/fetcher"
+	"github.com/quantmind-br/repodocs-go/internal/llm"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/renderer"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
@@ -61,12 +63,14 @@ func DefaultOptions() Options {
 
 // Dependencies contains shared dependencies for all strategies
 type Dependencies struct {
-	Fetcher   *fetcher.Client
-	Renderer  domain.Renderer
-	Cache     domain.Cache
-	Converter *converter.Pipeline
-	Writer    *output.Writer
-	Logger    *utils.Logger
+	Fetcher          *fetcher.Client
+	Renderer         domain.Renderer
+	Cache            domain.Cache
+	Converter        *converter.Pipeline
+	Writer           *output.Writer
+	Logger           *utils.Logger
+	LLMProvider      domain.LLMProvider
+	MetadataEnhancer *llm.MetadataEnhancer
 }
 
 // NewDependencies creates new dependencies for strategies
@@ -133,13 +137,52 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 		Verbose: opts.Verbose,
 	})
 
+	var llmProvider domain.LLMProvider
+	var metadataEnhancer *llm.MetadataEnhancer
+	if opts.LLMConfig != nil && opts.LLMConfig.EnhanceMetadata && opts.LLMConfig.Provider != "" {
+		baseProvider, err := llm.NewProviderFromConfig(opts.LLMConfig)
+		if err != nil {
+			logger.Warn().Err(err).Msg("Failed to create LLM provider, metadata enhancement disabled")
+		} else {
+			if opts.LLMConfig.RateLimit.Enabled {
+				llmProvider = llm.NewRateLimitedProvider(
+					baseProvider,
+					llm.RateLimitedProviderConfig{
+						RequestsPerMinute:        opts.LLMConfig.RateLimit.RequestsPerMinute,
+						BurstSize:                opts.LLMConfig.RateLimit.BurstSize,
+						MaxRetries:               opts.LLMConfig.RateLimit.MaxRetries,
+						InitialDelay:             opts.LLMConfig.RateLimit.InitialDelay,
+						MaxDelay:                 opts.LLMConfig.RateLimit.MaxDelay,
+						Multiplier:               opts.LLMConfig.RateLimit.Multiplier,
+						CircuitBreakerEnabled:    opts.LLMConfig.RateLimit.CircuitBreaker.Enabled,
+						FailureThreshold:         opts.LLMConfig.RateLimit.CircuitBreaker.FailureThreshold,
+						SuccessThresholdHalfOpen: opts.LLMConfig.RateLimit.CircuitBreaker.SuccessThresholdHalfOpen,
+						ResetTimeout:             opts.LLMConfig.RateLimit.CircuitBreaker.ResetTimeout,
+					},
+					logger,
+				)
+				logger.Info().
+					Str("provider", opts.LLMConfig.Provider).
+					Int("requests_per_minute", opts.LLMConfig.RateLimit.RequestsPerMinute).
+					Int("burst_size", opts.LLMConfig.RateLimit.BurstSize).
+					Msg("LLM metadata enhancement enabled with rate limiting")
+			} else {
+				llmProvider = baseProvider
+				logger.Info().Str("provider", opts.LLMConfig.Provider).Msg("LLM metadata enhancement enabled")
+			}
+			metadataEnhancer = llm.NewMetadataEnhancer(llmProvider)
+		}
+	}
+
 	return &Dependencies{
-		Fetcher:   fetcherClient,
-		Renderer:  rendererImpl,
-		Cache:     cacheImpl,
-		Converter: converterPipeline,
-		Writer:    writer,
-		Logger:    logger,
+		Fetcher:          fetcherClient,
+		Renderer:         rendererImpl,
+		Cache:            cacheImpl,
+		Converter:        converterPipeline,
+		Writer:           writer,
+		Logger:           logger,
+		LLMProvider:      llmProvider,
+		MetadataEnhancer: metadataEnhancer,
 	}, nil
 }
 
@@ -154,7 +197,20 @@ func (d *Dependencies) Close() error {
 	if d.Cache != nil {
 		d.Cache.Close()
 	}
+	if d.LLMProvider != nil {
+		d.LLMProvider.Close()
+	}
 	return nil
+}
+
+// WriteDocument enhances metadata (if configured) and writes the document
+func (d *Dependencies) WriteDocument(ctx context.Context, doc *domain.Document) error {
+	if d.MetadataEnhancer != nil {
+		if err := d.MetadataEnhancer.Enhance(ctx, doc); err != nil {
+			d.Logger.Warn().Err(err).Str("url", doc.URL).Msg("Failed to enhance metadata, writing without enhancement")
+		}
+	}
+	return d.Writer.Write(ctx, doc)
 }
 
 // DependencyOptions contains options for creating dependencies
@@ -175,4 +231,5 @@ type DependencyOptions struct {
 	Force           bool
 	DryRun          bool
 	Verbose         bool
+	LLMConfig       *config.LLMConfig
 }

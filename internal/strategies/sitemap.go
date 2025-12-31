@@ -20,6 +20,7 @@ import (
 
 // SitemapStrategy extracts documentation from sitemap XML files
 type SitemapStrategy struct {
+	deps      *Dependencies
 	fetcher   *fetcher.Client
 	renderer  domain.Renderer
 	converter *converter.Pipeline
@@ -30,6 +31,7 @@ type SitemapStrategy struct {
 // NewSitemapStrategy creates a new sitemap strategy
 func NewSitemapStrategy(deps *Dependencies) *SitemapStrategy {
 	return &SitemapStrategy{
+		deps:      deps,
 		fetcher:   deps.Fetcher,
 		renderer:  deps.Renderer,
 		converter: deps.Converter,
@@ -146,9 +148,8 @@ func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options)
 		doc.CacheHit = fromCache
 		doc.FetchedAt = time.Now()
 
-		// Write document
 		if !opts.DryRun {
-			if err := s.writer.Write(ctx, doc); err != nil {
+			if err := s.deps.WriteDocument(ctx, doc); err != nil {
 				s.logger.Warn().Err(err).Str("url", sitemapURL.Loc).Msg("Failed to write document")
 				return nil
 			}

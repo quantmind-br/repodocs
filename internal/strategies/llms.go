@@ -16,6 +16,7 @@ import (
 
 // LLMSStrategy extracts documentation from llms.txt files
 type LLMSStrategy struct {
+	deps      *Dependencies
 	fetcher   *fetcher.Client
 	converter *converter.Pipeline
 	writer    *output.Writer
@@ -25,6 +26,7 @@ type LLMSStrategy struct {
 // NewLLMSStrategy creates a new LLMS strategy
 func NewLLMSStrategy(deps *Dependencies) *LLMSStrategy {
 	return &LLMSStrategy{
+		deps:      deps,
 		fetcher:   deps.Fetcher,
 		converter: deps.Converter,
 		writer:    deps.Writer,
@@ -107,9 +109,8 @@ func (s *LLMSStrategy) Execute(ctx context.Context, url string, opts Options) er
 			doc.Title = link.Title
 		}
 
-		// Write document
 		if !opts.DryRun {
-			if err := s.writer.Write(ctx, doc); err != nil {
+			if err := s.deps.WriteDocument(ctx, doc); err != nil {
 				s.logger.Warn().Err(err).Str("url", link.URL).Msg("Failed to write document")
 				return nil
 			}
