@@ -21,8 +21,10 @@ BUILD_DIR=./build
 COVERAGE_DIR=./coverage
 INSTALL_DIR=$(HOME)/.local/bin
 INSTALL_DIR_GLOBAL=/usr/local/bin
+CONFIG_DIR=$(HOME)/.repodocs
+CONFIG_TEMPLATE=./configs/config.yaml.template
 
-.PHONY: all build clean test coverage lint fmt vet deps help install uninstall install-global uninstall-global
+.PHONY: all build clean test coverage lint fmt vet deps help install uninstall install-global uninstall-global install-config
 
 ## Main commands
 
@@ -112,7 +114,7 @@ dev: ## Watch mode (requires air)
 
 ## Installation
 
-install: build ## Install to ~/.local/bin (user installation)
+install: build install-config ## Install to ~/.local/bin (user installation)
 	@echo "Installing $(BINARY_NAME) to $(INSTALL_DIR)..."
 	@mkdir -p $(INSTALL_DIR)
 	@install -m 755 $(BUILD_DIR)/$(BINARY_NAME) $(INSTALL_DIR)/
@@ -120,12 +122,23 @@ install: build ## Install to ~/.local/bin (user installation)
 	@echo "  Make sure $(INSTALL_DIR) is in your PATH"
 	@echo "  Run: export PATH=\"$(INSTALL_DIR):\$$PATH\" (add to ~/.bashrc or ~/.zshrc)"
 
+install-config: ## Install config file to ~/.repodocs (only if not exists)
+	@mkdir -p $(CONFIG_DIR)
+	@if [ ! -f "$(CONFIG_DIR)/config.yaml" ]; then \
+		echo "Creating config file at $(CONFIG_DIR)/config.yaml..."; \
+		cp $(CONFIG_TEMPLATE) $(CONFIG_DIR)/config.yaml; \
+		echo "✓ Created $(CONFIG_DIR)/config.yaml"; \
+		echo "  Edit this file to configure LLM providers and other settings"; \
+	else \
+		echo "✓ Config file already exists at $(CONFIG_DIR)/config.yaml (not overwritten)"; \
+	fi
+
 uninstall: ## Remove from ~/.local/bin
 	@echo "Uninstalling $(BINARY_NAME) from $(INSTALL_DIR)..."
 	@rm -f $(INSTALL_DIR)/$(BINARY_NAME)
 	@echo "✓ Uninstalled $(BINARY_NAME)"
 
-install-global: build ## Install to /usr/local/bin (requires sudo)
+install-global: build install-config ## Install to /usr/local/bin (requires sudo)
 	@echo "Installing $(BINARY_NAME) to $(INSTALL_DIR_GLOBAL) (requires sudo)..."
 	@sudo install -m 755 $(BUILD_DIR)/$(BINARY_NAME) $(INSTALL_DIR_GLOBAL)/
 	@echo "✓ Installed $(BINARY_NAME) to $(INSTALL_DIR_GLOBAL)"
@@ -151,6 +164,11 @@ check-install: ## Check installation status
 		echo "✗ Not installed in $(INSTALL_DIR_GLOBAL)"; \
 	fi
 	@which $(BINARY_NAME) > /dev/null && echo "✓ $(BINARY_NAME) is in PATH: $$(which $(BINARY_NAME))" || echo "✗ $(BINARY_NAME) not found in PATH"
+	@if [ -f "$(CONFIG_DIR)/config.yaml" ]; then \
+		echo "✓ Config file found: $(CONFIG_DIR)/config.yaml"; \
+	else \
+		echo "✗ Config file not found at $(CONFIG_DIR)/config.yaml"; \
+	fi
 
 ## Help
 

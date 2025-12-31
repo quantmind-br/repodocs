@@ -1,0 +1,126 @@
+# repodocs configuration file
+# Location: ~/.repodocs/config.yaml
+#
+# All settings can be overridden via environment variables with REPODOCS_ prefix
+# Example: REPODOCS_LLM_API_KEY, REPODOCS_CACHE_ENABLED
+
+# =============================================================================
+# LLM Configuration
+# =============================================================================
+# Supports: OpenAI-compatible (OpenAI, Ollama, vLLM, Groq, Together AI, etc.),
+#           Anthropic, and Google Gemini APIs
+#
+llm:
+  # Provider type: openai, anthropic, google
+  # provider: openai
+
+  # API key (recommended: use REPODOCS_LLM_API_KEY env var instead)
+  # api_key: sk-...
+
+  # Base URL of the API endpoint
+  # Examples:
+  #   OpenAI:      https://api.openai.com/v1
+  #   Ollama:      http://localhost:11434/v1
+  #   vLLM:        http://localhost:8000/v1
+  #   Groq:        https://api.groq.com/openai/v1
+  #   Together AI: https://api.together.xyz/v1
+  #   Anthropic:   https://api.anthropic.com
+  #   Google:      https://generativelanguage.googleapis.com
+  # base_url: http://localhost:11434/v1
+
+  # Model ID (no default - must be specified by user)
+  # model: llama3.2
+
+  # Optional parameters (have sensible defaults)
+  max_tokens: 4096
+  temperature: 0.7
+  timeout: 60s
+  max_retries: 3
+
+# =============================================================================
+# Output Configuration
+# =============================================================================
+output:
+  # Default output directory (can be overridden with -o flag)
+  directory: "./docs"
+
+  # Flat structure (no subdirectories)
+  flat: false
+
+  # Generate JSON metadata files
+  json_metadata: false
+
+  # Overwrite existing files
+  overwrite: false
+
+# =============================================================================
+# Concurrency Configuration
+# =============================================================================
+concurrency:
+  # Number of concurrent workers
+  workers: 5
+
+  # Request timeout
+  timeout: 30s
+
+  # Maximum crawl depth
+  max_depth: 4
+
+# =============================================================================
+# Cache Configuration
+# =============================================================================
+cache:
+  # Enable caching (recommended)
+  enabled: true
+
+  # Cache time-to-live
+  ttl: 24h
+
+  # Cache directory (default: ~/.cache/repodocs)
+  # directory: ~/.cache/repodocs
+
+# =============================================================================
+# JavaScript Rendering Configuration
+# =============================================================================
+rendering:
+  # Force JavaScript rendering for all pages
+  force_js: false
+
+  # Timeout for JavaScript execution
+  js_timeout: 10s
+
+  # Scroll to end of page (for infinite scroll sites)
+  scroll_to_end: false
+
+# =============================================================================
+# Stealth Configuration
+# =============================================================================
+stealth:
+  # Custom User-Agent (empty = use default)
+  user_agent: ""
+
+  # Random delay between requests (anti-detection)
+  random_delay_min: 500ms
+  random_delay_max: 2s
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+logging:
+  # Log level: debug, info, warn, error
+  level: info
+
+  # Log format: text, json
+  format: text
+
+# =============================================================================
+# URL Exclusion Patterns
+# =============================================================================
+# Glob patterns for URLs to skip during crawling
+exclude:
+  - "*/login*"
+  - "*/logout*"
+  - "*/admin/*"
+  - "*.pdf"
+  - "*.zip"
+  - "*.tar.gz"
