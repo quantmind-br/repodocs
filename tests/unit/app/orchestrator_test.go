@@ -235,6 +235,8 @@ func TestDetectStrategy(t *testing.T) {
 		{"llms.txt with path", "https://example.com/docs/llms.txt", app.StrategyLLMS},
 		{"pkg.go.dev URL", "https://pkg.go.dev/github.com/example/package", app.StrategyPkgGo},
 		{"pkg.go.dev std", "https://pkg.go.dev/std", app.StrategyPkgGo},
+		{"GitHub Wiki", "https://github.com/user/repo/wiki", app.StrategyWiki},
+		{"GitHub Wiki page", "https://github.com/user/repo/wiki/Some-Page", app.StrategyWiki},
 		{"Unknown URL", "ftp://example.com", app.StrategyUnknown},
 		{"File URL", "file:///path/to/file", app.StrategyUnknown},
 		{"Empty URL", "", app.StrategyUnknown},
@@ -288,6 +290,7 @@ func TestCreateStrategy(t *testing.T) {
 	}{
 		{"LLMS Strategy", app.StrategyLLMS, false},
 		{"Sitemap Strategy", app.StrategySitemap, false},
+		{"Wiki Strategy", app.StrategyWiki, false},
 		{"Git Strategy", app.StrategyGit, false},
 		{"PkgGo Strategy", app.StrategyPkgGo, false},
 		{"Crawler Strategy", app.StrategyCrawler, false},
@@ -317,8 +320,8 @@ func TestGetAllStrategies(t *testing.T) {
 
 	strategies := app.GetAllStrategies(deps)
 
-	// Should return all 5 strategy types
-	assert.Len(t, strategies, 5, "Expected 5 strategies")
+	// Should return all 6 strategy types
+	assert.Len(t, strategies, 6, "Expected 6 strategies")
 
 	// Verify all strategies are non-nil
 	for i, strategy := range strategies {
@@ -326,7 +329,7 @@ func TestGetAllStrategies(t *testing.T) {
 	}
 
 	// Verify strategy names
-	expectedNames := []string{"llms", "sitemap", "git", "pkggo", "crawler"}
+	expectedNames := []string{"llms", "sitemap", "wiki", "git", "pkggo", "crawler"}
 	actualNames := make([]string, len(strategies))
 	for i, strategy := range strategies {
 		actualNames[i] = strategy.Name()
@@ -347,6 +350,7 @@ func TestFindMatchingStrategy(t *testing.T) {
 		{"pkg.go.dev URL", "https://pkg.go.dev/github.com/user/repo", "pkggo"},
 		{"Sitemap XML", "https://example.com/sitemap.xml", "sitemap"},
 		{"GitHub repo", "https://github.com/user/repo", "git"},
+		{"GitHub Wiki", "https://github.com/user/repo/wiki", "wiki"},
 		{"Regular website", "https://example.com/docs", "crawler"},
 		{"docs.github.com", "https://docs.github.com/en/actions", "crawler"},
 		{"Unknown protocol", "ftp://example.com", ""},

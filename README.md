@@ -9,7 +9,7 @@ The primary goal of `repodocs-go` is to provide a reliable, configurable pipelin
 
 **Key Features and Capabilities**
 
-*   **Multi-Strategy Extraction:** Supports various input sources, including standard web pages (Crawler), sitemaps, and Git repositories.
+*   **Multi-Strategy Extraction:** Supports various input sources, including standard web pages (Crawler), sitemaps, Git repositories, and GitHub wikis.
 *   **SPA Rendering:** Utilizes a headless browser (Chromium via `rod`) to render JavaScript-heavy content before extraction.
 *   **Content Cleaning:** Employs a content pipeline to sanitize HTML, extract the main article body (readability), and convert it to Markdown.
 *   **Resilient Fetching:** Includes a custom HTTP client with retry logic (exponential backoff) for transient network errors and specific status codes (429, 5xx).
@@ -58,7 +58,7 @@ The system is centered around the **Orchestrator**, which acts as the applicatio
 
 | Pattern | Implementation | Description |
 | :--- | :--- | :--- |
-| **Strategy Pattern** | `internal/strategies` | Allows the `Orchestrator` to dynamically select the extraction logic (`Git`, `Sitemap`, `Crawler`) based on the input URL. |
+| **Strategy Pattern** | `internal/strategies` | Allows the `Orchestrator` to dynamically select the extraction logic (`Git`, `Wiki`, `Sitemap`, `Crawler`) based on the input URL. |
 | **Pipeline Pattern** | `internal/converter/pipeline.go` | Defines a fixed, sequential chain of responsibility for content transformation (Sanitize -> Readability -> Markdown). |
 | **Dependency Injection** | `internal/strategies/Dependencies` | A central Composition Root that instantiates and aggregates all infrastructure services, injecting them into the specific `Strategy` implementations. |
 
@@ -226,6 +226,9 @@ repodocs https://example.com/docs
 # Extract from a Git repository
 repodocs https://github.com/user/repo
 
+# Extract from a GitHub wiki
+repodocs https://github.com/user/repo/wiki
+
 # Extract from a sitemap
 repodocs https://example.com/sitemap.xml
 
@@ -241,6 +244,33 @@ repodocs https://example.com/docs --max-depth 2 --limit 50
 # Check system dependencies
 repodocs doctor
 ```
+
+### GitHub Wiki Extraction
+
+The wiki strategy automatically extracts documentation from GitHub wiki repositories:
+
+```bash
+# Extract entire wiki with hierarchical structure
+repodocs https://github.com/Alexays/Waybar/wiki
+
+# Extract with custom output directory
+repodocs https://github.com/owner/repo/wiki -o ./wiki-docs
+
+# Flat structure (no section folders)
+repodocs https://github.com/owner/repo/wiki --nofolders
+
+# Limit number of pages
+repodocs https://github.com/owner/repo/wiki --limit 10
+
+# Dry run (preview without writing files)
+repodocs https://github.com/owner/repo/wiki --dry-run
+```
+
+**Features:**
+- Parses `_Sidebar.md` for hierarchical organization
+- Converts wiki-style links (`[[Page Name]]`) to standard Markdown
+- Transforms `Home.md` to `index.md`
+- Supports private wikis via `GITHUB_TOKEN` environment variable
 
 ### Configuration
 
@@ -286,7 +316,7 @@ The repository is organized to separate the application entry point, core logic,
 | `cmd/` | Contains the main CLI entry point (`main.go`) and `cobra` command definitions. |
 | `internal/app` | Application layer logic, including the `Orchestrator` and `Detector`. |
 | `internal/domain` | Core business models, interfaces (contracts), and custom errors. |
-| `internal/strategies` | Implementations of the `domain.Strategy` interface (e.g., `crawler`, `git`, `sitemap`). |
+| `internal/strategies` | Implementations of the `domain.Strategy` interface (e.g., `crawler`, `git`, `wiki`, `sitemap`). |
 | `internal/converter` | The content transformation pipeline (sanitization, readability, markdown conversion). |
 | `internal/fetcher` | Network I/O, custom HTTP client, retry logic, and stealth features. |
 | `internal/cache` | Concrete implementation of the `domain.Cache` interface using BadgerDB. |

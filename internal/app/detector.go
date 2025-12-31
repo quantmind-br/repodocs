@@ -12,6 +12,7 @@ type StrategyType string
 const (
 	StrategyLLMS    StrategyType = "llms"
 	StrategySitemap StrategyType = "sitemap"
+	StrategyWiki    StrategyType = "wiki"
 	StrategyGit     StrategyType = "git"
 	StrategyPkgGo   StrategyType = "pkggo"
 	StrategyCrawler StrategyType = "crawler"
@@ -39,6 +40,11 @@ func DetectStrategy(url string) StrategyType {
 		return StrategySitemap
 	}
 
+	// Check for GitHub Wiki (before generic Git)
+	if strategies.IsWikiURL(url) {
+		return StrategyWiki
+	}
+
 	// Check for Git repository
 	// Exclude known documentation/pages subdomains
 	isDocsSubdomain := strings.Contains(lower, "docs.github.com") ||
@@ -61,13 +67,14 @@ func DetectStrategy(url string) StrategyType {
 	return StrategyUnknown
 }
 
-// CreateStrategy creates the appropriate strategy based on detected type
 func CreateStrategy(strategyType StrategyType, deps *strategies.Dependencies) strategies.Strategy {
 	switch strategyType {
 	case StrategyLLMS:
 		return strategies.NewLLMSStrategy(deps)
 	case StrategySitemap:
 		return strategies.NewSitemapStrategy(deps)
+	case StrategyWiki:
+		return strategies.NewWikiStrategy(deps)
 	case StrategyGit:
 		return strategies.NewGitStrategy(deps)
 	case StrategyPkgGo:
@@ -79,19 +86,17 @@ func CreateStrategy(strategyType StrategyType, deps *strategies.Dependencies) st
 	}
 }
 
-// GetAllStrategies returns all available strategies
-// Strategies are ordered from most specific to least specific
 func GetAllStrategies(deps *strategies.Dependencies) []strategies.Strategy {
 	return []strategies.Strategy{
-		strategies.NewLLMSStrategy(deps),     // Most specific: /llms.txt
-		strategies.NewPkgGoStrategy(deps),    // Specific: pkg.go.dev (must come before Git!)
-		strategies.NewSitemapStrategy(deps),  // Specific: sitemap.xml
-		strategies.NewGitStrategy(deps),      // General: github.com, gitlab.com, etc
-		strategies.NewCrawlerStrategy(deps),  // Catch-all: any HTTP URL
+		strategies.NewLLMSStrategy(deps),
+		strategies.NewPkgGoStrategy(deps),
+		strategies.NewSitemapStrategy(deps),
+		strategies.NewWikiStrategy(deps),
+		strategies.NewGitStrategy(deps),
+		strategies.NewCrawlerStrategy(deps),
 	}
 }
 
-// FindMatchingStrategy finds the first strategy that can handle the URL
 func FindMatchingStrategy(url string, deps *strategies.Dependencies) strategies.Strategy {
 	for _, strategy := range GetAllStrategies(deps) {
 		if strategy.CanHandle(url) {
