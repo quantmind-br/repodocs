@@ -20,23 +20,25 @@ import (
 
 // SitemapStrategy extracts documentation from sitemap XML files
 type SitemapStrategy struct {
-	deps      *Dependencies
-	fetcher   *fetcher.Client
-	renderer  domain.Renderer
-	converter *converter.Pipeline
-	writer    *output.Writer
-	logger    *utils.Logger
+	deps           *Dependencies
+	fetcher        *fetcher.Client
+	renderer       domain.Renderer
+	converter      *converter.Pipeline
+	markdownReader *converter.MarkdownReader
+	writer         *output.Writer
+	logger         *utils.Logger
 }
 
 // NewSitemapStrategy creates a new sitemap strategy
 func NewSitemapStrategy(deps *Dependencies) *SitemapStrategy {
 	return &SitemapStrategy{
-		deps:      deps,
-		fetcher:   deps.Fetcher,
-		renderer:  deps.Renderer,
-		converter: deps.Converter,
-		writer:    deps.Writer,
-		logger:    deps.Logger,
+		deps:           deps,
+		fetcher:        deps.Fetcher,
+		renderer:       deps.Renderer,
+		converter:      deps.Converter,
+		markdownReader: converter.NewMarkdownReader(),
+		writer:         deps.Writer,
+		logger:         deps.Logger,
 	}
 }
 
@@ -110,42 +112,44 @@ func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options)
 			return nil
 		}
 
-		// Fetch page
-		var html string
-		var fromCache bool
-
 		pageResp, err := s.fetcher.Get(ctx, sitemapURL.Loc)
 		if err != nil {
 			s.logger.Warn().Err(err).Str("url", sitemapURL.Loc).Msg("Failed to fetch page")
 			return nil
 		}
-		html = string(pageResp.Body)
-		fromCache = pageResp.FromCache
 
-		// Check if JS rendering is needed
-		if opts.RenderJS || renderer.NeedsJSRendering(html) {
-			if s.renderer != nil {
-				rendered, err := s.renderer.Render(ctx, sitemapURL.Loc, domain.RenderOptions{
-					Timeout:     60 * time.Second,
-					WaitStable:  2 * time.Second,
-					ScrollToEnd: true,
-				})
-				if err == nil {
-					html = rendered
+		var doc *domain.Document
+		if converter.IsMarkdownContent(pageResp.ContentType, sitemapURL.Loc) {
+			doc, err = s.markdownReader.Read(string(pageResp.Body), sitemapURL.Loc)
+			if err != nil {
+				s.logger.Warn().Err(err).Str("url", sitemapURL.Loc).Msg("Failed to read markdown")
+				return nil
+			}
+		} else {
+			html := string(pageResp.Body)
+
+			if opts.RenderJS || renderer.NeedsJSRendering(html) {
+				if s.renderer != nil {
+					rendered, err := s.renderer.Render(ctx, sitemapURL.Loc, domain.RenderOptions{
+						Timeout:     60 * time.Second,
+						WaitStable:  2 * time.Second,
+						ScrollToEnd: true,
+					})
+					if err == nil {
+						html = rendered
+					}
 				}
+			}
+
+			doc, err = s.converter.Convert(ctx, html, sitemapURL.Loc)
+			if err != nil {
+				s.logger.Warn().Err(err).Str("url", sitemapURL.Loc).Msg("Failed to convert page")
+				return nil
 			}
 		}
 
-		// Convert to document
-		doc, err := s.converter.Convert(ctx, html, sitemapURL.Loc)
-		if err != nil {
-			s.logger.Warn().Err(err).Str("url", sitemapURL.Loc).Msg("Failed to convert page")
-			return nil
-		}
-
-		// Set metadata
 		doc.SourceStrategy = s.Name()
-		doc.CacheHit = fromCache
+		doc.CacheHit = pageResp.FromCache
 		doc.FetchedAt = time.Now()
 
 		if !opts.DryRun {

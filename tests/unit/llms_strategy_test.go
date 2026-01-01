@@ -953,6 +953,98 @@ func TestFilterLLMSLinks(t *testing.T) {
 	}
 }
 
+func TestExecute_WithMarkdownContent(t *testing.T) {
+	ctx := context.Background()
+
+	markdownContent := `---
+title: API Reference
+description: Complete API documentation
+---
+
+# API Reference
+
+This is the API documentation.
+
+## Endpoints
+
+- GET /users
+- POST /users
+`
+
+	mdServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+		w.Write([]byte(markdownContent))
+	}))
+	defer mdServer.Close()
+
+	llmsContent := `[API Reference](` + mdServer.URL + `)`
+
+	llmsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(llmsContent))
+	}))
+	defer llmsServer.Close()
+
+	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
+		EnableCache:    false,
+		EnableRenderer: false,
+		Verbose:        false,
+	})
+	require.NoError(t, err)
+
+	strategy := strategies.NewLLMSStrategy(deps)
+	opts := strategies.Options{
+		Concurrency: 1,
+		Limit:       0,
+		Force:       true,
+		Output:      t.TempDir(),
+	}
+
+	err = strategy.Execute(ctx, llmsServer.URL, opts)
+	require.NoError(t, err)
+}
+
+func TestExecute_WithMarkdownURLExtension(t *testing.T) {
+	ctx := context.Background()
+
+	markdownContent := `# Getting Started
+
+Welcome to the documentation.
+`
+
+	mdServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(markdownContent))
+	}))
+	defer mdServer.Close()
+
+	llmsContent := `[Getting Started](` + mdServer.URL + `/docs/getting-started.md)`
+
+	llmsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(llmsContent))
+	}))
+	defer llmsServer.Close()
+
+	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
+		EnableCache:    false,
+		EnableRenderer: false,
+		Verbose:        false,
+	})
+	require.NoError(t, err)
+
+	strategy := strategies.NewLLMSStrategy(deps)
+	opts := strategies.Options{
+		Concurrency: 1,
+		Limit:       0,
+		Force:       true,
+		Output:      t.TempDir(),
+	}
+
+	err = strategy.Execute(ctx, llmsServer.URL, opts)
+	require.NoError(t, err)
+}
+
 func TestExecute_WithFilterURL(t *testing.T) {
 	ctx := context.Background()
 

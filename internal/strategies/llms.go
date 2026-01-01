@@ -16,21 +16,23 @@ import (
 
 // LLMSStrategy extracts documentation from llms.txt files
 type LLMSStrategy struct {
-	deps      *Dependencies
-	fetcher   *fetcher.Client
-	converter *converter.Pipeline
-	writer    *output.Writer
-	logger    *utils.Logger
+	deps           *Dependencies
+	fetcher        *fetcher.Client
+	converter      *converter.Pipeline
+	markdownReader *converter.MarkdownReader
+	writer         *output.Writer
+	logger         *utils.Logger
 }
 
 // NewLLMSStrategy creates a new LLMS strategy
 func NewLLMSStrategy(deps *Dependencies) *LLMSStrategy {
 	return &LLMSStrategy{
-		deps:      deps,
-		fetcher:   deps.Fetcher,
-		converter: deps.Converter,
-		writer:    deps.Writer,
-		logger:    deps.Logger,
+		deps:           deps,
+		fetcher:        deps.Fetcher,
+		converter:      deps.Converter,
+		markdownReader: converter.NewMarkdownReader(),
+		writer:         deps.Writer,
+		logger:         deps.Logger,
 	}
 }
 
@@ -92,11 +94,19 @@ func (s *LLMSStrategy) Execute(ctx context.Context, url string, opts Options) er
 			return nil // Continue with other pages
 		}
 
-		// Convert to document
-		doc, err := s.converter.Convert(ctx, string(pageResp.Body), link.URL)
-		if err != nil {
-			s.logger.Warn().Err(err).Str("url", link.URL).Msg("Failed to convert page")
-			return nil
+		var doc *domain.Document
+		if converter.IsMarkdownContent(pageResp.ContentType, link.URL) {
+			doc, err = s.markdownReader.Read(string(pageResp.Body), link.URL)
+			if err != nil {
+				s.logger.Warn().Err(err).Str("url", link.URL).Msg("Failed to read markdown")
+				return nil
+			}
+		} else {
+			doc, err = s.converter.Convert(ctx, string(pageResp.Body), link.URL)
+			if err != nil {
+				s.logger.Warn().Err(err).Str("url", link.URL).Msg("Failed to convert page")
+				return nil
+			}
 		}
 
 		// Set metadata
