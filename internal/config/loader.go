@@ -17,10 +17,11 @@ func Load() (*Config, error) {
 	setDefaults(v)
 
 	// Config file settings
+	// Search order: current directory first (project-specific), then user config
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
-	v.AddConfigPath(ConfigDir())
 	v.AddConfigPath(".")
+	v.AddConfigPath(ConfigDir())
 
 	// Read config file (ignore if not found)
 	if err := v.ReadInConfig(); err != nil {
@@ -57,10 +58,11 @@ func LoadWithViper() (*Config, *viper.Viper, error) {
 	setDefaults(v)
 
 	// Config file settings
+	// Search order: current directory first (project-specific), then user config
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
-	v.AddConfigPath(ConfigDir())
 	v.AddConfigPath(".")
+	v.AddConfigPath(ConfigDir())
 
 	// Read config file (ignore if not found)
 	if err := v.ReadInConfig(); err != nil {

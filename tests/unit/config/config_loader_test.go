@@ -154,11 +154,9 @@ func TestLoad_WithoutConfigFile(t *testing.T) {
 }
 
 func TestLoad_WithInvalidYAML(t *testing.T) {
-	// Create a temporary config file with invalid YAML
 	tmpDir := t.TempDir()
 	configFile := filepath.Join(tmpDir, "config.yaml")
 
-	// Create invalid YAML content
 	invalidContent := `
 output:
   directory: "/custom/output"
@@ -174,11 +172,10 @@ output:
 
 	require.NoError(t, os.Chdir(tmpDir))
 
-	// Load config should fail with invalid YAML
-	_, err = config.Load()
+	// Use LoadWithViper for isolated testing (Load uses global viper with state)
+	_, _, err = config.LoadWithViper()
 	assert.Error(t, err)
 }
-
 
 // ============================================================================
 // LoadWithViper Tests
@@ -359,4 +356,3 @@ func TestEnsureCacheDir_Existing(t *testing.T) {
 	// Verify directory still exists
 	assert.DirExists(t, config.CacheDir())
 }
-

@@ -16,17 +16,22 @@ import (
 )
 
 const (
-	// Binary path for CLI tests - built in setup
 	cliBinary = "/tmp/repodocs"
 )
 
-// TestCrawl_RealWebsite tests the full crawl pipeline via CLI
+func requireBinary(t *testing.T) {
+	t.Helper()
+	if _, err := os.Stat(cliBinary); os.IsNotExist(err) {
+		t.Skipf("CLI binary not found at %s. Run 'go build -o %s ./cmd/repodocs' first", cliBinary, cliBinary)
+	}
+}
+
 func TestCrawl_RealWebsite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping E2E test in short mode")
 	}
+	requireBinary(t)
 
-	// Create a mock website with realistic content
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -179,6 +184,7 @@ func TestCrawl_GitHubRepo(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping E2E test in short mode")
 	}
+	requireBinary(t)
 
 	mux := http.NewServeMux()
 
@@ -264,6 +270,7 @@ func TestCrawl_PkgGoDev(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping E2E test in short mode")
 	}
+	requireBinary(t)
 
 	mux := http.NewServeMux()
 
@@ -324,6 +331,7 @@ func TestCrawl_Sitemap(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping E2E test in short mode")
 	}
+	requireBinary(t)
 
 	mux := http.NewServeMux()
 
@@ -388,6 +396,7 @@ func TestOutput_ValidMarkdown(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping E2E test in short mode")
 	}
+	requireBinary(t)
 
 	mux := http.NewServeMux()
 
@@ -464,11 +473,11 @@ func TestOutput_ValidMarkdown(t *testing.T) {
 	}
 }
 
-// TestMetadata_ValidJSON validates JSON metadata files
 func TestMetadata_ValidJSON(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping E2E test in short mode")
 	}
+	requireBinary(t)
 
 	mux := http.NewServeMux()
 
@@ -543,11 +552,11 @@ func TestMetadata_ValidJSON(t *testing.T) {
 	}
 }
 
-// TestCache_PersistsBetweenRuns tests that cache persists between runs
 func TestCache_PersistsBetweenRuns(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping E2E test in short mode")
 	}
+	requireBinary(t)
 
 	mux := http.NewServeMux()
 
@@ -600,11 +609,11 @@ func TestCache_PersistsBetweenRuns(t *testing.T) {
 	assert.Greater(t, len(files2), 0, "Second run should create files")
 }
 
-// TestConfig_Overrides tests CLI flag overrides
 func TestConfig_Overrides(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping E2E test in short mode")
 	}
+	requireBinary(t)
 
 	mux := http.NewServeMux()
 
@@ -676,11 +685,11 @@ func TestConfig_Overrides(t *testing.T) {
 	assert.False(t, foundAdmin, "Admin pages should be excluded")
 }
 
-// TestCLI_Integration tests overall CLI integration
 func TestCLI_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping E2E test in short mode")
 	}
+	requireBinary(t)
 
 	mux := http.NewServeMux()
 
