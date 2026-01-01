@@ -24,18 +24,19 @@ type enhancedMetadata struct {
 	Category string   `json:"category"`
 }
 
-const metadataSystemPrompt = `You are a documentation metadata extractor. You MUST respond with ONLY a valid JSON object, no explanations, no markdown, no thinking.`
+const metadataSystemPrompt = `You are a strict JSON generator. Output valid JSON only. No text. No thinking.`
 
-const metadataPrompt = `Extract metadata from this document and return ONLY a JSON object:
+const metadataPrompt = `Generate a JSON object for this document.
 
-{"summary": "1-2 sentence summary", "tags": ["tag1", "tag2", "tag3"], "category": "one of: api|tutorial|guide|reference|concept|example|configuration|troubleshooting|changelog|other"}
+Format:
+{"summary": "string", "tags": ["string"], "category": "string"}
 
-Document Title: %s
+Categories: api, tutorial, guide, reference, concept, configuration, other
 
-Document Content (first 8000 chars):
+Document Content:
 %s
 
-Respond with ONLY the JSON object.`
+JSON Output:`
 
 func (e *MetadataEnhancer) Enhance(ctx context.Context, doc *domain.Document) error {
 	if doc == nil {
@@ -47,14 +48,14 @@ func (e *MetadataEnhancer) Enhance(ctx context.Context, doc *domain.Document) er
 		content = content[:8000] + "\n...[truncated]"
 	}
 
-	prompt := fmt.Sprintf(metadataPrompt, doc.Title, content)
+	prompt := fmt.Sprintf(metadataPrompt, content)
 
 	req := &domain.LLMRequest{
 		Messages: []domain.LLMMessage{
 			{Role: domain.RoleSystem, Content: metadataSystemPrompt},
 			{Role: domain.RoleUser, Content: prompt},
 		},
-		MaxTokens: 500,
+		MaxTokens: 4096,
 	}
 
 	resp, err := e.provider.Complete(ctx, req)
