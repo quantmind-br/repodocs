@@ -25,3 +25,4 @@ Thumbs.db
 
 # Go
 vendor/
+e2e_output/
