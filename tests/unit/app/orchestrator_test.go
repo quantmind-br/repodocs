@@ -2,10 +2,15 @@ package app_test
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/quantmind-br/repodocs-go/internal/app"
 	"github.com/quantmind-br/repodocs-go/internal/config"
+	"github.com/quantmind-br/repodocs-go/internal/utils"
 	"github.com/quantmind-br/repodocs-go/tests/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -137,10 +142,41 @@ func TestOrchestrator_ValidateURL(t *testing.T) {
 }
 
 func TestOrchestrator_Run_Success(t *testing.T) {
-	// Skip: This test requires mock injection which is not currently supported by the Orchestrator.
-	// The Orchestrator creates its own strategies internally. To properly unit test this,
-	// we would need to refactor the Orchestrator to accept strategy factories via dependency injection.
-	t.Skip("Requires dependency injection support for strategy mocking")
+	// Setup test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`<html><body><h1>Hello</h1></body></html>`))
+	}))
+	defer server.Close()
+
+	// Arrange
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+	cfg.Concurrency.Workers = 1
+
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	// Act
+	err = orchestrator.Run(context.Background(), server.URL, opts)
+
+	// Assert
+	require.NoError(t, err)
+
+	// Verify output
+	filename := utils.URLToFilename(server.URL)
+	if !strings.HasSuffix(filename, ".md") {
+		filename = filepath.Join(filename, "index.md")
+	}
+	assert.FileExists(t, filepath.Join(tmpDir, filename))
 }
 
 func TestOrchestrator_Run_UnknownStrategy(t *testing.T) {
@@ -164,10 +200,31 @@ func TestOrchestrator_Run_UnknownStrategy(t *testing.T) {
 }
 
 func TestOrchestrator_Run_ContextCancellation(t *testing.T) {
-	// Skip: This test requires mock injection which is not currently supported by the Orchestrator.
-	// The Orchestrator creates its own strategies internally. To properly unit test this,
-	// we would need to refactor the Orchestrator to accept strategy factories via dependency injection.
-	t.Skip("Requires dependency injection support for strategy mocking")
+	// Arrange
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	// Cancel context immediately
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// Act
+	// Use a valid URL so it picks a strategy (Crawler)
+	err = orchestrator.Run(ctx, "https://example.com", opts)
+
+	// Assert
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.Canceled)
 }
 
 func TestOrchestrator_Run_StrategyError(t *testing.T) {

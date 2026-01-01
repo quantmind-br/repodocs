@@ -63,8 +63,8 @@ func TestIntegration_CrawlerStrategy_Execute_Success(t *testing.T) {
 
 	ctx := context.Background()
 	opts := strategies.Options{
-		Limit:      10,
-		MaxDepth:   1,
+		Limit:       10,
+		MaxDepth:    1,
 		Concurrency: 1,
 	}
 
@@ -89,8 +89,8 @@ func TestIntegration_CrawlerStrategy_Execute_ContextCancellation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	opts := strategies.Options{
-		Limit:      10,
-		MaxDepth:   1,
+		Limit:       10,
+		MaxDepth:    1,
 		Concurrency: 1,
 	}
 
@@ -112,7 +112,7 @@ func TestIntegration_CrawlerStrategy_Execute_InvalidURL(t *testing.T) {
 
 	ctx := context.Background()
 	opts := strategies.Options{
-		Limit:      10,
+		Limit:       10,
 		Concurrency: 1,
 	}
 
@@ -145,8 +145,8 @@ func TestIntegration_CrawlerStrategy_Execute_Limit(t *testing.T) {
 
 	ctx := context.Background()
 	opts := strategies.Options{
-		Limit:      2, // Limit to 2 pages
-		MaxDepth:   1,
+		Limit:       2, // Limit to 2 pages
+		MaxDepth:    1,
 		Concurrency: 1,
 	}
 
@@ -172,7 +172,7 @@ func TestIntegration_CrawlerStrategy_Execute_MaxDepth(t *testing.T) {
 
 	ctx := context.Background()
 	opts := strategies.Options{
-		MaxDepth:   1, // Only go 1 level deep
+		MaxDepth:    1, // Only go 1 level deep
 		Concurrency: 1,
 	}
 
@@ -201,8 +201,8 @@ func TestIntegration_CrawlerStrategy_Execute_ContentTypeFilter(t *testing.T) {
 
 	ctx := context.Background()
 	opts := strategies.Options{
-		Limit:      10,
-		MaxDepth:   1,
+		Limit:       10,
+		MaxDepth:    1,
 		Concurrency: 1,
 	}
 
@@ -226,10 +226,10 @@ func TestIntegration_CrawlerStrategy_Execute_DryRun(t *testing.T) {
 
 	ctx := context.Background()
 	opts := strategies.Options{
-		Limit:      10,
-		MaxDepth:   1,
+		Limit:       10,
+		MaxDepth:    1,
 		Concurrency: 1,
-		DryRun:     true, // Dry run mode
+		DryRun:      true, // Dry run mode
 	}
 
 	// Act
@@ -253,11 +253,127 @@ func TestIntegration_CrawlerStrategy_Name(t *testing.T) {
 	assert.Equal(t, "crawler", name)
 }
 
-// Helper function to create test dependencies for CrawlerStrategy
+func TestIntegration_CrawlerStrategy_Execute_MarkdownContent(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	server.HandleHTML(t, "/", `<html><body><a href="/docs/readme.md">Docs</a></body></html>`)
+	server.Handle(t, "/docs/readme.md", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("# Hello World\n\nThis is markdown content."))
+	}))
+
+	deps := testutil.NewTestDependencies(t)
+	strategy := strategies.NewCrawlerStrategy(deps)
+
+	ctx := context.Background()
+	opts := strategies.Options{
+		Limit:       10,
+		MaxDepth:    2,
+		Concurrency: 1,
+	}
+
+	err := strategy.Execute(ctx, server.URL+"/", opts)
+
+	require.NoError(t, err)
+	assert.NotNil(t, deps.Writer)
+}
+
+func TestIntegration_CrawlerStrategy_Execute_MarkdownURL(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	server.HandleHTML(t, "/", `<html><body><a href="/guide.md">Guide</a></body></html>`)
+	server.Handle(t, "/guide.md", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("# Installation Guide\n\n## Prerequisites\n\nYou need Go 1.21+"))
+	}))
+
+	deps := testutil.NewTestDependencies(t)
+	strategy := strategies.NewCrawlerStrategy(deps)
+
+	ctx := context.Background()
+	opts := strategies.Options{
+		Limit:       10,
+		MaxDepth:    2,
+		Concurrency: 1,
+	}
+
+	err := strategy.Execute(ctx, server.URL+"/", opts)
+
+	require.NoError(t, err)
+	assert.NotNil(t, deps.Writer)
+}
+
+func TestIntegration_CrawlerStrategy_Execute_MixedHTMLAndMarkdown(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	server.HandleHTML(t, "/", `<html><body>
+		<a href="/page.html">HTML Page</a>
+		<a href="/docs/readme.md">Markdown Doc</a>
+	</body></html>`)
+	server.HandleHTML(t, "/page.html", `<html><body><h1>HTML Page</h1></body></html>`)
+	server.Handle(t, "/docs/readme.md", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/markdown")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("# Markdown Doc\n\nContent here."))
+	}))
+
+	deps := testutil.NewTestDependencies(t)
+	strategy := strategies.NewCrawlerStrategy(deps)
+
+	ctx := context.Background()
+	opts := strategies.Options{
+		Limit:       10,
+		MaxDepth:    2,
+		Concurrency: 1,
+	}
+
+	err := strategy.Execute(ctx, server.URL+"/", opts)
+
+	require.NoError(t, err)
+	assert.NotNil(t, deps.Writer)
+}
+
+func TestIntegration_CrawlerStrategy_Execute_MarkdownExtensions(t *testing.T) {
+	tests := []struct {
+		name        string
+		path        string
+		contentType string
+	}{
+		{"md extension", "/docs/readme.md", "text/plain"},
+		{"markdown extension", "/docs/guide.markdown", "application/octet-stream"},
+		{"mdown extension", "/docs/notes.mdown", "text/plain"},
+		{"text/markdown type", "/docs/page", "text/markdown"},
+		{"text/x-markdown type", "/docs/other", "text/x-markdown"},
+		{"application/markdown type", "/docs/another", "application/markdown"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := testutil.NewTestServer(t)
+			server.HandleHTML(t, "/", `<html><body><a href="`+tt.path+`">Link</a></body></html>`)
+			server.Handle(t, tt.path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", tt.contentType)
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("# Test Content\n\nMarkdown body"))
+			}))
+
+			deps := testutil.NewTestDependencies(t)
+			strategy := strategies.NewCrawlerStrategy(deps)
+
+			ctx := context.Background()
+			opts := strategies.Options{
+				Limit:       10,
+				MaxDepth:    2,
+				Concurrency: 1,
+			}
+
+			err := strategy.Execute(ctx, server.URL+"/", opts)
+
+			require.NoError(t, err)
+		})
+	}
+}
+
 func createTestCrawlerDependencies(t *testing.T) *strategies.Dependencies {
 	t.Helper()
-
-	// Create minimal test dependencies
-	// In a real integration test, these would be properly initialized
 	return &strategies.Dependencies{}
 }

@@ -19,23 +19,25 @@ import (
 
 // CrawlerStrategy crawls websites to extract documentation
 type CrawlerStrategy struct {
-	deps      *Dependencies
-	fetcher   *fetcher.Client
-	renderer  domain.Renderer
-	converter *converter.Pipeline
-	writer    *output.Writer
-	logger    *utils.Logger
+	deps           *Dependencies
+	fetcher        *fetcher.Client
+	renderer       domain.Renderer
+	converter      *converter.Pipeline
+	markdownReader *converter.MarkdownReader
+	writer         *output.Writer
+	logger         *utils.Logger
 }
 
 // NewCrawlerStrategy creates a new crawler strategy
 func NewCrawlerStrategy(deps *Dependencies) *CrawlerStrategy {
 	return &CrawlerStrategy{
-		deps:      deps,
-		fetcher:   deps.Fetcher,
-		renderer:  deps.Renderer,
-		converter: deps.Converter,
-		writer:    deps.Writer,
-		logger:    deps.Logger,
+		deps:           deps,
+		fetcher:        deps.Fetcher,
+		renderer:       deps.Renderer,
+		converter:      deps.Converter,
+		markdownReader: converter.NewMarkdownReader(),
+		writer:         deps.Writer,
+		logger:         deps.Logger,
 	}
 }
 
@@ -148,13 +150,15 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 		default:
 		}
 
-		// Check content type
 		contentType := r.Headers.Get("Content-Type")
-		if !isHTMLContentType(contentType) {
+		currentURL := r.Request.URL.String()
+		isMarkdown := converter.IsMarkdownContent(contentType, currentURL)
+		isHTML := isHTMLContentType(contentType)
+
+		if !isMarkdown && !isHTML {
 			return
 		}
 
-		// Check limit
 		mu.Lock()
 		if opts.Limit > 0 && processedCount >= opts.Limit {
 			mu.Unlock()
@@ -167,33 +171,42 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 		bar.Add(1)
 		barMu.Unlock()
 
-		// Check if already exists
-		if !opts.Force && s.writer.Exists(r.Request.URL.String()) {
+		if !opts.Force && s.writer.Exists(currentURL) {
 			return
 		}
 
-		// Get HTML content
-		html := string(r.Body)
+		var doc *domain.Document
+		var err error
 
-		// Check if JS rendering is needed
-		if opts.RenderJS || renderer.NeedsJSRendering(html) {
-			if s.renderer != nil {
-				rendered, err := s.renderer.Render(ctx, r.Request.URL.String(), domain.RenderOptions{
-					Timeout:     60 * time.Second,
-					WaitStable:  2 * time.Second,
-					ScrollToEnd: true,
-				})
-				if err == nil {
-					html = rendered
+		if isMarkdown {
+			doc, err = s.markdownReader.Read(string(r.Body), currentURL)
+			if err != nil {
+				s.logger.Warn().Err(err).Str("url", currentURL).Msg("Failed to read markdown")
+				return
+			}
+		} else {
+			html := string(r.Body)
+
+			// Check if JS rendering is needed
+			if opts.RenderJS || renderer.NeedsJSRendering(html) {
+				if s.renderer != nil {
+					rendered, err := s.renderer.Render(ctx, currentURL, domain.RenderOptions{
+						Timeout:     60 * time.Second,
+						WaitStable:  2 * time.Second,
+						ScrollToEnd: true,
+					})
+					if err == nil {
+						html = rendered
+					}
 				}
 			}
-		}
 
-		// Convert to document
-		doc, err := s.converter.Convert(ctx, html, r.Request.URL.String())
-		if err != nil {
-			s.logger.Warn().Err(err).Str("url", r.Request.URL.String()).Msg("Failed to convert page")
-			return
+			// Convert to document
+			doc, err = s.converter.Convert(ctx, html, currentURL)
+			if err != nil {
+				s.logger.Warn().Err(err).Str("url", currentURL).Msg("Failed to convert page")
+				return
+			}
 		}
 
 		// Set metadata
@@ -202,7 +215,7 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 
 		if !opts.DryRun {
 			if err := s.deps.WriteDocument(ctx, doc); err != nil {
-				s.logger.Warn().Err(err).Str("url", r.Request.URL.String()).Msg("Failed to write document")
+				s.logger.Warn().Err(err).Str("url", currentURL).Msg("Failed to write document")
 			}
 		}
 	})

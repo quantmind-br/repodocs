@@ -34,8 +34,14 @@ func (t *StealthTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	}
 
 	// Convert domain.Response to http.Response
+	// IMPORTANT: We must strip Content-Encoding header because we are returning
+	// the already decompressed body. If we leave it, the caller (e.g. Colly)
+	// will try to decompress it again and fail with "gzip: invalid header".
+	resp.Headers.Del("Content-Encoding")
+
 	return &http.Response{
-		Status:        http.StatusText(resp.StatusCode),
+		Status: http.StatusText(resp.StatusCode),
+
 		StatusCode:    resp.StatusCode,
 		Proto:         "HTTP/1.1",
 		ProtoMajor:    1,
