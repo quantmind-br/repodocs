@@ -33,10 +33,10 @@ func TestIsMarkdownContent(t *testing.T) {
 			want:        true,
 		},
 		{
-			name:        "text/html content type with md URL",
+			name:        "text/html content type with md URL overrides content type",
 			contentType: "text/html; charset=utf-8",
 			url:         "https://example.com/docs/page.md",
-			want:        false,
+			want:        true,
 		},
 		{
 			name:        "URL with .md extension",
@@ -93,10 +93,10 @@ func TestIsMarkdownContent(t *testing.T) {
 			want:        true,
 		},
 		{
-			name:        "application/xhtml blocks URL check",
+			name:        "application/xhtml does not block URL check for md extension",
 			contentType: "application/xhtml+xml",
 			url:         "https://example.com/docs/readme.md",
-			want:        false,
+			want:        true,
 		},
 	}
 
