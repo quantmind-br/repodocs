@@ -137,6 +137,31 @@ func (d *Document) ToFrontmatter() *Frontmatter {
 	}
 }
 
+// MetadataIndex represents consolidated metadata for all processed documents
+type MetadataIndex struct {
+	GeneratedAt    time.Time          `json:"generated_at"`
+	SourceURL      string             `json:"source_url"`
+	Strategy       string             `json:"strategy"`
+	TotalDocuments int                `json:"total_documents"`
+	TotalWordCount int                `json:"total_word_count"`
+	TotalCharCount int                `json:"total_char_count"`
+	Documents      []DocumentMetadata `json:"documents"`
+}
+
+// DocumentMetadata wraps Metadata with the output file path
+type DocumentMetadata struct {
+	FilePath string `json:"file_path"`
+	*Metadata
+}
+
+// ToDocumentMetadata creates a DocumentMetadata from a Document
+func (d *Document) ToDocumentMetadata(filePath string) *DocumentMetadata {
+	return &DocumentMetadata{
+		FilePath: filePath,
+		Metadata: d.ToMetadata(),
+	}
+}
+
 // =============================================================================
 // LLM Types
 // =============================================================================

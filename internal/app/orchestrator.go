@@ -142,7 +142,9 @@ func (o *Orchestrator) Run(ctx context.Context, url string, opts OrchestratorOpt
 		Str("strategy", strategy.Name()).
 		Msg("Using extraction strategy")
 
-	// Build strategy options
+	o.deps.SetSourceURL(url)
+	o.deps.SetStrategy(strategy.Name())
+
 	strategyOpts := strategies.Options{
 		Output:          o.config.Output.Directory,
 		Concurrency:     o.config.Concurrency.Workers,
@@ -161,14 +163,16 @@ func (o *Orchestrator) Run(ctx context.Context, url string, opts OrchestratorOpt
 		FilterURL:       opts.FilterURL,
 	}
 
-	// Execute strategy
 	if err := strategy.Execute(ctx, url, strategyOpts); err != nil {
-		// Check if it was a context cancellation
 		if ctx.Err() != nil {
 			o.logger.Warn().Msg("Extraction cancelled")
 			return ctx.Err()
 		}
 		return fmt.Errorf("strategy execution failed: %w", err)
+	}
+
+	if err := o.deps.FlushMetadata(); err != nil {
+		o.logger.Warn().Err(err).Msg("Failed to flush metadata")
 	}
 
 	duration := time.Since(startTime)

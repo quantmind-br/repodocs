@@ -2,7 +2,6 @@ package output
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 
@@ -11,25 +10,24 @@ import (
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 )
 
-// Writer handles writing documents to the filesystem
 type Writer struct {
 	baseDir      string
 	flat         bool
 	jsonMetadata bool
 	force        bool
 	dryRun       bool
+	collector    *MetadataCollector
 }
 
-// WriterOptions contains options for the writer
 type WriterOptions struct {
 	BaseDir      string
 	Flat         bool
 	JSONMetadata bool
 	Force        bool
 	DryRun       bool
+	Collector    *MetadataCollector
 }
 
-// NewWriter creates a new output writer
 func NewWriter(opts WriterOptions) *Writer {
 	if opts.BaseDir == "" {
 		opts.BaseDir = "./docs"
@@ -41,6 +39,7 @@ func NewWriter(opts WriterOptions) *Writer {
 		jsonMetadata: opts.JSONMetadata,
 		force:        opts.Force,
 		dryRun:       opts.DryRun,
+		collector:    opts.Collector,
 	}
 }
 
@@ -80,35 +79,24 @@ func (w *Writer) Write(ctx context.Context, doc *domain.Document) error {
 		return err
 	}
 
-	// Write markdown file
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		return err
 	}
 
-	// Write JSON metadata if enabled
-	if w.jsonMetadata {
-		jsonPath := utils.JSONPath(path)
-		if err := w.writeJSON(jsonPath, doc); err != nil {
-			return err
-		}
+	if w.jsonMetadata && w.collector != nil {
+		w.collector.Add(doc, path)
 	}
 
 	return nil
 }
 
-// writeJSON writes JSON metadata
-func (w *Writer) writeJSON(path string, doc *domain.Document) error {
-	metadata := doc.ToMetadata()
-
-	data, err := json.MarshalIndent(metadata, "", "  ")
-	if err != nil {
-		return err
+func (w *Writer) FlushMetadata() error {
+	if w.collector != nil {
+		return w.collector.Flush()
 	}
-
-	return os.WriteFile(path, data, 0644)
+	return nil
 }
 
-// WriteMultiple writes multiple documents
 func (w *Writer) WriteMultiple(ctx context.Context, docs []*domain.Document) error {
 	for _, doc := range docs {
 		select {

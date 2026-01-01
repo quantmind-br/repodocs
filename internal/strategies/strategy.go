@@ -71,6 +71,7 @@ type Dependencies struct {
 	Logger           *utils.Logger
 	LLMProvider      domain.LLMProvider
 	MetadataEnhancer *llm.MetadataEnhancer
+	Collector        *output.MetadataCollector
 }
 
 // NewDependencies creates new dependencies for strategies
@@ -121,6 +122,15 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 		ExcludeSelector: opts.ExcludeSelector,
 	})
 
+	var collector *output.MetadataCollector
+	if opts.JSONMetadata {
+		collector = output.NewMetadataCollector(output.CollectorOptions{
+			BaseDir:   opts.OutputDir,
+			SourceURL: opts.SourceURL,
+			Enabled:   true,
+		})
+	}
+
 	// Create writer
 	writer := output.NewWriter(output.WriterOptions{
 		BaseDir:      opts.OutputDir,
@@ -128,6 +138,7 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 		JSONMetadata: opts.JSONMetadata,
 		Force:        opts.Force,
 		DryRun:       opts.DryRun,
+		Collector:    collector,
 	})
 
 	// Create logger
@@ -183,6 +194,7 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 		Logger:           logger,
 		LLMProvider:      llmProvider,
 		MetadataEnhancer: metadataEnhancer,
+		Collector:        collector,
 	}, nil
 }
 
@@ -201,6 +213,25 @@ func (d *Dependencies) Close() error {
 		d.LLMProvider.Close()
 	}
 	return nil
+}
+
+func (d *Dependencies) FlushMetadata() error {
+	if d.Collector != nil {
+		return d.Collector.Flush()
+	}
+	return nil
+}
+
+func (d *Dependencies) SetStrategy(name string) {
+	if d.Collector != nil {
+		d.Collector.SetStrategy(name)
+	}
+}
+
+func (d *Dependencies) SetSourceURL(url string) {
+	if d.Collector != nil {
+		d.Collector.SetSourceURL(url)
+	}
 }
 
 // WriteDocument enhances metadata (if configured) and writes the document
@@ -232,4 +263,5 @@ type DependencyOptions struct {
 	DryRun          bool
 	Verbose         bool
 	LLMConfig       *config.LLMConfig
+	SourceURL       string
 }

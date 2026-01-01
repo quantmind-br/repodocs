@@ -11,7 +11,6 @@ import (
 
 	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/output"
-	"github.com/quantmind-br/repodocs-go/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -69,13 +68,20 @@ func TestWrite_Success(t *testing.T) {
 	assert.Contains(t, string(content), "# Test Document")
 }
 
-// TestWrite_WithMetadata tests writing with JSON metadata
+// TestWrite_WithMetadata tests writing with JSON metadata using consolidated collector
 func TestWrite_WithMetadata(t *testing.T) {
 	tmpDir := t.TempDir()
+
+	collector := output.NewMetadataCollector(output.CollectorOptions{
+		BaseDir:   tmpDir,
+		SourceURL: "https://example.com",
+		Enabled:   true,
+	})
 
 	writer := output.NewWriter(output.WriterOptions{
 		BaseDir:      tmpDir,
 		JSONMetadata: true,
+		Collector:    collector,
 	})
 
 	doc := &domain.Document{
@@ -89,18 +95,21 @@ func TestWrite_WithMetadata(t *testing.T) {
 	err := writer.Write(context.Background(), doc)
 	require.NoError(t, err)
 
-	mdPath := writer.GetPath("https://example.com/docs")
-	jsonPath := utils.JSONPath(mdPath)
-	assert.FileExists(t, jsonPath)
-
-	data, err := os.ReadFile(jsonPath)
+	err = writer.FlushMetadata()
 	require.NoError(t, err)
 
-	var metadata map[string]interface{}
-	err = json.Unmarshal(data, &metadata)
+	metadataPath := filepath.Join(tmpDir, "metadata.json")
+	assert.FileExists(t, metadataPath)
+
+	data, err := os.ReadFile(metadataPath)
 	require.NoError(t, err)
-	assert.Equal(t, "Test Document", metadata["title"])
-	assert.Equal(t, "Test Description", metadata["description"])
+
+	var index domain.MetadataIndex
+	err = json.Unmarshal(data, &index)
+	require.NoError(t, err)
+	require.Len(t, index.Documents, 1)
+	assert.Equal(t, "Test Document", index.Documents[0].Title)
+	assert.Equal(t, "Test Description", index.Documents[0].Description)
 }
 
 // TestWrite_EmptyContent tests writing document with empty content
@@ -257,13 +266,20 @@ func TestWriteMultiple_Partial(t *testing.T) {
 	assert.Equal(t, "blocking", string(content))
 }
 
-// TestWriteJSON_Success tests successful JSON metadata writing
+// TestWriteJSON_Success tests successful JSON metadata writing with consolidated collector
 func TestWriteJSON_Success(t *testing.T) {
 	tmpDir := t.TempDir()
+
+	collector := output.NewMetadataCollector(output.CollectorOptions{
+		BaseDir:   tmpDir,
+		SourceURL: "https://example.com",
+		Enabled:   true,
+	})
 
 	writer := output.NewWriter(output.WriterOptions{
 		BaseDir:      tmpDir,
 		JSONMetadata: true,
+		Collector:    collector,
 	})
 
 	doc := &domain.Document{
@@ -275,18 +291,27 @@ func TestWriteJSON_Success(t *testing.T) {
 	err := writer.Write(context.Background(), doc)
 	require.NoError(t, err)
 
-	mdPath := writer.GetPath("https://example.com/docs")
-	jsonPath := utils.JSONPath(mdPath)
-	assert.FileExists(t, jsonPath)
+	err = writer.FlushMetadata()
+	require.NoError(t, err)
+
+	metadataPath := filepath.Join(tmpDir, "metadata.json")
+	assert.FileExists(t, metadataPath)
 }
 
 // TestWriteJSON_Indent tests JSON metadata formatting with proper indentation
 func TestWriteJSON_Indent(t *testing.T) {
 	tmpDir := t.TempDir()
 
+	collector := output.NewMetadataCollector(output.CollectorOptions{
+		BaseDir:   tmpDir,
+		SourceURL: "https://example.com",
+		Enabled:   true,
+	})
+
 	writer := output.NewWriter(output.WriterOptions{
 		BaseDir:      tmpDir,
 		JSONMetadata: true,
+		Collector:    collector,
 	})
 
 	doc := &domain.Document{
@@ -300,22 +325,22 @@ func TestWriteJSON_Indent(t *testing.T) {
 	err := writer.Write(context.Background(), doc)
 	require.NoError(t, err)
 
-	mdPath := writer.GetPath("https://example.com/docs")
-	jsonPath := utils.JSONPath(mdPath)
-
-	data, err := os.ReadFile(jsonPath)
+	err = writer.FlushMetadata()
 	require.NoError(t, err)
 
-	// Verify JSON is properly formatted (should have newlines and indentation)
+	metadataPath := filepath.Join(tmpDir, "metadata.json")
+	data, err := os.ReadFile(metadataPath)
+	require.NoError(t, err)
+
 	jsonStr := string(data)
-	assert.Contains(t, jsonStr, "\n") // Should have newlines
-	assert.Contains(t, jsonStr, "  ") // Should have indentation
+	assert.Contains(t, jsonStr, "\n")
+	assert.Contains(t, jsonStr, "  ")
 
-	// Verify it can be unmarshaled
-	var metadata map[string]interface{}
-	err = json.Unmarshal(data, &metadata)
+	var index domain.MetadataIndex
+	err = json.Unmarshal(data, &index)
 	require.NoError(t, err)
-	assert.Equal(t, "Test", metadata["title"])
+	require.Len(t, index.Documents, 1)
+	assert.Equal(t, "Test", index.Documents[0].Title)
 }
 
 // TestGetPath_ReturnsPath tests GetPath returns correct path
@@ -626,13 +651,20 @@ func TestWriter_Write_DryRun(t *testing.T) {
 	assert.NoFileExists(t, path)
 }
 
-// TestWriter_WriteJSON tests JSON metadata writing
+// TestWriter_WriteJSON tests JSON metadata writing with consolidated collector
 func TestWriter_WriteJSON(t *testing.T) {
 	tmpDir := t.TempDir()
+
+	collector := output.NewMetadataCollector(output.CollectorOptions{
+		BaseDir:   tmpDir,
+		SourceURL: "https://example.com",
+		Enabled:   true,
+	})
 
 	writer := output.NewWriter(output.WriterOptions{
 		BaseDir:      tmpDir,
 		JSONMetadata: true,
+		Collector:    collector,
 	})
 
 	doc := &domain.Document{
@@ -644,18 +676,21 @@ func TestWriter_WriteJSON(t *testing.T) {
 	err := writer.Write(context.Background(), doc)
 	require.NoError(t, err)
 
-	mdPath := writer.GetPath("https://example.com/docs")
-	jsonPath := utils.JSONPath(mdPath)
-	assert.FileExists(t, jsonPath)
-
-	data, err := os.ReadFile(jsonPath)
+	err = writer.FlushMetadata()
 	require.NoError(t, err)
 
-	var metadata map[string]interface{}
-	err = json.Unmarshal(data, &metadata)
+	metadataPath := filepath.Join(tmpDir, "metadata.json")
+	assert.FileExists(t, metadataPath)
+
+	data, err := os.ReadFile(metadataPath)
 	require.NoError(t, err)
-	assert.Equal(t, "Test", metadata["title"])
-	assert.Equal(t, "https://example.com/docs", metadata["url"])
+
+	var index domain.MetadataIndex
+	err = json.Unmarshal(data, &index)
+	require.NoError(t, err)
+	require.Len(t, index.Documents, 1)
+	assert.Equal(t, "Test", index.Documents[0].Title)
+	assert.Equal(t, "https://example.com/docs", index.Documents[0].URL)
 }
 
 // TestWriter_WriteMultiple tests multiple document writing
