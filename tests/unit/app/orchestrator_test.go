@@ -2,19 +2,47 @@ package app_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/quantmind-br/repodocs-go/internal/app"
-	"github.com/quantmind-br/repodocs-go/internal/config"
-	"github.com/quantmind-br/repodocs-go/internal/utils"
-	"github.com/quantmind-br/repodocs-go/tests/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/quantmind-br/repodocs-go/internal/app"
+	"github.com/quantmind-br/repodocs-go/internal/config"
+	"github.com/quantmind-br/repodocs-go/internal/strategies"
+	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs-go/tests/testutil"
 )
+
+type testStrategy struct {
+	name       string
+	canHandle  bool
+	execErr    error
+	execCalled bool
+	lastOpts   strategies.Options
+}
+
+func (s *testStrategy) Name() string {
+	return s.name
+}
+
+func (s *testStrategy) CanHandle(url string) bool {
+	return s.canHandle
+}
+
+func (s *testStrategy) Execute(ctx context.Context, url string, opts strategies.Options) error {
+	s.execCalled = true
+	s.lastOpts = opts
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	return s.execErr
+}
 
 func TestNewOrchestrator_Success(t *testing.T) {
 	// Arrange
@@ -105,10 +133,119 @@ func TestOrchestrator_GetStrategyName(t *testing.T) {
 	}
 }
 
-func TestOrchestrator_ValidateURL(t *testing.T) {
-	// Arrange
+func TestOrchestrator_Run_NilStrategy(t *testing.T) {
+	tmpDir := t.TempDir()
 	cfg := config.Default()
-	cfg.Cache.Enabled = false // Disable cache to avoid BadgerDB lock issues in tests
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			return nil
+		},
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	err = orchestrator.Run(context.Background(), "https://example.com", opts)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create strategy")
+}
+
+func TestOrchestrator_Run_StrategyReceivesCorrectURL(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+
+	var capturedURL string
+	mockStrategy := &testStrategy{
+		name:      "mock",
+		canHandle: true,
+		execErr:   nil,
+	}
+
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			return &urlCapturingStrategy{
+				testStrategy: mockStrategy,
+				capturedURL:  &capturedURL,
+			}
+		},
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	targetURL := "https://example.com/docs/api"
+	err = orchestrator.Run(context.Background(), targetURL, opts)
+
+	require.NoError(t, err)
+	assert.Equal(t, targetURL, capturedURL)
+}
+
+type urlCapturingStrategy struct {
+	*testStrategy
+	capturedURL *string
+}
+
+func (s *urlCapturingStrategy) Execute(ctx context.Context, url string, opts strategies.Options) error {
+	*s.capturedURL = url
+	return s.testStrategy.Execute(ctx, url, opts)
+}
+
+func TestOrchestrator_Run_StrategyTypeDetection(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+
+	tests := []struct {
+		name         string
+		url          string
+		expectedType app.StrategyType
+	}{
+		{"HTTP crawler", "https://example.com", app.StrategyCrawler},
+		{"Sitemap", "https://example.com/sitemap.xml", app.StrategySitemap},
+		{"GitHub repo", "https://github.com/user/repo", app.StrategyGit},
+		{"LLMS file", "https://example.com/llms.txt", app.StrategyLLMS},
+		{"pkg.go.dev", "https://pkg.go.dev/std", app.StrategyPkgGo},
+		{"GitHub Wiki", "https://github.com/user/repo/wiki", app.StrategyWiki},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var capturedType app.StrategyType
+			mockStrategy := &testStrategy{name: "mock", canHandle: true}
+
+			opts := app.OrchestratorOptions{
+				Config: cfg,
+				StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+					capturedType = st
+					return mockStrategy
+				},
+			}
+
+			orchestrator, err := app.NewOrchestrator(opts)
+			require.NoError(t, err)
+			defer orchestrator.Close()
+
+			_ = orchestrator.Run(context.Background(), tt.url, opts)
+
+			assert.Equal(t, tt.expectedType, capturedType)
+		})
+	}
+}
+
+func TestOrchestrator_ValidateURL(t *testing.T) {
+	cfg := config.Default()
+	cfg.Cache.Enabled = false
 	orchestrator, err := app.NewOrchestrator(app.OrchestratorOptions{
 		Config: cfg,
 	})
@@ -127,7 +264,6 @@ func TestOrchestrator_ValidateURL(t *testing.T) {
 		{"Empty URL", "", true, "unsupported URL format"},
 	}
 
-	// Act & Assert
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := orchestrator.ValidateURL(tt.url)
@@ -228,10 +364,37 @@ func TestOrchestrator_Run_ContextCancellation(t *testing.T) {
 }
 
 func TestOrchestrator_Run_StrategyError(t *testing.T) {
-	// Skip: This test requires mock injection which is not currently supported by the Orchestrator.
-	// The Orchestrator creates its own strategies internally. To properly unit test this,
-	// we would need to refactor the Orchestrator to accept strategy factories via dependency injection.
-	t.Skip("Requires dependency injection support for strategy mocking")
+	// Arrange
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+
+	expectedErr := fmt.Errorf("mock strategy execution failed")
+	mockStrategy := &testStrategy{
+		name:      "mock",
+		canHandle: true,
+		execErr:   expectedErr,
+	}
+
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			return mockStrategy
+		},
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	// Act
+	err = orchestrator.Run(context.Background(), "https://example.com", opts)
+
+	// Assert
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "strategy execution failed")
+	assert.Contains(t, err.Error(), "mock strategy execution failed")
 }
 
 func TestOrchestrator_Close(t *testing.T) {
@@ -267,10 +430,56 @@ func TestOrchestrator_Close_NilDeps(t *testing.T) {
 }
 
 func TestOrchestrator_Run_WithCustomOptions(t *testing.T) {
-	// Skip: This test requires mock injection which is not currently supported by the Orchestrator.
-	// The Orchestrator creates its own strategies internally. To properly unit test this,
-	// we would need to refactor the Orchestrator to accept strategy factories via dependency injection.
-	t.Skip("Requires dependency injection support for strategy mocking")
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+	cfg.Concurrency.Workers = 3
+	cfg.Concurrency.MaxDepth = 5
+
+	mockStrategy := &testStrategy{
+		name:      "mock",
+		canHandle: true,
+		execErr:   nil,
+	}
+
+	runOpts := app.OrchestratorOptions{
+		Config:          cfg,
+		Limit:           42,
+		DryRun:          true,
+		Verbose:         true,
+		Force:           true,
+		RenderJS:        true,
+		Split:           true,
+		IncludeAssets:   true,
+		ContentSelector: "#content",
+		ExcludeSelector: ".nav",
+		ExcludePatterns: []string{"*.tmp"},
+		FilterURL:       "/docs/",
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			return mockStrategy
+		},
+	}
+
+	orchestrator, err := app.NewOrchestrator(runOpts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	err = orchestrator.Run(context.Background(), "https://example.com", runOpts)
+
+	require.NoError(t, err)
+	assert.True(t, mockStrategy.execCalled, "Strategy.Execute should be called")
+	assert.Equal(t, 42, mockStrategy.lastOpts.Limit)
+	assert.True(t, mockStrategy.lastOpts.DryRun)
+	assert.True(t, mockStrategy.lastOpts.Verbose)
+	assert.True(t, mockStrategy.lastOpts.Force)
+	assert.True(t, mockStrategy.lastOpts.RenderJS)
+	assert.True(t, mockStrategy.lastOpts.Split)
+	assert.True(t, mockStrategy.lastOpts.IncludeAssets)
+	assert.Equal(t, "#content", mockStrategy.lastOpts.ContentSelector)
+	assert.Equal(t, ".nav", mockStrategy.lastOpts.ExcludeSelector)
+	assert.Contains(t, mockStrategy.lastOpts.Exclude, "*.tmp")
+	assert.Equal(t, "/docs/", mockStrategy.lastOpts.FilterURL)
 }
 
 func TestDetectStrategy(t *testing.T) {
