@@ -55,7 +55,7 @@ func (e *MetadataEnhancer) Enhance(ctx context.Context, doc *domain.Document) er
 			{Role: domain.RoleSystem, Content: metadataSystemPrompt},
 			{Role: domain.RoleUser, Content: prompt},
 		},
-		MaxTokens: 4096,
+		MaxTokens: 32000,
 	}
 
 	resp, err := e.provider.Complete(ctx, req)
