@@ -362,3 +362,131 @@ func TestE2E_CrawlWithExclude(t *testing.T) {
 	assert.False(t, foundAdmin, "Admin page should be excluded")
 	assert.False(t, foundLogin, "Login page should be excluded")
 }
+
+func TestE2E_CrawlMarkdownContent(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	mux := http.NewServeMux()
+
+	// HTML home page with links to markdown files
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`
+		<!DOCTYPE html>
+		<html>
+		<body>
+			<h1>Documentation</h1>
+			<a href="/readme.md">README</a>
+			<a href="/api-docs">API Docs</a>
+		</body>
+		</html>
+		`))
+	})
+
+	// Markdown file served with .md extension
+	mux.HandleFunc("/readme.md", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/markdown")
+		w.Write([]byte(`# Project README
+
+This is the project readme file.
+
+## Features
+
+- Feature one
+- Feature two
+- Feature three
+
+## Installation
+
+` + "```bash\ngo install ./...\n```" + `
+`))
+	})
+
+	// Markdown content served with text/markdown content-type
+	mux.HandleFunc("/api-docs", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+		w.Write([]byte(`# API Documentation
+
+## Endpoints
+
+### GET /api/users
+
+Returns a list of users.
+
+### POST /api/users
+
+Creates a new user.
+`))
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	tmpDir, err := os.MkdirTemp("", "repodocs-e2e-markdown-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	fetcherClient, err := fetcher.NewClient(fetcher.ClientOptions{Timeout: 10 * time.Second})
+	require.NoError(t, err)
+	defer fetcherClient.Close()
+
+	cacheClient, err := cache.NewBadgerCache(cache.Options{InMemory: true})
+	require.NoError(t, err)
+	defer cacheClient.Close()
+
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	pipeline := converter.NewPipeline(converter.PipelineOptions{BaseURL: server.URL})
+	writer := output.NewWriter(output.WriterOptions{BaseDir: tmpDir, Force: true})
+
+	deps := &strategies.Dependencies{
+		Fetcher:   fetcherClient,
+		Cache:     cacheClient,
+		Converter: pipeline,
+		Writer:    writer,
+		Logger:    logger,
+	}
+
+	crawler := strategies.NewCrawlerStrategy(deps)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	err = crawler.Execute(ctx, server.URL, strategies.Options{
+		MaxDepth:    2,
+		Concurrency: 1,
+		Force:       true,
+	})
+	require.NoError(t, err)
+
+	// Verify markdown files were created
+	var files []string
+	var readmeFound, apiDocsFound bool
+
+	filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		if filepath.Ext(path) == ".md" {
+			files = append(files, filepath.Base(path))
+			// Check for readme file (may be named readme.md or readme-md.md depending on output logic)
+			if filepath.Base(path) == "readme.md" || filepath.Base(path) == "readme-md.md" {
+				readmeFound = true
+				// Verify content was preserved
+				content, _ := os.ReadFile(path)
+				assert.Contains(t, string(content), "Project README", "README content should be preserved")
+			}
+			if filepath.Base(path) == "api-docs.md" {
+				apiDocsFound = true
+				content, _ := os.ReadFile(path)
+				assert.Contains(t, string(content), "API Documentation", "API docs content should be preserved")
+			}
+		}
+		return nil
+	})
+
+	assert.Greater(t, len(files), 0, "Should have created markdown files")
+	// At least one of the markdown content should be processed
+	assert.True(t, readmeFound || apiDocsFound, "Should have processed at least one markdown file")
+}
