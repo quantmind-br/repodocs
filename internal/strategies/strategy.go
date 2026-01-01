@@ -63,7 +63,7 @@ func DefaultOptions() Options {
 
 // Dependencies contains shared dependencies for all strategies
 type Dependencies struct {
-	Fetcher          *fetcher.Client
+	Fetcher          domain.Fetcher
 	Renderer         domain.Renderer
 	Cache            domain.Cache
 	Converter        *converter.Pipeline

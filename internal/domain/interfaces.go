@@ -41,6 +41,8 @@ type Fetcher interface {
 	GetWithHeaders(ctx context.Context, url string, headers map[string]string) (*Response, error)
 	// GetCookies returns cookies for a URL (for sharing with renderer)
 	GetCookies(url string) []*http.Cookie
+	// Transport returns an http.RoundTripper for integration with other HTTP clients (e.g., colly)
+	Transport() http.RoundTripper
 	// Close releases resources
 	Close() error
 }

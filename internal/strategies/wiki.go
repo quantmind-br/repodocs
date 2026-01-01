@@ -11,6 +11,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
+	internalgit "github.com/quantmind-br/repodocs-go/internal/git"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 	"github.com/schollz/progressbar/v3"
@@ -18,18 +19,25 @@ import (
 
 // WikiStrategy extracts documentation from GitHub wiki repositories
 type WikiStrategy struct {
-	deps   *Dependencies
-	writer *output.Writer
-	logger *utils.Logger
+	deps      *Dependencies
+	writer    *output.Writer
+	logger    *utils.Logger
+	gitClient internalgit.Client
 }
 
 // NewWikiStrategy creates a new wiki strategy
 func NewWikiStrategy(deps *Dependencies) *WikiStrategy {
 	return &WikiStrategy{
-		deps:   deps,
-		writer: deps.Writer,
-		logger: deps.Logger,
+		deps:      deps,
+		writer:    deps.Writer,
+		logger:    deps.Logger,
+		gitClient: internalgit.NewClient(),
 	}
+}
+
+// SetGitClient sets the git client (useful for testing)
+func (s *WikiStrategy) SetGitClient(client internalgit.Client) {
+	s.gitClient = client
 }
 
 // Name returns the strategy name
@@ -121,7 +129,7 @@ func (s *WikiStrategy) cloneWiki(ctx context.Context, cloneURL, destDir string) 
 		}
 	}
 
-	_, err := git.PlainCloneContext(ctx, destDir, false, cloneOpts)
+	_, err := s.gitClient.PlainCloneContext(ctx, destDir, false, cloneOpts)
 	if err != nil {
 		// Check if wiki doesn't exist
 		if strings.Contains(err.Error(), "not found") ||

@@ -121,6 +121,14 @@ func ParseSidebarContent(content string, pages map[string]*WikiPage) []WikiSecti
 		}
 
 		if wikiMatches := wikiLinkPattern.FindAllStringSubmatch(trimmed, -1); len(wikiMatches) > 0 {
+			if currentSection == nil {
+				sectionOrder++
+				currentSection = &WikiSection{
+					Name:  "General",
+					Order: sectionOrder,
+					Pages: []string{},
+				}
+			}
 			for _, match := range wikiMatches {
 				pageName := match[1]
 				filename := findPageFilename(pageName, pages)
@@ -139,6 +147,14 @@ func ParseSidebarContent(content string, pages map[string]*WikiPage) []WikiSecti
 		}
 
 		if mdMatches := mdLinkPattern.FindAllStringSubmatch(trimmed, -1); len(mdMatches) > 0 {
+			if currentSection == nil {
+				sectionOrder++
+				currentSection = &WikiSection{
+					Name:  "General",
+					Order: sectionOrder,
+					Pages: []string{},
+				}
+			}
 			for _, match := range mdMatches {
 				pageName := match[2]
 				pageName = strings.TrimSuffix(pageName, ".md")

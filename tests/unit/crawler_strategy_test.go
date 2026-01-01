@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -11,10 +12,12 @@ import (
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/converter"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/fetcher"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs-go/tests/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -646,12 +649,202 @@ func hasBaseURL(link, baseURL string) bool {
 	return len(link) >= len(baseURL) && link[:len(baseURL)] == baseURL
 }
 
-// Helper to create test dependencies
 func createTestDependencies(t *testing.T) *strategies.Dependencies {
 	t.Helper()
-
-	// Create minimal test dependencies
-	// In a real scenario, these would be properly initialized
-	// For unit tests, we can create a minimal struct
 	return &strategies.Dependencies{}
+}
+
+func TestCrawlerStrategy_Execute_DryRun(t *testing.T) {
+	tempDir := t.TempDir()
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	converterPipeline := converter.NewPipeline(converter.PipelineOptions{})
+	writer := output.NewWriter(output.WriterOptions{BaseDir: tempDir})
+
+	mockFetcher := mocks.NewMultiResponseMockFetcher()
+	mockFetcher.Responses["http://example.com/"] = &domain.Response{
+		StatusCode: 200,
+		Body:       []byte(`<html><body><h1>Test</h1><p>Content</p></body></html>`),
+		Headers:    http.Header{"Content-Type": []string{"text/html"}},
+	}
+
+	deps := &strategies.Dependencies{
+		Fetcher:   mockFetcher,
+		Converter: converterPipeline,
+		Writer:    writer,
+		Logger:    logger,
+	}
+
+	strategy := strategies.NewCrawlerStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	opts := strategies.Options{
+		MaxDepth:    1,
+		Concurrency: 1,
+		Output:      tempDir,
+		DryRun:      true,
+	}
+
+	err := strategy.Execute(context.Background(), "http://example.com/", opts)
+	require.NoError(t, err)
+
+	files, _ := filepath.Glob(filepath.Join(tempDir, "**/*.md"))
+	assert.Empty(t, files, "No files should be written in dry run mode")
+}
+
+func TestCrawlerStrategy_Execute_WithMockFetcher(t *testing.T) {
+	tempDir := t.TempDir()
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	converterPipeline := converter.NewPipeline(converter.PipelineOptions{})
+	writer := output.NewWriter(output.WriterOptions{BaseDir: tempDir})
+
+	mockFetcher := mocks.NewMultiResponseMockFetcher()
+	mockFetcher.Responses["http://example.com/"] = &domain.Response{
+		StatusCode: 200,
+		Body:       []byte(`<html><body><h1>Home</h1><p>Welcome to home</p></body></html>`),
+		Headers:    http.Header{"Content-Type": []string{"text/html"}},
+	}
+
+	deps := &strategies.Dependencies{
+		Fetcher:   mockFetcher,
+		Converter: converterPipeline,
+		Writer:    writer,
+		Logger:    logger,
+	}
+
+	strategy := strategies.NewCrawlerStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	opts := strategies.Options{
+		MaxDepth:    1,
+		Concurrency: 1,
+		Output:      tempDir,
+		Force:       true,
+	}
+
+	err := strategy.Execute(context.Background(), "http://example.com/", opts)
+	require.NoError(t, err)
+
+	assert.Contains(t, mockFetcher.Requests, "http://example.com/")
+}
+
+func TestCrawlerStrategy_Execute_ContextCancellation(t *testing.T) {
+	tempDir := t.TempDir()
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	converterPipeline := converter.NewPipeline(converter.PipelineOptions{})
+	writer := output.NewWriter(output.WriterOptions{BaseDir: tempDir})
+
+	mockFetcher := mocks.NewMultiResponseMockFetcher()
+	mockFetcher.Responses["http://example.com/"] = &domain.Response{
+		StatusCode: 200,
+		Body:       []byte(`<html><body><h1>Test</h1></body></html>`),
+		Headers:    http.Header{"Content-Type": []string{"text/html"}},
+	}
+
+	deps := &strategies.Dependencies{
+		Fetcher:   mockFetcher,
+		Converter: converterPipeline,
+		Writer:    writer,
+		Logger:    logger,
+	}
+
+	strategy := strategies.NewCrawlerStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	opts := strategies.Options{
+		MaxDepth:    1,
+		Concurrency: 1,
+		Output:      tempDir,
+	}
+
+	err := strategy.Execute(ctx, "http://example.com/", opts)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
+func TestCrawlerStrategy_Execute_WithLimit(t *testing.T) {
+	tempDir := t.TempDir()
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	converterPipeline := converter.NewPipeline(converter.PipelineOptions{})
+	writer := output.NewWriter(output.WriterOptions{BaseDir: tempDir})
+
+	mockFetcher := mocks.NewMultiResponseMockFetcher()
+	mockFetcher.Responses["http://example.com/"] = &domain.Response{
+		StatusCode: 200,
+		Body: []byte(`<html><body>
+			<h1>Home</h1>
+			<a href="/page1">Page 1</a>
+			<a href="/page2">Page 2</a>
+			<a href="/page3">Page 3</a>
+		</body></html>`),
+		Headers: http.Header{"Content-Type": []string{"text/html"}},
+	}
+	mockFetcher.Responses["http://example.com/page1"] = &domain.Response{
+		StatusCode: 200,
+		Body:       []byte(`<html><body><h1>Page 1</h1></body></html>`),
+		Headers:    http.Header{"Content-Type": []string{"text/html"}},
+	}
+	mockFetcher.Responses["http://example.com/page2"] = &domain.Response{
+		StatusCode: 200,
+		Body:       []byte(`<html><body><h1>Page 2</h1></body></html>`),
+		Headers:    http.Header{"Content-Type": []string{"text/html"}},
+	}
+	mockFetcher.Responses["http://example.com/page3"] = &domain.Response{
+		StatusCode: 200,
+		Body:       []byte(`<html><body><h1>Page 3</h1></body></html>`),
+		Headers:    http.Header{"Content-Type": []string{"text/html"}},
+	}
+
+	deps := &strategies.Dependencies{
+		Fetcher:   mockFetcher,
+		Converter: converterPipeline,
+		Writer:    writer,
+		Logger:    logger,
+	}
+
+	strategy := strategies.NewCrawlerStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	opts := strategies.Options{
+		MaxDepth:    2,
+		Concurrency: 1,
+		Output:      tempDir,
+		Limit:       2,
+		Force:       true,
+	}
+
+	err := strategy.Execute(context.Background(), "http://example.com/", opts)
+	require.NoError(t, err)
+}
+
+func TestCrawlerStrategy_Execute_TransportErrorHandledByCollyCallback(t *testing.T) {
+	tempDir := t.TempDir()
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	converterPipeline := converter.NewPipeline(converter.PipelineOptions{})
+	writer := output.NewWriter(output.WriterOptions{BaseDir: tempDir})
+
+	mockFetcher := mocks.NewMultiResponseMockFetcher()
+	mockFetcher.Errors["http://example.com/"] = errors.New("network error")
+
+	deps := &strategies.Dependencies{
+		Fetcher:   mockFetcher,
+		Converter: converterPipeline,
+		Writer:    writer,
+		Logger:    logger,
+	}
+
+	strategy := strategies.NewCrawlerStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	opts := strategies.Options{
+		MaxDepth:    1,
+		Concurrency: 1,
+		Output:      tempDir,
+	}
+
+	err := strategy.Execute(context.Background(), "http://example.com/", opts)
+	require.NoError(t, err)
+	assert.Contains(t, mockFetcher.Requests, "http://example.com/")
 }

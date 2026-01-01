@@ -11,7 +11,6 @@ import (
 
 	"github.com/quantmind-br/repodocs-go/internal/converter"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
-	"github.com/quantmind-br/repodocs-go/internal/fetcher"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/renderer"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
@@ -21,7 +20,7 @@ import (
 // SitemapStrategy extracts documentation from sitemap XML files
 type SitemapStrategy struct {
 	deps           *Dependencies
-	fetcher        *fetcher.Client
+	fetcher        domain.Fetcher
 	renderer       domain.Renderer
 	converter      *converter.Pipeline
 	markdownReader *converter.MarkdownReader
@@ -45,6 +44,11 @@ func NewSitemapStrategy(deps *Dependencies) *SitemapStrategy {
 // Name returns the strategy name
 func (s *SitemapStrategy) Name() string {
 	return "sitemap"
+}
+
+// SetFetcher allows setting a custom fetcher (used for testing)
+func (s *SitemapStrategy) SetFetcher(f domain.Fetcher) {
+	s.fetcher = f
 }
 
 // CanHandle returns true if this strategy can handle the given URL

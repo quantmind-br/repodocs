@@ -3,14 +3,21 @@ package app_test
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/xml"
+	"fmt"
 	"io"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/quantmind-br/repodocs-go/internal/converter"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
+	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs-go/tests/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -337,6 +344,22 @@ func createTestSitemapDependencies(t *testing.T) *strategies.Dependencies {
 	return &strategies.Dependencies{}
 }
 
+// createFullSitemapDependencies creates dependencies with logger, writer, and converter
+func createFullSitemapDependencies(t *testing.T, outputDir string) *strategies.Dependencies {
+	t.Helper()
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "disabled"})
+	writer := output.NewWriter(output.WriterOptions{
+		BaseDir: outputDir,
+		Force:   true,
+	})
+	conv := converter.NewPipeline(converter.PipelineOptions{})
+	return &strategies.Dependencies{
+		Logger:    logger,
+		Writer:    writer,
+		Converter: conv,
+	}
+}
+
 type sitemapXML struct {
 	XMLName xml.Name     `xml:"urlset"`
 	URLs    []sitemapURL `xml:"url"`
@@ -608,3 +631,338 @@ func TestParseSitemap_SitemapIndexVsRegular(t *testing.T) {
 		assert.False(t, sitemap.IsIndex)
 	})
 }
+
+// =============================================================================
+// Execute Tests with Mock Fetcher
+// =============================================================================
+
+func TestSitemapStrategy_Execute_Success(t *testing.T) {
+	outputDir := t.TempDir()
+	deps := createFullSitemapDependencies(t, outputDir)
+
+	// Create mock fetcher with sitemap and page responses
+	mockFetcher := mocks.NewMultiResponseMockFetcher()
+	mockFetcher.Responses["https://example.com/sitemap.xml"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.com/page1</loc><lastmod>2024-01-15T10:00:00Z</lastmod></url></urlset>`),
+		ContentType: "application/xml",
+		URL:         "https://example.com/sitemap.xml",
+		FromCache:   false,
+	}
+	mockFetcher.Responses["https://example.com/page1"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte(`<html><head><title>Page 1</title></head><body><h1>Content</h1><p>Test content</p></body></html>`),
+		ContentType: "text/html",
+		URL:         "https://example.com/page1",
+		FromCache:   false,
+	}
+
+	strategy := strategies.NewSitemapStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = outputDir
+	opts.Concurrency = 1
+
+	err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
+	require.NoError(t, err)
+
+	// Verify fetcher was called
+	assert.Contains(t, mockFetcher.Requests, "https://example.com/sitemap.xml")
+	assert.Contains(t, mockFetcher.Requests, "https://example.com/page1")
+
+	// Verify output files were created
+	files, err := os.ReadDir(outputDir)
+	require.NoError(t, err)
+	assert.NotEmpty(t, files, "Should have created output files")
+}
+
+func TestSitemapStrategy_Execute_DryRun(t *testing.T) {
+	outputDir := t.TempDir()
+	deps := createFullSitemapDependencies(t, outputDir)
+
+	mockFetcher := mocks.NewMultiResponseMockFetcher()
+	mockFetcher.Responses["https://example.com/sitemap.xml"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.com/page1</loc></url></urlset>`),
+		ContentType: "application/xml",
+		URL:         "https://example.com/sitemap.xml",
+	}
+	mockFetcher.Responses["https://example.com/page1"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte(`<html><head><title>Test</title></head><body><p>Content</p></body></html>`),
+		ContentType: "text/html",
+		URL:         "https://example.com/page1",
+	}
+
+	strategy := strategies.NewSitemapStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = outputDir
+	opts.DryRun = true
+	opts.Concurrency = 1
+
+	err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
+	require.NoError(t, err)
+
+	// Verify no files were created in dry run mode
+	files, err := os.ReadDir(outputDir)
+	require.NoError(t, err)
+	assert.Empty(t, files, "DryRun should not create files")
+}
+
+func TestSitemapStrategy_Execute_FetchError(t *testing.T) {
+	outputDir := t.TempDir()
+	deps := createFullSitemapDependencies(t, outputDir)
+
+	mockFetcher := mocks.NewSimpleMockFetcher()
+	mockFetcher.Error = fmt.Errorf("network error")
+
+	strategy := strategies.NewSitemapStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Concurrency = 1
+
+	err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "network error")
+}
+
+func TestSitemapStrategy_Execute_SitemapIndexWithMock(t *testing.T) {
+	outputDir := t.TempDir()
+	deps := createFullSitemapDependencies(t, outputDir)
+
+	mockFetcher := mocks.NewMultiResponseMockFetcher()
+	// Sitemap index
+	mockFetcher.Responses["https://example.com/sitemap-index.xml"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte(`<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><sitemap><loc>https://example.com/sitemap1.xml</loc></sitemap></sitemapindex>`),
+		ContentType: "application/xml",
+		URL:         "https://example.com/sitemap-index.xml",
+	}
+	// Nested sitemap
+	mockFetcher.Responses["https://example.com/sitemap1.xml"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.com/page1</loc></url></urlset>`),
+		ContentType: "application/xml",
+		URL:         "https://example.com/sitemap1.xml",
+	}
+	// Page content
+	mockFetcher.Responses["https://example.com/page1"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte(`<html><head><title>Page</title></head><body><p>Content</p></body></html>`),
+		ContentType: "text/html",
+		URL:         "https://example.com/page1",
+	}
+
+	strategy := strategies.NewSitemapStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = outputDir
+	opts.Concurrency = 1
+
+	err := strategy.Execute(ctx, "https://example.com/sitemap-index.xml", opts)
+	require.NoError(t, err)
+
+	// Verify all URLs were fetched
+	assert.Contains(t, mockFetcher.Requests, "https://example.com/sitemap-index.xml")
+	assert.Contains(t, mockFetcher.Requests, "https://example.com/sitemap1.xml")
+	assert.Contains(t, mockFetcher.Requests, "https://example.com/page1")
+}
+
+func TestSitemapStrategy_Execute_GzipCompressed(t *testing.T) {
+	outputDir := t.TempDir()
+	deps := createFullSitemapDependencies(t, outputDir)
+
+	// Create gzipped sitemap content
+	sitemapXML := `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.com/page1</loc></url></urlset>`
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	_, err := gz.Write([]byte(sitemapXML))
+	require.NoError(t, err)
+	gz.Close()
+
+	mockFetcher := mocks.NewMultiResponseMockFetcher()
+	mockFetcher.Responses["https://example.com/sitemap.xml.gz"] = &domain.Response{
+		StatusCode:  200,
+		Body:        buf.Bytes(),
+		ContentType: "application/gzip",
+		URL:         "https://example.com/sitemap.xml.gz",
+	}
+	mockFetcher.Responses["https://example.com/page1"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte(`<html><head><title>Page</title></head><body><p>Content</p></body></html>`),
+		ContentType: "text/html",
+		URL:         "https://example.com/page1",
+	}
+
+	strategy := strategies.NewSitemapStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = outputDir
+	opts.Concurrency = 1
+
+	err = strategy.Execute(ctx, "https://example.com/sitemap.xml.gz", opts)
+	require.NoError(t, err)
+
+	// Verify sitemap was processed (gzip decompressed)
+	assert.Contains(t, mockFetcher.Requests, "https://example.com/sitemap.xml.gz")
+	assert.Contains(t, mockFetcher.Requests, "https://example.com/page1")
+}
+
+func TestSitemapStrategy_Execute_WithLimit(t *testing.T) {
+	outputDir := t.TempDir()
+	deps := createFullSitemapDependencies(t, outputDir)
+
+	// Sitemap with multiple URLs
+	mockFetcher := mocks.NewMultiResponseMockFetcher()
+	mockFetcher.Responses["https://example.com/sitemap.xml"] = &domain.Response{
+		StatusCode: 200,
+		Body: []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<url><loc>https://example.com/page1</loc><lastmod>2024-01-15T10:00:00Z</lastmod></url>
+	<url><loc>https://example.com/page2</loc><lastmod>2024-01-14T10:00:00Z</lastmod></url>
+	<url><loc>https://example.com/page3</loc><lastmod>2024-01-13T10:00:00Z</lastmod></url>
+</urlset>`),
+		ContentType: "application/xml",
+		URL:         "https://example.com/sitemap.xml",
+	}
+	mockFetcher.Responses["https://example.com/page1"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte(`<html><head><title>Page 1</title></head><body><p>Content 1</p></body></html>`),
+		ContentType: "text/html",
+		URL:         "https://example.com/page1",
+	}
+	mockFetcher.Responses["https://example.com/page2"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte(`<html><head><title>Page 2</title></head><body><p>Content 2</p></body></html>`),
+		ContentType: "text/html",
+		URL:         "https://example.com/page2",
+	}
+	mockFetcher.Responses["https://example.com/page3"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte(`<html><head><title>Page 3</title></head><body><p>Content 3</p></body></html>`),
+		ContentType: "text/html",
+		URL:         "https://example.com/page3",
+	}
+
+	strategy := strategies.NewSitemapStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = outputDir
+	opts.Limit = 2 // Only process 2 URLs
+	opts.Concurrency = 1
+
+	err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
+	require.NoError(t, err)
+
+	// Count page requests (excluding sitemap itself)
+	pageRequests := 0
+	for _, url := range mockFetcher.Requests {
+		if strings.Contains(url, "/page") {
+			pageRequests++
+		}
+	}
+	assert.Equal(t, 2, pageRequests, "Should only fetch 2 pages due to limit")
+}
+
+func TestSitemapStrategy_Execute_EmptySitemapWithMock(t *testing.T) {
+	outputDir := t.TempDir()
+	deps := createFullSitemapDependencies(t, outputDir)
+
+	mockFetcher := mocks.NewMultiResponseMockFetcher()
+	mockFetcher.Responses["https://example.com/sitemap.xml"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`),
+		ContentType: "application/xml",
+		URL:         "https://example.com/sitemap.xml",
+	}
+
+	strategy := strategies.NewSitemapStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = outputDir
+	opts.Concurrency = 1
+
+	err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
+	require.NoError(t, err, "Should handle empty sitemap gracefully")
+
+	// Only sitemap should be fetched
+	assert.Len(t, mockFetcher.Requests, 1)
+}
+
+func TestSitemapStrategy_Execute_PageFetchError(t *testing.T) {
+	outputDir := t.TempDir()
+	deps := createFullSitemapDependencies(t, outputDir)
+
+	mockFetcher := mocks.NewMultiResponseMockFetcher()
+	mockFetcher.Responses["https://example.com/sitemap.xml"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.com/page1</loc></url></urlset>`),
+		ContentType: "application/xml",
+		URL:         "https://example.com/sitemap.xml",
+	}
+	// Page fetch returns error
+	mockFetcher.Errors["https://example.com/page1"] = fmt.Errorf("page not found")
+
+	strategy := strategies.NewSitemapStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = outputDir
+	opts.Concurrency = 1
+
+	// Should complete without error (page errors are logged, not propagated)
+	err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
+	require.NoError(t, err)
+}
+
+func TestSitemapStrategy_Execute_MarkdownContent(t *testing.T) {
+	outputDir := t.TempDir()
+	deps := createFullSitemapDependencies(t, outputDir)
+
+	mockFetcher := mocks.NewMultiResponseMockFetcher()
+	mockFetcher.Responses["https://example.com/sitemap.xml"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.com/readme.md</loc></url></urlset>`),
+		ContentType: "application/xml",
+		URL:         "https://example.com/sitemap.xml",
+	}
+	mockFetcher.Responses["https://example.com/readme.md"] = &domain.Response{
+		StatusCode:  200,
+		Body:        []byte("# Hello World\n\nThis is markdown content."),
+		ContentType: "text/markdown",
+		URL:         "https://example.com/readme.md",
+	}
+
+	strategy := strategies.NewSitemapStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = outputDir
+	opts.Concurrency = 1
+
+	err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
+	require.NoError(t, err)
+
+	// Verify markdown was fetched
+	assert.Contains(t, mockFetcher.Requests, "https://example.com/readme.md")
+}
+
+// Ensure mocks package is used
+var _ = mocks.NewSimpleMockFetcher()

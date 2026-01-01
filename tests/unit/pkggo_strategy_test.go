@@ -2,11 +2,18 @@ package app_test
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/quantmind-br/repodocs-go/internal/converter"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
+	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs-go/tests/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -90,10 +97,409 @@ func TestPkgGoStrategy_CanHandle_EdgeCases(t *testing.T) {
 	}
 }
 
-func TestPkgGoStrategy_Execute_RequiresDependencies(t *testing.T) {
-	// This test verifies that Execute requires proper dependencies
-	// Full Execute tests require mocked HTTP responses
-	t.Skip("Requires full dependency injection with mocked HTTP client")
+func TestPkgGoStrategy_Execute_Success(t *testing.T) {
+	// Setup output directory and dependencies
+	outputDir := t.TempDir()
+	logger := createTestLogger(t)
+	writer := createTestWriter(t, outputDir)
+	conv := createTestConverter(t)
+
+	deps := &strategies.Dependencies{
+		Logger:    logger,
+		Writer:    writer,
+		Converter: conv,
+	}
+
+	// Create mock fetcher with pkg.go.dev HTML response
+	mockFetcher := mocks.NewSimpleMockFetcher()
+	mockFetcher.Response = &domain.Response{
+		StatusCode: 200,
+		Body: []byte(`<!DOCTYPE html>
+<html>
+<body>
+	<h1 class="UnitHeader-title">fmt</h1>
+	<div class="Documentation-content">
+		<section id="pkg-overview">
+			<h3>Overview</h3>
+			<p>Package fmt implements formatted I/O.</p>
+		</section>
+		<section id="pkg-functions">
+			<h3>Functions</h3>
+			<div id="Println"><h4>func Println</h4></div>
+		</section>
+	</div>
+</body>
+</html>`),
+		ContentType: "text/html",
+		URL:         "https://pkg.go.dev/fmt",
+		FromCache:   false,
+	}
+
+	// Create strategy and inject mock fetcher
+	strategy := strategies.NewPkgGoStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = outputDir
+
+	err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
+	require.NoError(t, err)
+
+	// Verify fetcher was called
+	assert.Len(t, mockFetcher.Requests, 1)
+	assert.Equal(t, "https://pkg.go.dev/fmt", mockFetcher.Requests[0])
+
+	// Verify output file was created
+	files, err := os.ReadDir(outputDir)
+	require.NoError(t, err)
+	assert.NotEmpty(t, files, "Should have created output files")
+}
+
+func TestPkgGoStrategy_Execute_DryRun(t *testing.T) {
+	// Setup output directory and dependencies
+	outputDir := t.TempDir()
+	logger := createTestLogger(t)
+	writer := createTestWriter(t, outputDir)
+	conv := createTestConverter(t)
+
+	deps := &strategies.Dependencies{
+		Logger:    logger,
+		Writer:    writer,
+		Converter: conv,
+	}
+
+	// Create mock fetcher
+	mockFetcher := mocks.NewSimpleMockFetcher()
+	mockFetcher.Response = &domain.Response{
+		StatusCode: 200,
+		Body: []byte(`<!DOCTYPE html>
+<html>
+<body>
+	<h1 class="UnitHeader-title">fmt</h1>
+	<div class="Documentation-content">
+		<p>Package fmt implements formatted I/O.</p>
+	</div>
+</body>
+</html>`),
+		ContentType: "text/html",
+		URL:         "https://pkg.go.dev/fmt",
+		FromCache:   false,
+	}
+
+	// Create strategy and inject mock fetcher
+	strategy := strategies.NewPkgGoStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = outputDir
+	opts.DryRun = true
+
+	err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
+	require.NoError(t, err)
+
+	// Verify no files were created in dry run mode
+	files, err := os.ReadDir(outputDir)
+	require.NoError(t, err)
+	assert.Empty(t, files, "DryRun should not create files")
+}
+
+func TestPkgGoStrategy_Execute_FetchError(t *testing.T) {
+	// Setup dependencies
+	logger := createTestLogger(t)
+	outputDir := t.TempDir()
+	writer := createTestWriter(t, outputDir)
+	conv := createTestConverter(t)
+
+	deps := &strategies.Dependencies{
+		Logger:    logger,
+		Writer:    writer,
+		Converter: conv,
+	}
+
+	// Create mock fetcher with error
+	mockFetcher := mocks.NewSimpleMockFetcher()
+	mockFetcher.Error = fmt.Errorf("network error")
+
+	// Create strategy and inject mock fetcher
+	strategy := strategies.NewPkgGoStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+
+	err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "network error")
+}
+
+func TestPkgGoStrategy_Execute_Split(t *testing.T) {
+	// Setup output directory and dependencies
+	outputDir := t.TempDir()
+	logger := createTestLogger(t)
+	writer := createTestWriter(t, outputDir)
+	conv := createTestConverter(t)
+
+	deps := &strategies.Dependencies{
+		Logger:    logger,
+		Writer:    writer,
+		Converter: conv,
+	}
+
+	// Create mock fetcher with full pkg.go.dev HTML response
+	mockFetcher := mocks.NewSimpleMockFetcher()
+	mockFetcher.Response = &domain.Response{
+		StatusCode: 200,
+		Body: []byte(`<!DOCTYPE html>
+<html>
+<body>
+	<h1 class="UnitHeader-title">fmt</h1>
+	<div class="Documentation-content">
+		<section id="pkg-overview">
+			<h3>Overview</h3>
+			<p>Package fmt implements formatted I/O.</p>
+		</section>
+		<section id="pkg-index">
+			<h3>Index</h3>
+			<ul><li>func Println</li></ul>
+		</section>
+		<section id="pkg-constants">
+			<h3>Constants</h3>
+			<p>const X = 1</p>
+		</section>
+		<section id="pkg-variables">
+			<h3>Variables</h3>
+			<p>var Debug = false</p>
+		</section>
+		<section id="pkg-functions">
+			<h3>Functions</h3>
+			<div id="Println"><h4>func Println</h4></div>
+		</section>
+		<section id="pkg-types">
+			<h3>Types</h3>
+			<div id="Stringer"><h4>type Stringer</h4></div>
+		</section>
+	</div>
+</body>
+</html>`),
+		ContentType: "text/html",
+		URL:         "https://pkg.go.dev/fmt",
+		FromCache:   false,
+	}
+
+	// Create strategy and inject mock fetcher
+	strategy := strategies.NewPkgGoStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = outputDir
+	opts.Split = true
+
+	err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
+	require.NoError(t, err)
+
+	// Verify files were created
+	files, err := os.ReadDir(outputDir)
+	require.NoError(t, err)
+	assert.NotEmpty(t, files, "Split mode should create output files")
+}
+
+func TestPkgGoStrategy_Execute_MainFallback(t *testing.T) {
+	// Setup output directory and dependencies
+	outputDir := t.TempDir()
+	logger := createTestLogger(t)
+	writer := createTestWriter(t, outputDir)
+	conv := createTestConverter(t)
+
+	deps := &strategies.Dependencies{
+		Logger:    logger,
+		Writer:    writer,
+		Converter: conv,
+	}
+
+	// Create mock fetcher with HTML without Documentation-content (uses main fallback)
+	mockFetcher := mocks.NewSimpleMockFetcher()
+	mockFetcher.Response = &domain.Response{
+		StatusCode: 200,
+		Body: []byte(`<!DOCTYPE html>
+<html>
+<body>
+	<h1 class="UnitHeader-title">fmt</h1>
+	<main>
+		<p>Main content fallback area</p>
+	</main>
+</body>
+</html>`),
+		ContentType: "text/html",
+		URL:         "https://pkg.go.dev/fmt",
+		FromCache:   false,
+	}
+
+	// Create strategy and inject mock fetcher
+	strategy := strategies.NewPkgGoStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = outputDir
+
+	err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
+	require.NoError(t, err)
+
+	// Verify output file was created
+	files, err := os.ReadDir(outputDir)
+	require.NoError(t, err)
+	assert.NotEmpty(t, files, "Should have created output files using main fallback")
+}
+
+func TestPkgGoStrategy_Execute_CachedResponse(t *testing.T) {
+	// Setup output directory and dependencies
+	outputDir := t.TempDir()
+	logger := createTestLogger(t)
+	writer := createTestWriter(t, outputDir)
+	conv := createTestConverter(t)
+
+	deps := &strategies.Dependencies{
+		Logger:    logger,
+		Writer:    writer,
+		Converter: conv,
+	}
+
+	// Create mock fetcher with cached response
+	mockFetcher := mocks.NewSimpleMockFetcher()
+	mockFetcher.Response = &domain.Response{
+		StatusCode: 200,
+		Body: []byte(`<!DOCTYPE html>
+<html>
+<body>
+	<h1 class="UnitHeader-title">fmt</h1>
+	<div class="Documentation-content">
+		<p>Cached content</p>
+	</div>
+</body>
+</html>`),
+		ContentType: "text/html",
+		URL:         "https://pkg.go.dev/fmt",
+		FromCache:   true, // Cached response
+	}
+
+	// Create strategy and inject mock fetcher
+	strategy := strategies.NewPkgGoStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = outputDir
+
+	err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
+	require.NoError(t, err)
+
+	// Verify output was created (CacheHit is set on document)
+	files, err := os.ReadDir(outputDir)
+	require.NoError(t, err)
+	assert.NotEmpty(t, files, "Should have created output files from cached response")
+}
+
+func TestPkgGoStrategy_Execute_ContextCancelled(t *testing.T) {
+	// Setup dependencies
+	logger := createTestLogger(t)
+	outputDir := t.TempDir()
+	writer := createTestWriter(t, outputDir)
+	conv := createTestConverter(t)
+
+	deps := &strategies.Dependencies{
+		Logger:    logger,
+		Writer:    writer,
+		Converter: conv,
+	}
+
+	// Create mock fetcher
+	mockFetcher := mocks.NewSimpleMockFetcher()
+	mockFetcher.Response = &domain.Response{
+		StatusCode: 200,
+		Body: []byte(`<!DOCTYPE html>
+<html>
+<body>
+	<h1 class="UnitHeader-title">fmt</h1>
+	<div class="Documentation-content">
+		<section id="pkg-overview">
+			<h3>Overview</h3>
+			<p>Package fmt</p>
+		</section>
+		<section id="pkg-functions">
+			<h3>Functions</h3>
+			<p>func Println</p>
+		</section>
+	</div>
+</body>
+</html>`),
+		ContentType: "text/html",
+		URL:         "https://pkg.go.dev/fmt",
+		FromCache:   false,
+	}
+
+	// Create strategy and inject mock fetcher
+	strategy := strategies.NewPkgGoStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	// Create and immediately cancel context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	opts := strategies.DefaultOptions()
+	opts.Split = true // Use split mode to test context cancellation in loop
+
+	err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
+	// Note: Context cancellation is checked in the loop, so we may get either nil or context.Canceled
+	// depending on when the fetch completes
+	if err != nil {
+		assert.Equal(t, context.Canceled, err)
+	}
+}
+
+func TestPkgGoStrategy_Execute_EmptyPackageName(t *testing.T) {
+	// Setup output directory and dependencies
+	outputDir := t.TempDir()
+	logger := createTestLogger(t)
+	writer := createTestWriter(t, outputDir)
+	conv := createTestConverter(t)
+
+	deps := &strategies.Dependencies{
+		Logger:    logger,
+		Writer:    writer,
+		Converter: conv,
+	}
+
+	// Create mock fetcher with HTML without package name
+	mockFetcher := mocks.NewSimpleMockFetcher()
+	mockFetcher.Response = &domain.Response{
+		StatusCode: 200,
+		Body: []byte(`<!DOCTYPE html>
+<html>
+<body>
+	<h1 class="other-class">Not the title</h1>
+	<div class="Documentation-content">
+		<p>Some documentation content</p>
+	</div>
+</body>
+</html>`),
+		ContentType: "text/html",
+		URL:         "https://pkg.go.dev/unknown",
+		FromCache:   false,
+	}
+
+	// Create strategy and inject mock fetcher
+	strategy := strategies.NewPkgGoStrategy(deps)
+	strategy.SetFetcher(mockFetcher)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = outputDir
+
+	err := strategy.Execute(ctx, "https://pkg.go.dev/unknown", opts)
+	require.NoError(t, err, "Should handle missing package name gracefully")
 }
 
 // Test the section extraction logic used by extractSections
@@ -512,6 +918,30 @@ func createTestPkgGoDependencies(t *testing.T) *strategies.Dependencies {
 	t.Helper()
 	return &strategies.Dependencies{}
 }
+
+// Helper to create a test logger
+func createTestLogger(t *testing.T) *utils.Logger {
+	t.Helper()
+	return utils.NewLogger(utils.LoggerOptions{Level: "disabled"})
+}
+
+// Helper to create a test writer
+func createTestWriter(t *testing.T, outputDir string) *output.Writer {
+	t.Helper()
+	return output.NewWriter(output.WriterOptions{
+		BaseDir: outputDir,
+		Force:   true,
+	})
+}
+
+// Helper to create a test converter
+func createTestConverter(t *testing.T) *converter.Pipeline {
+	t.Helper()
+	return converter.NewPipeline(converter.PipelineOptions{})
+}
+
+// Ensure domain.Response is used to avoid import error
+var _ = domain.Response{}
 
 // Test extractSections with various HTML inputs
 func TestPkgGoStrategy_ExtractSections_AllSections(t *testing.T) {

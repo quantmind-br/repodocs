@@ -10,7 +10,9 @@
 package mocks
 
 import (
+	"bytes"
 	context "context"
+	"io"
 	http "net/http"
 	reflect "reflect"
 	time "time"
@@ -165,6 +167,20 @@ func (m *MockFetcher) GetWithHeaders(ctx context.Context, url string, headers ma
 func (mr *MockFetcherMockRecorder) GetWithHeaders(ctx, url, headers any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWithHeaders", reflect.TypeOf((*MockFetcher)(nil).GetWithHeaders), ctx, url, headers)
+}
+
+// Transport mocks base method.
+func (m *MockFetcher) Transport() http.RoundTripper {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Transport")
+	ret0, _ := ret[0].(http.RoundTripper)
+	return ret0
+}
+
+// Transport indicates an expected call of Transport.
+func (mr *MockFetcherMockRecorder) Transport() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transport", reflect.TypeOf((*MockFetcher)(nil).Transport))
 }
 
 // MockRenderer is a mock of Renderer interface.
@@ -502,4 +518,142 @@ func (m *MockLLMProvider) Close() error {
 func (mr *MockLLMProviderMockRecorder) Close() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockLLMProvider)(nil).Close))
+}
+
+// SimpleMockFetcher is a simple fetcher for testing without gomock
+type SimpleMockFetcher struct {
+	Response      *domain.Response
+	Error         error
+	Requests      []string
+	MockTransport http.RoundTripper
+}
+
+// NewSimpleMockFetcher creates a new SimpleMockFetcher
+func NewSimpleMockFetcher() *SimpleMockFetcher {
+	return &SimpleMockFetcher{
+		Requests: make([]string, 0),
+	}
+}
+
+func (m *SimpleMockFetcher) Get(ctx context.Context, url string) (*domain.Response, error) {
+	m.Requests = append(m.Requests, url)
+	if m.Error != nil {
+		return nil, m.Error
+	}
+	return m.Response, nil
+}
+
+func (m *SimpleMockFetcher) GetWithHeaders(ctx context.Context, url string, headers map[string]string) (*domain.Response, error) {
+	return m.Get(ctx, url)
+}
+
+func (m *SimpleMockFetcher) GetCookies(url string) []*http.Cookie {
+	return nil
+}
+
+func (m *SimpleMockFetcher) Transport() http.RoundTripper {
+	if m.MockTransport != nil {
+		return m.MockTransport
+	}
+	return &MockRoundTripper{Fetcher: m}
+}
+
+func (m *SimpleMockFetcher) Close() error {
+	return nil
+}
+
+// MockRoundTripper implements http.RoundTripper using SimpleMockFetcher
+type MockRoundTripper struct {
+	Fetcher *SimpleMockFetcher
+}
+
+func (t *MockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := t.Fetcher.GetWithHeaders(req.Context(), req.URL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &http.Response{
+		Status:        http.StatusText(resp.StatusCode),
+		StatusCode:    resp.StatusCode,
+		Proto:         "HTTP/1.1",
+		ProtoMajor:    1,
+		ProtoMinor:    1,
+		Header:        resp.Headers,
+		Body:          io.NopCloser(bytes.NewReader(resp.Body)),
+		ContentLength: int64(len(resp.Body)),
+		Request:       req,
+	}, nil
+}
+
+type MultiResponseMockFetcher struct {
+	Responses map[string]*domain.Response
+	Errors    map[string]error
+	Requests  []string
+}
+
+func NewMultiResponseMockFetcher() *MultiResponseMockFetcher {
+	return &MultiResponseMockFetcher{
+		Responses: make(map[string]*domain.Response),
+		Errors:    make(map[string]error),
+		Requests:  make([]string, 0),
+	}
+}
+
+func (m *MultiResponseMockFetcher) Get(ctx context.Context, url string) (*domain.Response, error) {
+	m.Requests = append(m.Requests, url)
+	if err, ok := m.Errors[url]; ok {
+		return nil, err
+	}
+	if resp, ok := m.Responses[url]; ok {
+		return resp, nil
+	}
+	return &domain.Response{StatusCode: 404, Body: []byte("Not Found")}, nil
+}
+
+func (m *MultiResponseMockFetcher) GetWithHeaders(ctx context.Context, url string, headers map[string]string) (*domain.Response, error) {
+	return m.Get(ctx, url)
+}
+
+func (m *MultiResponseMockFetcher) GetCookies(url string) []*http.Cookie {
+	return nil
+}
+
+func (m *MultiResponseMockFetcher) Transport() http.RoundTripper {
+	return &MultiResponseRoundTripper{Fetcher: m}
+}
+
+func (m *MultiResponseMockFetcher) Close() error {
+	return nil
+}
+
+type MultiResponseRoundTripper struct {
+	Fetcher *MultiResponseMockFetcher
+}
+
+func (t *MultiResponseRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := t.Fetcher.GetWithHeaders(req.Context(), req.URL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	headers := resp.Headers
+	if headers == nil {
+		headers = make(http.Header)
+	}
+	if headers.Get("Content-Type") == "" {
+		headers.Set("Content-Type", "text/html")
+	}
+
+	return &http.Response{
+		Status:        http.StatusText(resp.StatusCode),
+		StatusCode:    resp.StatusCode,
+		Proto:         "HTTP/1.1",
+		ProtoMajor:    1,
+		ProtoMinor:    1,
+		Header:        headers,
+		Body:          io.NopCloser(bytes.NewReader(resp.Body)),
+		ContentLength: int64(len(resp.Body)),
+		Request:       req,
+	}, nil
 }

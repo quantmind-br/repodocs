@@ -7,7 +7,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/quantmind-br/repodocs-go/internal/converter"
-	"github.com/quantmind-br/repodocs-go/internal/fetcher"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 )
@@ -15,7 +15,7 @@ import (
 // PkgGoStrategy extracts documentation from pkg.go.dev
 type PkgGoStrategy struct {
 	deps      *Dependencies
-	fetcher   *fetcher.Client
+	fetcher   domain.Fetcher
 	converter *converter.Pipeline
 	writer    *output.Writer
 	logger    *utils.Logger
@@ -35,6 +35,11 @@ func NewPkgGoStrategy(deps *Dependencies) *PkgGoStrategy {
 // Name returns the strategy name
 func (s *PkgGoStrategy) Name() string {
 	return "pkggo"
+}
+
+// SetFetcher allows setting a custom fetcher (used for testing)
+func (s *PkgGoStrategy) SetFetcher(f domain.Fetcher) {
+	s.fetcher = f
 }
 
 // CanHandle returns true if this strategy can handle the given URL

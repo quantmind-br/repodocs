@@ -8,7 +8,6 @@ import (
 
 	"github.com/quantmind-br/repodocs-go/internal/converter"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
-	"github.com/quantmind-br/repodocs-go/internal/fetcher"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 	"github.com/schollz/progressbar/v3"
@@ -17,7 +16,7 @@ import (
 // LLMSStrategy extracts documentation from llms.txt files
 type LLMSStrategy struct {
 	deps           *Dependencies
-	fetcher        *fetcher.Client
+	fetcher        domain.Fetcher
 	converter      *converter.Pipeline
 	markdownReader *converter.MarkdownReader
 	writer         *output.Writer
