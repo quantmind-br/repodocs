@@ -104,7 +104,7 @@ func TestWrite_WithMetadata(t *testing.T) {
 	data, err := os.ReadFile(metadataPath)
 	require.NoError(t, err)
 
-	var index domain.MetadataIndex
+	var index domain.SimpleMetadataIndex
 	err = json.Unmarshal(data, &index)
 	require.NoError(t, err)
 	require.Len(t, index.Documents, 1)
@@ -336,7 +336,7 @@ func TestWriteJSON_Indent(t *testing.T) {
 	assert.Contains(t, jsonStr, "\n")
 	assert.Contains(t, jsonStr, "  ")
 
-	var index domain.MetadataIndex
+	var index domain.SimpleMetadataIndex
 	err = json.Unmarshal(data, &index)
 	require.NoError(t, err)
 	require.Len(t, index.Documents, 1)
@@ -685,7 +685,7 @@ func TestWriter_WriteJSON(t *testing.T) {
 	data, err := os.ReadFile(metadataPath)
 	require.NoError(t, err)
 
-	var index domain.MetadataIndex
+	var index domain.SimpleMetadataIndex
 	err = json.Unmarshal(data, &index)
 	require.NoError(t, err)
 	require.Len(t, index.Documents, 1)

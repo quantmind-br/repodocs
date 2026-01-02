@@ -12,7 +12,7 @@ import (
 
 type MetadataCollector struct {
 	mu        sync.RWMutex
-	documents []*domain.DocumentMetadata
+	documents []*domain.SimpleDocumentMetadata
 	sourceURL string
 	strategy  string
 	baseDir   string
@@ -34,7 +34,7 @@ func NewMetadataCollector(opts CollectorOptions) *MetadataCollector {
 		filename = "metadata.json"
 	}
 	return &MetadataCollector{
-		documents: make([]*domain.DocumentMetadata, 0),
+		documents: make([]*domain.SimpleDocumentMetadata, 0),
 		sourceURL: opts.SourceURL,
 		strategy:  opts.Strategy,
 		baseDir:   opts.BaseDir,
@@ -57,7 +57,7 @@ func (c *MetadataCollector) Add(doc *domain.Document, filePath string) {
 	}
 	relPath = filepath.ToSlash(relPath)
 
-	c.documents = append(c.documents, doc.ToDocumentMetadata(relPath))
+	c.documents = append(c.documents, doc.ToSimpleDocumentMetadata(relPath))
 }
 
 func (c *MetadataCollector) Flush() error {
@@ -79,23 +79,18 @@ func (c *MetadataCollector) Flush() error {
 	return os.WriteFile(outputPath, data, 0644)
 }
 
-func (c *MetadataCollector) buildIndex() *domain.MetadataIndex {
-	var totalWords, totalChars int
-	docs := make([]domain.DocumentMetadata, len(c.documents))
+func (c *MetadataCollector) buildIndex() *domain.SimpleMetadataIndex {
+	docs := make([]domain.SimpleDocumentMetadata, len(c.documents))
 
 	for i, doc := range c.documents {
-		totalWords += doc.WordCount
-		totalChars += doc.CharCount
 		docs[i] = *doc
 	}
 
-	return &domain.MetadataIndex{
+	return &domain.SimpleMetadataIndex{
 		GeneratedAt:    time.Now(),
 		SourceURL:      c.sourceURL,
 		Strategy:       c.strategy,
 		TotalDocuments: len(c.documents),
-		TotalWordCount: totalWords,
-		TotalCharCount: totalChars,
 		Documents:      docs,
 	}
 }
@@ -106,7 +101,7 @@ func (c *MetadataCollector) Count() int {
 	return len(c.documents)
 }
 
-func (c *MetadataCollector) GetIndex() *domain.MetadataIndex {
+func (c *MetadataCollector) GetIndex() *domain.SimpleMetadataIndex {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.buildIndex()

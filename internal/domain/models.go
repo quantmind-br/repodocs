@@ -69,7 +69,8 @@ type LLMSLink struct {
 	URL   string
 }
 
-// Metadata represents document metadata for JSON output
+// Deprecated: Metadata is replaced by SimpleMetadata for JSON output.
+// Use SimpleMetadata for cleaner, LLM-evaluation-friendly metadata.
 type Metadata struct {
 	URL            string              `json:"url"`
 	Title          string              `json:"title"`
@@ -137,7 +138,7 @@ func (d *Document) ToFrontmatter() *Frontmatter {
 	}
 }
 
-// MetadataIndex represents consolidated metadata for all processed documents
+// Deprecated: MetadataIndex is replaced by SimpleMetadataIndex for JSON output.
 type MetadataIndex struct {
 	GeneratedAt    time.Time          `json:"generated_at"`
 	SourceURL      string             `json:"source_url"`
@@ -148,7 +149,7 @@ type MetadataIndex struct {
 	Documents      []DocumentMetadata `json:"documents"`
 }
 
-// DocumentMetadata wraps Metadata with the output file path
+// Deprecated: DocumentMetadata is replaced by SimpleDocumentMetadata for JSON output.
 type DocumentMetadata struct {
 	FilePath string `json:"file_path"`
 	*Metadata
@@ -159,6 +160,61 @@ func (d *Document) ToDocumentMetadata(filePath string) *DocumentMetadata {
 	return &DocumentMetadata{
 		FilePath: filePath,
 		Metadata: d.ToMetadata(),
+	}
+}
+
+// =============================================================================
+// Simple Metadata Types (Simplified JSON output for LLM evaluation)
+// =============================================================================
+
+// SimpleMetadata represents simplified document metadata for JSON output
+// This is a cleaner structure optimized for LLM evaluation, containing only
+// essential fields without technical metadata like content_hash, word_count, etc.
+type SimpleMetadata struct {
+	Title       string    `json:"title"`
+	URL         string    `json:"url"`
+	Source      string    `json:"source"`
+	FetchedAt   time.Time `json:"fetched_at"`
+	Description string    `json:"description,omitempty"`
+	Summary     string    `json:"summary,omitempty"`
+	Tags        []string  `json:"tags,omitempty"`
+	Category    string    `json:"category,omitempty"`
+}
+
+// SimpleDocumentMetadata adds file_path to SimpleMetadata for document indexing
+type SimpleDocumentMetadata struct {
+	FilePath string `json:"file_path"`
+	*SimpleMetadata
+}
+
+// SimpleMetadataIndex represents the consolidated JSON output with simplified metadata
+type SimpleMetadataIndex struct {
+	GeneratedAt    time.Time                `json:"generated_at"`
+	SourceURL      string                   `json:"source_url"`
+	Strategy       string                   `json:"strategy"`
+	TotalDocuments int                      `json:"total_documents"`
+	Documents      []SimpleDocumentMetadata `json:"documents"`
+}
+
+// ToSimpleMetadata converts a Document to SimpleMetadata
+func (d *Document) ToSimpleMetadata() *SimpleMetadata {
+	return &SimpleMetadata{
+		Title:       d.Title,
+		URL:         d.URL,
+		Source:      d.SourceStrategy,
+		FetchedAt:   d.FetchedAt,
+		Description: d.Description,
+		Summary:     d.Summary,
+		Tags:        d.Tags,
+		Category:    d.Category,
+	}
+}
+
+// ToSimpleDocumentMetadata creates a SimpleDocumentMetadata from a Document
+func (d *Document) ToSimpleDocumentMetadata(filePath string) *SimpleDocumentMetadata {
+	return &SimpleDocumentMetadata{
+		FilePath:       filePath,
+		SimpleMetadata: d.ToSimpleMetadata(),
 	}
 }
 
