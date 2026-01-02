@@ -90,7 +90,7 @@ func TestGitStrategy_Execute_PathFiltering(t *testing.T) {
 		"docs/intro.md":     "# Introduction",
 		"docs/api.md":       "# API",
 		"src/main.go":       "package main",
-		"other/notes.md":    "some notes", // Changed to .md to ensure it is detected
+		"other/notes.md":    "some notes",
 		"other/skipped.txt": "skipped",
 	}
 	zipData := createZipArchive(t, files)
