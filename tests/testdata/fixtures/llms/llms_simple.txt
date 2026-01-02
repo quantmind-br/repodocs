@@ -1,0 +1,5 @@
+# Simple llms.txt file for basic testing
+
+https://example.com/docs
+https://example.com/api
+https://example.com/guides/quickstart
