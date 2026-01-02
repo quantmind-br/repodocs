@@ -1,6 +1,6 @@
 module github.com/quantmind-br/repodocs-go
 
-go 1.25.5
+go 1.23.0
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.0
