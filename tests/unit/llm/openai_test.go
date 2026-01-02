@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -206,4 +207,200 @@ func TestOpenAIProvider_Close(t *testing.T) {
 
 	err = provider.Close()
 	assert.NoError(t, err)
+}
+
+func TestOpenAIProvider_Complete_InvalidJSONResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{invalid json`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewOpenAIProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "gpt-4",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to parse response")
+}
+
+func TestOpenAIProvider_Complete_ContextCancellation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Add delay to allow context cancellation
+		time.Sleep(100 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewOpenAIProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "gpt-4",
+	}, server.Client())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	_, err = provider.Complete(ctx, &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	assert.Error(t, err)
+}
+
+func TestOpenAIProvider_Complete_TemperatureOverride(t *testing.T) {
+	var receivedBody map[string]interface{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = decodeJSON(r.Body, &receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"id": "chatcmpl-123",
+			"model": "gpt-4",
+			"choices": [{
+				"index": 0,
+				"message": {"role": "assistant", "content": "Response"},
+				"finish_reason": "stop"
+			}],
+			"usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+		}`))
+	}))
+	defer server.Close()
+
+	temp := 0.8
+	provider, err := llm.NewOpenAIProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "gpt-4",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages:    []domain.LLMMessage{{Role: domain.RoleUser, Content: "Hi"}},
+		Temperature: &temp,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 0.8, receivedBody["temperature"])
+}
+
+func TestOpenAIProvider_Complete_MaxTokens(t *testing.T) {
+	var receivedBody map[string]interface{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = decodeJSON(r.Body, &receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"id": "chatcmpl-123",
+			"model": "gpt-4",
+			"choices": [{
+				"index": 0,
+				"message": {"role": "assistant", "content": "Response"},
+				"finish_reason": "stop"
+			}],
+			"usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+		}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewOpenAIProvider(llm.ProviderConfig{
+		APIKey:    "test-key",
+		BaseURL:   server.URL,
+		Model:     "gpt-4",
+		MaxTokens: 100,
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages:  []domain.LLMMessage{{Role: domain.RoleUser, Content: "Hi"}},
+		MaxTokens: 200, // Should use request override, not provider default
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, float64(200), receivedBody["max_tokens"])
+}
+
+func TestOpenAIProvider_Complete_ServerError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error": {"message": "Internal server error"}}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewOpenAIProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "gpt-4",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.Error(t, err)
+	var llmErr *domain.LLMError
+	require.ErrorAs(t, err, &llmErr)
+	assert.Equal(t, http.StatusInternalServerError, llmErr.StatusCode)
+}
+
+func TestOpenAIProvider_Complete_WithAssistantMessage(t *testing.T) {
+	var receivedBody map[string]interface{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = decodeJSON(r.Body, &receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"id": "chatcmpl-123",
+			"model": "gpt-4",
+			"choices": [{
+				"index": 0,
+				"message": {"role": "assistant", "content": "Final response"},
+				"finish_reason": "stop"
+			}],
+			"usage": {"prompt_tokens": 30, "completion_tokens": 5, "total_tokens": 35}
+		}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewOpenAIProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "gpt-4",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+			{Role: domain.RoleAssistant, Content: "Hello"},
+			{Role: domain.RoleUser, Content: "How are you?"},
+		},
+	})
+
+	require.NoError(t, err)
+	messages := receivedBody["messages"].([]interface{})
+	assert.Len(t, messages, 3)
 }

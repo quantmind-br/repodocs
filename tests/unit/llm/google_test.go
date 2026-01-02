@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -237,4 +238,200 @@ func TestGoogleProvider_Close(t *testing.T) {
 
 	err = provider.Close()
 	assert.NoError(t, err)
+}
+
+func TestGoogleProvider_Complete_RateLimit(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error": {"code": 429, "message": "Rate limit exceeded", "status": "RESOURCE_EXHAUSTED"}}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewGoogleProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "gemini-pro",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.Error(t, err)
+	var llmErr *domain.LLMError
+	require.ErrorAs(t, err, &llmErr)
+	assert.Equal(t, http.StatusTooManyRequests, llmErr.StatusCode)
+	assert.ErrorIs(t, llmErr, domain.ErrLLMRateLimited)
+}
+
+func TestGoogleProvider_Complete_InvalidJSONResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{invalid json`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewGoogleProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "gemini-pro",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to parse response")
+}
+
+func TestGoogleProvider_Complete_ContextCancellation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Add delay to allow context cancellation
+		time.Sleep(100 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewGoogleProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "gemini-pro",
+	}, server.Client())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	_, err = provider.Complete(ctx, &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	assert.Error(t, err)
+}
+
+func TestGoogleProvider_Complete_APIError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"candidates": [],
+			"error": {"code": 400, "message": "Invalid request", "status": "INVALID_ARGUMENT"}
+		}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewGoogleProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "gemini-pro",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.Error(t, err)
+	var llmErr *domain.LLMError
+	require.ErrorAs(t, err, &llmErr)
+	assert.Contains(t, llmErr.Message, "Invalid request")
+}
+
+func TestGoogleProvider_Complete_WithTemperature(t *testing.T) {
+	var receivedBody map[string]interface{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = decodeJSON(r.Body, &receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"candidates": [{
+				"content": {
+					"role": "model",
+					"parts": [{"text": "Response"}]
+				},
+				"finishReason": "STOP"
+			}],
+			"usageMetadata": {
+				"promptTokenCount": 10,
+				"candidatesTokenCount": 5,
+				"totalTokenCount": 15
+			}
+		}`))
+	}))
+	defer server.Close()
+
+	temp := 0.7
+	provider, err := llm.NewGoogleProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "gemini-pro",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages:    []domain.LLMMessage{{Role: domain.RoleUser, Content: "Hi"}},
+		Temperature: &temp,
+	})
+
+	require.NoError(t, err)
+	genConfig := receivedBody["generationConfig"].(map[string]interface{})
+	assert.Equal(t, 0.7, genConfig["temperature"])
+}
+
+func TestGoogleProvider_Complete_WithMaxTokens(t *testing.T) {
+	var receivedBody map[string]interface{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = decodeJSON(r.Body, &receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"candidates": [{
+				"content": {
+					"role": "model",
+					"parts": [{"text": "Response"}]
+				},
+				"finishReason": "STOP"
+			}],
+			"usageMetadata": {
+				"promptTokenCount": 10,
+				"candidatesTokenCount": 5,
+				"totalTokenCount": 15
+			}
+		}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewGoogleProvider(llm.ProviderConfig{
+		APIKey:    "test-key",
+		BaseURL:   server.URL,
+		Model:     "gemini-pro",
+		MaxTokens: 100,
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages:  []domain.LLMMessage{{Role: domain.RoleUser, Content: "Hi"}},
+		MaxTokens: 200,
+	})
+
+	require.NoError(t, err)
+	genConfig := receivedBody["generationConfig"].(map[string]interface{})
+	assert.Equal(t, float64(200), genConfig["maxOutputTokens"])
 }
