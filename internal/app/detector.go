@@ -53,8 +53,8 @@ func DetectStrategy(url string) StrategyType {
 
 	if !isDocsSubdomain && (strings.HasPrefix(url, "git@") ||
 		strings.HasSuffix(lower, ".git") ||
-		(strings.Contains(lower, "github.com") && !strings.Contains(lower, "/blob/") && !strings.Contains(lower, "/tree/")) ||
-		(strings.Contains(lower, "gitlab.com") && !strings.Contains(lower, "/-/blob/") && !strings.Contains(lower, "/-/tree/")) ||
+		(strings.Contains(lower, "github.com") && !strings.Contains(lower, "/blob/")) ||
+		(strings.Contains(lower, "gitlab.com") && !strings.Contains(lower, "/-/blob/")) ||
 		strings.Contains(lower, "bitbucket.org")) {
 		return StrategyGit
 	}

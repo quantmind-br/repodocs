@@ -1,6 +1,7 @@
 # Binaries
 /repodocs
 /build/
+/dist/
 
 # Coverage files
 *.out

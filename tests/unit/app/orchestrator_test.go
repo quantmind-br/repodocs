@@ -512,9 +512,9 @@ func TestDetectStrategy(t *testing.T) {
 		{"github.io pages", "https://user.github.io/project", app.StrategyCrawler},
 		{"pages.github.io", "https://pages.github.io/docs", app.StrategyCrawler},
 		{"GitHub blob view", "https://github.com/user/repo/blob/main/README.md", app.StrategyCrawler},
-		{"GitHub tree view", "https://github.com/user/repo/tree/main/docs", app.StrategyCrawler},
+		{"GitHub tree view", "https://github.com/user/repo/tree/main/docs", app.StrategyGit},
 		{"GitLab blob view", "https://gitlab.com/user/repo/-/blob/main/README.md", app.StrategyCrawler},
-		{"GitLab tree view", "https://gitlab.com/user/repo/-/tree/main/docs", app.StrategyCrawler},
+		{"GitLab tree view", "https://gitlab.com/user/repo/-/tree/main/docs", app.StrategyGit},
 	}
 
 	for _, tt := range tests {

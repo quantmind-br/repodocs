@@ -448,8 +448,8 @@ func TestFindDocumentationFiles_Markdown(t *testing.T) {
 
 	// Create test markdown files
 	files := map[string]string{
-		"README.md":    "# Test",
-		"CHANGELOG.md": "# Changes",
+		"README.md":     "# Test",
+		"CHANGELOG.md":  "# Changes",
 		"docs/guide.md": "# Guide",
 	}
 
@@ -463,7 +463,7 @@ func TestFindDocumentationFiles_Markdown(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	found, err := strategy.findDocumentationFiles(tmpDir)
+	found, err := strategy.findDocumentationFiles(tmpDir, "")
 	require.NoError(t, err)
 	assert.GreaterOrEqual(t, len(found), 3)
 }
@@ -486,9 +486,9 @@ func TestFindDocumentationFiles_MDX(t *testing.T) {
 
 	// Create test MDX files
 	files := map[string]string{
-		"README.mdx":       "# Test",
-		"docs/intro.mdx":   "# Intro",
-		"docs/guide.md":    "# Guide",
+		"README.mdx":        "# Test",
+		"docs/intro.mdx":    "# Intro",
+		"docs/guide.md":     "# Guide",
 		"src/component.tsx": "export default () => <div />",
 	}
 
@@ -502,7 +502,7 @@ func TestFindDocumentationFiles_MDX(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	found, err := strategy.findDocumentationFiles(tmpDir)
+	found, err := strategy.findDocumentationFiles(tmpDir, "")
 	require.NoError(t, err)
 	assert.Equal(t, 3, len(found)) // Should find .md and .mdx only
 
@@ -545,7 +545,7 @@ func TestFindDocumentationFiles_Empty(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	found, err := strategy.findDocumentationFiles(tmpDir)
+	found, err := strategy.findDocumentationFiles(tmpDir, "")
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(found))
 }
@@ -586,7 +586,7 @@ func TestFindDocumentationFiles_Nested(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	found, err := strategy.findDocumentationFiles(tmpDir)
+	found, err := strategy.findDocumentationFiles(tmpDir, "")
 	require.NoError(t, err)
 	assert.Equal(t, 5, len(found)) // Only .md and .mdx files
 
@@ -819,8 +819,250 @@ func TestExtractTitleFromPath_Index(t *testing.T) {
 	}
 }
 
-// TestTryArchiveDownload tests are removed because they require mocking private methods
-// which is not directly supported in Go without reflection
+func TestParseGitURLWithPath_GitHub(t *testing.T) {
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	writer := output.NewWriter(output.WriterOptions{BaseDir: "/tmp"})
+	deps := &Dependencies{Writer: writer, Logger: logger}
+	strategy := NewGitStrategy(deps)
+
+	tests := []struct {
+		name        string
+		url         string
+		wantRepoURL string
+		wantBranch  string
+		wantSubPath string
+		wantErr     bool
+	}{
+		{
+			name:        "basic repo",
+			url:         "https://github.com/owner/repo",
+			wantRepoURL: "https://github.com/owner/repo",
+			wantBranch:  "",
+			wantSubPath: "",
+		},
+		{
+			name:        "repo with .git suffix",
+			url:         "https://github.com/owner/repo.git",
+			wantRepoURL: "https://github.com/owner/repo",
+			wantBranch:  "",
+			wantSubPath: "",
+		},
+		{
+			name:        "repo with tree/main",
+			url:         "https://github.com/owner/repo/tree/main",
+			wantRepoURL: "https://github.com/owner/repo",
+			wantBranch:  "main",
+			wantSubPath: "",
+		},
+		{
+			name:        "repo with tree/main/docs",
+			url:         "https://github.com/owner/repo/tree/main/docs",
+			wantRepoURL: "https://github.com/owner/repo",
+			wantBranch:  "main",
+			wantSubPath: "docs",
+		},
+		{
+			name:        "repo with tree/main/docs/api",
+			url:         "https://github.com/owner/repo/tree/main/docs/api",
+			wantRepoURL: "https://github.com/owner/repo",
+			wantBranch:  "main",
+			wantSubPath: "docs/api",
+		},
+		{
+			name:        "repo with tree/develop/src",
+			url:         "https://github.com/owner/repo/tree/develop/src",
+			wantRepoURL: "https://github.com/owner/repo",
+			wantBranch:  "develop",
+			wantSubPath: "src",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			info, err := strategy.parseGitURLWithPath(tt.url)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantRepoURL, info.repoURL)
+			assert.Equal(t, tt.wantBranch, info.branch)
+			assert.Equal(t, tt.wantSubPath, info.subPath)
+			assert.Equal(t, "github", info.platform)
+		})
+	}
+}
+
+func TestParseGitURLWithPath_GitLab(t *testing.T) {
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	writer := output.NewWriter(output.WriterOptions{BaseDir: "/tmp"})
+	deps := &Dependencies{Writer: writer, Logger: logger}
+	strategy := NewGitStrategy(deps)
+
+	tests := []struct {
+		name        string
+		url         string
+		wantRepoURL string
+		wantBranch  string
+		wantSubPath string
+	}{
+		{
+			name:        "gitlab basic",
+			url:         "https://gitlab.com/owner/repo",
+			wantRepoURL: "https://gitlab.com/owner/repo",
+			wantBranch:  "",
+			wantSubPath: "",
+		},
+		{
+			name:        "gitlab with tree",
+			url:         "https://gitlab.com/owner/repo/-/tree/main/docs",
+			wantRepoURL: "https://gitlab.com/owner/repo",
+			wantBranch:  "main",
+			wantSubPath: "docs",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			info, err := strategy.parseGitURLWithPath(tt.url)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantRepoURL, info.repoURL)
+			assert.Equal(t, tt.wantBranch, info.branch)
+			assert.Equal(t, tt.wantSubPath, info.subPath)
+			assert.Equal(t, "gitlab", info.platform)
+		})
+	}
+}
+
+func TestParseGitURLWithPath_InvalidURL(t *testing.T) {
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	writer := output.NewWriter(output.WriterOptions{BaseDir: "/tmp"})
+	deps := &Dependencies{Writer: writer, Logger: logger}
+	strategy := NewGitStrategy(deps)
+
+	_, err := strategy.parseGitURLWithPath("https://example.com/something")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported git URL format")
+}
+
+func TestNormalizeFilterPath(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"", ""},
+		{"docs", "docs"},
+		{"docs/", "docs"},
+		{"/docs", "docs"},
+		{"/docs/", "docs"},
+		{"docs/api", "docs/api"},
+		{"docs%2Fapi", "docs/api"},
+		{"\\docs\\api", "docs/api"},
+		{"docs//api", "docs/api"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := normalizeFilterPath(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestCanHandle_WithTreeURL(t *testing.T) {
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	writer := output.NewWriter(output.WriterOptions{BaseDir: "/tmp"})
+	deps := &Dependencies{Writer: writer, Logger: logger}
+	strategy := NewGitStrategy(deps)
+
+	tests := []struct {
+		url      string
+		expected bool
+	}{
+		{"https://github.com/owner/repo/tree/main/docs", true},
+		{"https://github.com/owner/repo/tree/main", true},
+		{"https://gitlab.com/owner/repo/-/tree/main/docs", true},
+		{"https://github.com/owner/repo/blob/main/file.md", false},
+		{"https://gitlab.com/owner/repo/-/blob/main/file.md", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.url, func(t *testing.T) {
+			result := strategy.CanHandle(tt.url)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestFindDocumentationFiles_WithFilter(t *testing.T) {
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	writer := output.NewWriter(output.WriterOptions{BaseDir: "/tmp"})
+	deps := &Dependencies{Writer: writer, Logger: logger}
+	strategy := NewGitStrategy(deps)
+
+	tmpDir, err := os.MkdirTemp("", "repodocs-filter-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	files := map[string]string{
+		"README.md":       "# Root",
+		"docs/guide.md":   "# Guide",
+		"docs/api/ref.md": "# API Ref",
+		"src/main.go":     "package main",
+		"other/readme.md": "# Other",
+	}
+
+	for relPath, content := range files {
+		fullPath := filepath.Join(tmpDir, relPath)
+		err = os.MkdirAll(filepath.Dir(fullPath), 0755)
+		require.NoError(t, err)
+		err = os.WriteFile(fullPath, []byte(content), 0644)
+		require.NoError(t, err)
+	}
+
+	found, err := strategy.findDocumentationFiles(tmpDir, "docs")
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(found))
+
+	for _, f := range found {
+		assert.Contains(t, f, "docs")
+		assert.NotContains(t, f, "other")
+		assert.NotContains(t, f, "README.md")
+	}
+}
+
+func TestFindDocumentationFiles_NonExistentPath(t *testing.T) {
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	writer := output.NewWriter(output.WriterOptions{BaseDir: "/tmp"})
+	deps := &Dependencies{Writer: writer, Logger: logger}
+	strategy := NewGitStrategy(deps)
+
+	tmpDir, err := os.MkdirTemp("", "repodocs-filter-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	_, err = strategy.findDocumentationFiles(tmpDir, "nonexistent")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "filter path does not exist")
+}
+
+func TestFindDocumentationFiles_PathIsFile(t *testing.T) {
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	writer := output.NewWriter(output.WriterOptions{BaseDir: "/tmp"})
+	deps := &Dependencies{Writer: writer, Logger: logger}
+	strategy := NewGitStrategy(deps)
+
+	tmpDir, err := os.MkdirTemp("", "repodocs-filter-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	err = os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("# Test"), 0644)
+	require.NoError(t, err)
+
+	_, err = strategy.findDocumentationFiles(tmpDir, "README.md")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "filter path is not a directory")
+}
 
 // Helper types and functions
 
@@ -964,7 +1206,7 @@ func TestExecute_ArchiveFailCloneSuccess(t *testing.T) {
 	// Use file:// protocol which doesn't support archive download
 	ctx := context.Background()
 	opts := Options{
-		Limit:      10,
+		Limit:       10,
 		Concurrency: 1,
 	}
 
@@ -996,7 +1238,7 @@ func TestExecute_BothMethodsFail(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:      10,
+		Limit:       10,
 		Concurrency: 1,
 	}
 

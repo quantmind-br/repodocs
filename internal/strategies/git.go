@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -92,33 +93,50 @@ func (s *GitStrategy) CanHandle(url string) bool {
 	// Check if it's a Git repository URL
 	return strings.HasPrefix(url, "git@") ||
 		strings.HasSuffix(lower, ".git") ||
-		(strings.Contains(lower, "github.com") && !strings.Contains(lower, "/blob/") && !strings.Contains(lower, "/tree/")) ||
-		(strings.Contains(lower, "gitlab.com") && !strings.Contains(lower, "/-/blob/") && !strings.Contains(lower, "/-/tree/")) ||
+		(strings.Contains(lower, "github.com") && !strings.Contains(lower, "/blob/")) ||
+		(strings.Contains(lower, "gitlab.com") && !strings.Contains(lower, "/-/blob/")) ||
 		strings.Contains(lower, "bitbucket.org")
 }
 
 // Execute runs the git extraction strategy
 // It tries archive download first (faster), falls back to git clone if needed
-func (s *GitStrategy) Execute(ctx context.Context, url string, opts Options) error {
-	s.logger.Info().Str("url", url).Msg("Starting git extraction")
+func (s *GitStrategy) Execute(ctx context.Context, rawURL string, opts Options) error {
+	s.logger.Info().Str("url", rawURL).Msg("Starting git extraction")
 
-	// Create temporary directory
+	urlInfo, err := s.parseGitURLWithPath(rawURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse git URL: %w", err)
+	}
+
+	filterPath := urlInfo.subPath
+	if filterPath == "" && opts.FilterURL != "" {
+		filterPath = normalizeFilterPath(opts.FilterURL)
+	}
+
+	if filterPath != "" {
+		s.logger.Info().Str("filter_path", filterPath).Msg("Path filter active")
+	}
+
 	tmpDir, err := os.MkdirTemp("", "repodocs-git-*")
 	if err != nil {
 		return fmt.Errorf("failed to create temp dir: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Try archive download first (faster)
-	branch, method, err := s.tryArchiveDownload(ctx, url, tmpDir)
+	repoURL := urlInfo.repoURL
+
+	branch, method, err := s.tryArchiveDownload(ctx, repoURL, tmpDir)
 	if err != nil {
-		// Fallback to git clone
 		s.logger.Info().Err(err).Msg("Archive download failed, using git clone")
-		branch, err = s.cloneRepository(ctx, url, tmpDir)
+		branch, err = s.cloneRepository(ctx, repoURL, tmpDir)
 		if err != nil {
 			return fmt.Errorf("failed to acquire repository: %w", err)
 		}
 		method = "clone"
+	}
+
+	if urlInfo.branch != "" {
+		branch = urlInfo.branch
 	}
 
 	s.logger.Info().
@@ -126,21 +144,22 @@ func (s *GitStrategy) Execute(ctx context.Context, url string, opts Options) err
 		Str("branch", branch).
 		Msg("Repository acquired successfully")
 
-	// Find documentation files
-	files, err := s.findDocumentationFiles(tmpDir)
+	files, err := s.findDocumentationFiles(tmpDir, filterPath)
 	if err != nil {
 		return err
 	}
 
+	if len(files) == 0 && filterPath != "" {
+		return fmt.Errorf("no documentation files found under path: %s", filterPath)
+	}
+
 	s.logger.Info().Int("count", len(files)).Msg("Found documentation files")
 
-	// Apply limit
 	if opts.Limit > 0 && len(files) > opts.Limit {
 		files = files[:opts.Limit]
 	}
 
-	// Process files in parallel
-	return s.processFiles(ctx, files, tmpDir, url, branch, opts)
+	return s.processFiles(ctx, files, tmpDir, repoURL, branch, opts)
 }
 
 // repoInfo contains parsed repository information
@@ -148,6 +167,16 @@ type repoInfo struct {
 	platform string // github, gitlab, bitbucket
 	owner    string
 	repo     string
+}
+
+// gitURLInfo contains parsed Git URL information including optional path
+type gitURLInfo struct {
+	repoURL  string // Clean repository URL (without /tree/... suffix)
+	platform string // github, gitlab, bitbucket
+	owner    string
+	repo     string
+	branch   string // Branch from URL (empty if not specified)
+	subPath  string // Subdirectory path (empty if root)
 }
 
 // tryArchiveDownload attempts to download and extract repository as archive
@@ -191,8 +220,81 @@ func (s *GitStrategy) tryArchiveDownload(ctx context.Context, url, destDir strin
 	return branch, "archive", nil
 }
 
+// parseGitURLWithPath extracts repository URL and optional subpath from Git URLs
+func (s *GitStrategy) parseGitURLWithPath(rawURL string) (*gitURLInfo, error) {
+	info := &gitURLInfo{}
+	lower := strings.ToLower(rawURL)
+
+	patterns := []struct {
+		platform    string
+		repoPattern *regexp.Regexp
+		treePattern *regexp.Regexp
+	}{
+		{
+			platform:    "github",
+			repoPattern: regexp.MustCompile(`^(https?://github\.com/([^/]+)/([^/]+?))(\.git)?(/|$)`),
+			treePattern: regexp.MustCompile(`/tree/([^/]+)(?:/(.+))?$`),
+		},
+		{
+			platform:    "gitlab",
+			repoPattern: regexp.MustCompile(`^(https?://gitlab\.com/([^/]+)/([^/]+?))(\.git)?(/|$)`),
+			treePattern: regexp.MustCompile(`/-/tree/([^/]+)(?:/(.+))?$`),
+		},
+		{
+			platform:    "bitbucket",
+			repoPattern: regexp.MustCompile(`^(https?://bitbucket\.org/([^/]+)/([^/]+?))(\.git)?(/|$)`),
+			treePattern: regexp.MustCompile(`/src/([^/]+)(?:/(.+))?$`),
+		},
+	}
+
+	for _, p := range patterns {
+		if !strings.Contains(lower, p.platform) {
+			continue
+		}
+
+		repoMatches := p.repoPattern.FindStringSubmatch(rawURL)
+		if len(repoMatches) < 4 {
+			continue
+		}
+
+		info.platform = p.platform
+		info.repoURL = repoMatches[1]
+		info.owner = repoMatches[2]
+		info.repo = strings.TrimSuffix(repoMatches[3], ".git")
+
+		treeMatches := p.treePattern.FindStringSubmatch(rawURL)
+		if len(treeMatches) >= 2 {
+			info.branch = treeMatches[1]
+			if len(treeMatches) >= 3 && treeMatches[2] != "" {
+				info.subPath = normalizeFilterPath(treeMatches[2])
+			}
+		}
+
+		return info, nil
+	}
+
+	return nil, fmt.Errorf("unsupported git URL format: %s", rawURL)
+}
+
+func normalizeFilterPath(path string) string {
+	if path == "" {
+		return ""
+	}
+
+	decoded, err := url.PathUnescape(path)
+	if err == nil {
+		path = decoded
+	}
+
+	path = strings.ReplaceAll(path, "\\", "/")
+	path = strings.Trim(path, "/")
+	path = filepath.Clean(path)
+
+	return path
+}
+
 // parseGitURL extracts owner and repo from various git URL formats
-func (s *GitStrategy) parseGitURL(url string) (*repoInfo, error) {
+func (s *GitStrategy) parseGitURL(gitURL string) (*repoInfo, error) {
 	patterns := []struct {
 		platform string
 		regex    *regexp.Regexp
@@ -203,7 +305,7 @@ func (s *GitStrategy) parseGitURL(url string) (*repoInfo, error) {
 	}
 
 	for _, p := range patterns {
-		if matches := p.regex.FindStringSubmatch(url); len(matches) == 3 {
+		if matches := p.regex.FindStringSubmatch(gitURL); len(matches) == 3 {
 			return &repoInfo{
 				platform: p.platform,
 				owner:    matches[1],
@@ -212,7 +314,7 @@ func (s *GitStrategy) parseGitURL(url string) (*repoInfo, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("unsupported git URL format: %s", url)
+	return nil, fmt.Errorf("unsupported git URL format: %s", gitURL)
 }
 
 // detectDefaultBranch uses git ls-remote to find the default branch
@@ -385,15 +487,32 @@ func (s *GitStrategy) cloneRepository(ctx context.Context, url, destDir string) 
 	return "main", nil
 }
 
-// findDocumentationFiles walks the directory and finds all documentation files
-func (s *GitStrategy) findDocumentationFiles(dir string) ([]string, error) {
+func (s *GitStrategy) findDocumentationFiles(dir string, filterPath string) ([]string, error) {
 	var files []string
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+
+	walkDir := dir
+	if filterPath != "" {
+		walkDir = filepath.Join(dir, filterPath)
+
+		info, err := os.Stat(walkDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil, fmt.Errorf("filter path does not exist in repository: %s", filterPath)
+			}
+			return nil, fmt.Errorf("failed to access filter path: %w", err)
+		}
+		if !info.IsDir() {
+			return nil, fmt.Errorf("filter path is not a directory: %s", filterPath)
+		}
+
+		s.logger.Debug().Str("filter_path", filterPath).Str("walk_dir", walkDir).Msg("Walking filtered directory")
+	}
+
+	err := filepath.WalkDir(walkDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// Skip ignored directories
 		if d.IsDir() {
 			if IgnoreDirs[d.Name()] {
 				return fs.SkipDir
@@ -401,7 +520,6 @@ func (s *GitStrategy) findDocumentationFiles(dir string) ([]string, error) {
 			return nil
 		}
 
-		// Check file extension
 		ext := strings.ToLower(filepath.Ext(path))
 		if DocumentExtensions[ext] {
 			files = append(files, path)
