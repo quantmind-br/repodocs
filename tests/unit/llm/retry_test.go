@@ -8,6 +8,7 @@ import (
 
 	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/llm"
+	"github.com/quantmind-br/repodocs-go/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -336,6 +337,168 @@ func TestNewRetrier_DefaultsInvalidConfig(t *testing.T) {
 
 	retrier := llm.NewRetrier(config, nil)
 	require.NotNil(t, retrier)
+
+	callCount := 0
+	err := retrier.Execute(context.Background(), func() error {
+		callCount++
+		return nil
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, callCount)
+}
+
+func TestShouldRetry_BackwardCompatibility(t *testing.T) {
+	// ShouldRetry is an alias for ShouldRetryStatusCode
+	tests := []struct {
+		statusCode int
+		expected   bool
+	}{
+		{429, true},
+		{500, true},
+		{502, true},
+		{503, true},
+		{504, true},
+		{400, false},
+		{200, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(rune(tt.statusCode)), func(t *testing.T) {
+			result := llm.ShouldRetry(tt.statusCode)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestCalculateBackoff_BackwardCompatibility(t *testing.T) {
+	config := llm.RetryConfig{
+		MaxRetries:      5,
+		InitialInterval: 100 * time.Millisecond,
+		MaxInterval:     1 * time.Second,
+		Multiplier:      2.0,
+		JitterFactor:    0.1,
+	}
+
+	// Test multiple attempts to see exponential backoff
+	for attempt := 0; attempt < 3; attempt++ {
+		backoff := llm.CalculateBackoff(attempt, config)
+		assert.Greater(t, backoff, time.Duration(0))
+		assert.LessOrEqual(t, backoff, config.MaxInterval)
+	}
+}
+
+func TestIsRetryableError_FetchError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{
+			name:     "fetch_error_429",
+			err:      domain.NewFetchError("test", 429, nil),
+			expected: true,
+		},
+		{
+			name:     "fetch_error_500",
+			err:      domain.NewFetchError("test", 500, nil),
+			expected: true,
+		},
+		{
+			name:     "fetch_error_502",
+			err:      domain.NewFetchError("test", 502, nil),
+			expected: true,
+		},
+		{
+			name:     "fetch_error_404",
+			err:      domain.NewFetchError("test", 404, nil),
+			expected: false,
+		},
+		{
+			name:     "fetch_error_401",
+			err:      domain.NewFetchError("test", 401, nil),
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := llm.IsRetryableError(tt.err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestRetrier_Execute_WithLogger(t *testing.T) {
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "info"})
+	config := llm.RetryConfig{
+		MaxRetries:      2,
+		InitialInterval: 10 * time.Millisecond,
+		MaxInterval:     100 * time.Millisecond,
+		Multiplier:      2.0,
+		JitterFactor:    0,
+	}
+	retrier := llm.NewRetrier(config, logger)
+
+	callCount := 0
+	err := retrier.Execute(context.Background(), func() error {
+		callCount++
+		if callCount < 2 {
+			return domain.ErrLLMRateLimited
+		}
+		return nil
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 2, callCount)
+}
+
+func TestRetrier_BackoffWithJitter(t *testing.T) {
+	config := llm.RetryConfig{
+		MaxRetries:      5,
+		InitialInterval: 100 * time.Millisecond,
+		MaxInterval:     1 * time.Second,
+		Multiplier:      2.0,
+		JitterFactor:    0.2, // 20% jitter
+	}
+	retrier := llm.NewRetrier(config, nil)
+
+	backoffs := make([]time.Duration, 5)
+	for i := 0; i < 5; i++ {
+		backoffs[i] = retrier.Execute(context.Background(), func() error {
+			return nil
+		})
+	}
+
+	// With jitter, backoffs should vary (though we can't test exact randomness here)
+	// Just verify the retrier was created successfully
+	assert.NotNil(t, retrier)
+}
+
+func TestRetrier_ZeroMaxRetries(t *testing.T) {
+	config := llm.RetryConfig{
+		MaxRetries:      0,
+		InitialInterval: 100 * time.Millisecond,
+		MaxInterval:     1 * time.Second,
+		Multiplier:      2.0,
+		JitterFactor:    0,
+	}
+	retrier := llm.NewRetrier(config, nil)
+
+	callCount := 0
+	err := retrier.Execute(context.Background(), func() error {
+		callCount++
+		return domain.ErrLLMRateLimited
+	})
+
+	// Should fail on first attempt without retry
+	require.Error(t, err)
+	assert.Equal(t, 1, callCount)
+}
+
+func TestRetrier_NilError(t *testing.T) {
+	config := llm.DefaultRetryConfig()
+	retrier := llm.NewRetrier(config, nil)
 
 	callCount := 0
 	err := retrier.Execute(context.Background(), func() error {

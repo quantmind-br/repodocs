@@ -1,6 +1,7 @@
 package fetcher_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -202,5 +203,228 @@ func TestRandomDelay_Zero(t *testing.T) {
 				assert.Less(t, delay, tc.max)
 			})
 		}
+	})
+}
+
+func TestRandomUserAgent(t *testing.T) {
+	t.Run("returns non-empty string", func(t *testing.T) {
+		// Execute: Get random user agent
+		ua := fetcher.RandomUserAgent()
+
+		// Verify: Not empty
+		assert.NotEmpty(t, ua, "User agent should not be empty")
+	})
+
+	t.Run("returns valid user agent format", func(t *testing.T) {
+		// Execute: Get multiple user agents
+		for i := 0; i < 10; i++ {
+			ua := fetcher.RandomUserAgent()
+
+			// Verify: Contains expected parts (Mozilla/5.0)
+			assert.Contains(t, ua, "Mozilla/5.0", "User agent should contain Mozilla/5.0")
+		}
+	})
+
+	t.Run("returns different user agents", func(t *testing.T) {
+		// Execute: Get multiple user agents
+		userAgents := make(map[string]bool)
+		for i := 0; i < 20; i++ {
+			ua := fetcher.RandomUserAgent()
+			userAgents[ua] = true
+		}
+
+		// Verify: Got some variety (more than 1 unique UA)
+		assert.Greater(t, len(userAgents), 1, "Should return different user agents showing randomness")
+	})
+
+	t.Run("contains common browser identifiers", func(t *testing.T) {
+		// Execute: Get multiple user agents
+		commonBrowsers := []string{"Chrome", "Firefox", "Safari", "Edg"}
+		foundBrowsers := make(map[string]bool)
+
+		for i := 0; i < 50; i++ {
+			ua := fetcher.RandomUserAgent()
+			for _, browser := range commonBrowsers {
+				if strings.Contains(ua, browser) {
+					foundBrowsers[browser] = true
+				}
+			}
+		}
+
+		// Verify: Found at least some common browsers
+		assert.Greater(t, len(foundBrowsers), 0, "Should find common browser identifiers")
+	})
+}
+
+func TestRandomAcceptLanguage(t *testing.T) {
+	t.Run("returns non-empty string", func(t *testing.T) {
+		// Execute: Get random accept language
+		lang := fetcher.RandomAcceptLanguage()
+
+		// Verify: Not empty
+		assert.NotEmpty(t, lang, "Accept-Language should not be empty")
+	})
+
+	t.Run("returns valid accept language format", func(t *testing.T) {
+		// Execute: Get multiple accept languages
+		for i := 0; i < 10; i++ {
+			lang := fetcher.RandomAcceptLanguage()
+
+			// Verify: Contains expected parts (en-US or en)
+			assert.True(t, strings.Contains(lang, "en-US") || strings.Contains(lang, "en"),
+				"Accept-Language should contain English variant")
+		}
+	})
+
+	t.Run("returns different languages", func(t *testing.T) {
+		// Execute: Get multiple accept languages
+		languages := make(map[string]bool)
+		for i := 0; i < 20; i++ {
+			lang := fetcher.RandomAcceptLanguage()
+			languages[lang] = true
+		}
+
+		// Verify: Got some variety
+		assert.Greater(t, len(languages), 1, "Should return different accept languages showing randomness")
+	})
+
+	t.Run("contains quality values", func(t *testing.T) {
+		// Execute: Get multiple accept languages
+		for i := 0; i < 10; i++ {
+			lang := fetcher.RandomAcceptLanguage()
+
+			// Verify: Contains quality values (q=)
+			assert.Contains(t, lang, "q=", "Accept-Language should contain quality values")
+		}
+	})
+}
+
+func TestStealthHeaders(t *testing.T) {
+	t.Run("returns required stealth headers", func(t *testing.T) {
+		// Execute: Get stealth headers
+		headers := fetcher.StealthHeaders("")
+
+		// Verify: Contains required headers
+		requiredHeaders := []string{
+			"User-Agent",
+			"Accept",
+			"Accept-Language",
+			"Accept-Encoding",
+			"Cache-Control",
+			"Pragma",
+			"Sec-Fetch-Dest",
+			"Sec-Fetch-Mode",
+			"Sec-Fetch-Site",
+			"Sec-Fetch-User",
+			"Upgrade-Insecure-Requests",
+		}
+
+		for _, header := range requiredHeaders {
+			assert.Contains(t, headers, header, "Stealth headers should contain %s", header)
+			assert.NotEmpty(t, headers[header], "%s should not be empty", header)
+		}
+	})
+
+	t.Run("generates random user agent when empty", func(t *testing.T) {
+		// Execute: Get stealth headers with empty UA
+		headers1 := fetcher.StealthHeaders("")
+		headers2 := fetcher.StealthHeaders("")
+
+		// Verify: User agents are different (randomly generated)
+		// Note: There's a small chance they could be the same, but very unlikely
+		// We'll just verify they're both valid
+		assert.NotEmpty(t, headers1["User-Agent"])
+		assert.NotEmpty(t, headers2["User-Agent"])
+	})
+
+	t.Run("uses custom user agent when provided", func(t *testing.T) {
+		// Execute: Get stealth headers with custom UA
+		customUA := "MyCustomAgent/1.0"
+		headers := fetcher.StealthHeaders(customUA)
+
+		// Verify: Custom UA is used
+		assert.Equal(t, customUA, headers["User-Agent"])
+	})
+
+	t.Run("includes Chrome-specific headers for Chrome UA", func(t *testing.T) {
+		// Execute: Get stealth headers with Chrome UA
+		chromeUA := "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+		headers := fetcher.StealthHeaders(chromeUA)
+
+		// Verify: Contains Chrome-specific headers
+		assert.Contains(t, headers, "Sec-CH-UA")
+		assert.Contains(t, headers, "Sec-CH-UA-Mobile")
+		assert.Contains(t, headers, "Sec-CH-UA-Platform")
+
+		// Verify: Values are not empty
+		assert.NotEmpty(t, headers["Sec-CH-UA"])
+		assert.NotEmpty(t, headers["Sec-CH-UA-Mobile"])
+		assert.NotEmpty(t, headers["Sec-CH-UA-Platform"])
+	})
+
+	t.Run("does not include Chrome headers for non-Chrome UA", func(t *testing.T) {
+		// Execute: Get stealth headers with Firefox UA
+		firefoxUA := "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0"
+		headers := fetcher.StealthHeaders(firefoxUA)
+
+		// Verify: Does not contain Chrome-specific headers
+		_, hasCHUA := headers["Sec-CH-UA"]
+		_, hasCHUAMobile := headers["Sec-CH-UA-Mobile"]
+		_, hasCHAPlatform := headers["Sec-CH-UA-Platform"]
+
+		assert.False(t, hasCHUA, "Should not have Sec-CH-UA for Firefox")
+		assert.False(t, hasCHUAMobile, "Should not have Sec-CH-UA-Mobile for Firefox")
+		assert.False(t, hasCHAPlatform, "Should not have Sec-CH-UA-Platform for Firefox")
+	})
+
+	t.Run("includes standard HTTP headers", func(t *testing.T) {
+		// Execute: Get stealth headers
+		headers := fetcher.StealthHeaders("")
+
+		// Verify: Standard header values
+		assert.Equal(t, "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8", headers["Accept"])
+		assert.Equal(t, "gzip, deflate, br", headers["Accept-Encoding"])
+		assert.Equal(t, "no-cache", headers["Cache-Control"])
+		assert.Equal(t, "no-cache", headers["Pragma"])
+		assert.Equal(t, "document", headers["Sec-Fetch-Dest"])
+		assert.Equal(t, "navigate", headers["Sec-Fetch-Mode"])
+		assert.Equal(t, "none", headers["Sec-Fetch-Site"])
+		assert.Equal(t, "?1", headers["Sec-Fetch-User"])
+		assert.Equal(t, "1", headers["Upgrade-Insecure-Requests"])
+	})
+
+	t.Run("generates random accept language", func(t *testing.T) {
+		// Execute: Get stealth headers multiple times
+		langs := make(map[string]bool)
+		for i := 0; i < 20; i++ {
+			headers := fetcher.StealthHeaders("")
+			langs[headers["Accept-Language"]] = true
+		}
+
+		// Verify: Got some variety
+		assert.Greater(t, len(langs), 1, "Should generate different accept languages")
+	})
+}
+
+func TestRandomSecChUaPlatform(t *testing.T) {
+	// Note: This is an internal function tested indirectly through StealthHeaders
+	// We'll test the platform values in the headers
+
+	t.Run("valid platform values", func(t *testing.T) {
+		// Execute: Get stealth headers with Chrome UA multiple times
+		platforms := make(map[string]bool)
+		for i := 0; i < 30; i++ {
+			chromeUA := "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+			headers := fetcher.StealthHeaders(chromeUA)
+			platform := headers["Sec-CH-UA-Platform"]
+			platforms[platform] = true
+
+			// Verify: Platform is one of the expected values
+			assert.Contains(t, []string{`"Windows"`, `"macOS"`, `"Linux"`}, platform,
+				"Platform should be Windows, macOS, or Linux")
+		}
+
+		// Verify: Got some variety
+		assert.Greater(t, len(platforms), 1, "Should get different platforms")
 	})
 }

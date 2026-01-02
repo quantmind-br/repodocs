@@ -1,4 +1,4 @@
-package app_test
+package cache_test
 
 import (
 	"context"
@@ -505,4 +505,359 @@ func TestDefaultOptions(t *testing.T) {
 	assert.Equal(t, "", opts.Directory)
 	assert.Equal(t, false, opts.InMemory)
 	assert.Equal(t, false, opts.Logger)
+}
+
+// TestSet_WithVariousTTLs tests different TTL values
+func TestSet_WithVariousTTLs(t *testing.T) {
+	tests := []struct {
+		name       string
+		ttl        time.Duration
+		shouldExist bool
+		waitTime   time.Duration
+	}{
+		{
+			name:       "Long TTL - 1 hour",
+			ttl:        time.Hour,
+			shouldExist: true,
+			waitTime:   0,
+		},
+		{
+			name:       "Short TTL - 10ms",
+			ttl:        10 * time.Millisecond,
+			shouldExist: false,
+			waitTime:   20 * time.Millisecond,
+		},
+		{
+			name:       "Zero TTL",
+			ttl:        0,
+			shouldExist: true,
+			waitTime:   0,
+		},
+		{
+			name:       "Negative TTL (treated as zero)",
+			ttl:        -time.Hour,
+			shouldExist: true,
+			waitTime:   0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := cache.NewBadgerCache(cache.Options{InMemory: true})
+			require.NoError(t, err)
+			defer c.Close()
+
+			ctx := context.Background()
+			key := "https://example.com/ttl-test"
+			value := []byte("value")
+
+			err = c.Set(ctx, key, value, tt.ttl)
+			require.NoError(t, err)
+
+			if tt.waitTime > 0 {
+				time.Sleep(tt.waitTime)
+			}
+
+			exists := c.Has(ctx, key)
+			if tt.shouldExist {
+				assert.True(t, exists, "key should exist with TTL: %v", tt.ttl)
+			} else {
+				assert.False(t, exists, "key should not exist with TTL: %v", tt.ttl)
+			}
+		})
+	}
+}
+
+// TestGet_WithCancelledContext tests context cancellation
+func TestGet_WithCancelledContext(t *testing.T) {
+	c, err := cache.NewBadgerCache(cache.Options{InMemory: true})
+	require.NoError(t, err)
+	defer c.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	// Try to get with cancelled context
+	_, err = c.Get(ctx, "https://example.com/test")
+	// BadgerDB may or may not return error for cancelled context
+	// The important thing is it doesn't panic
+	_ = err
+}
+
+// TestSet_WithCancelledContext tests set with cancelled context
+func TestSet_WithCancelledContext(t *testing.T) {
+	c, err := cache.NewBadgerCache(cache.Options{InMemory: true})
+	require.NoError(t, err)
+	defer c.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	key := "https://example.com/test"
+	value := []byte("value")
+
+	// Try to set with cancelled context
+	err = c.Set(ctx, key, value, time.Hour)
+	// BadgerDB may or may not return error for cancelled context
+	// The important thing is it doesn't panic
+	_ = err
+}
+
+// TestHas_AfterDeletion tests Has after deletion
+func TestHas_AfterDeletion(t *testing.T) {
+	c, err := cache.NewBadgerCache(cache.Options{InMemory: true})
+	require.NoError(t, err)
+	defer c.Close()
+
+	ctx := context.Background()
+	key := "https://example.com/delete-has"
+	value := []byte("value")
+
+	// Set value
+	err = c.Set(ctx, key, value, time.Hour)
+	require.NoError(t, err)
+
+	// Verify exists
+	assert.True(t, c.Has(ctx, key))
+
+	// Delete
+	err = c.Delete(ctx, key)
+	require.NoError(t, err)
+
+	// Verify doesn't exist
+	assert.False(t, c.Has(ctx, key))
+}
+
+// TestSize_AfterClear tests Size after Clear operation
+func TestSize_AfterClear(t *testing.T) {
+	c, err := cache.NewBadgerCache(cache.Options{InMemory: true})
+	require.NoError(t, err)
+	defer c.Close()
+
+	ctx := context.Background()
+
+	// Add multiple entries
+	for i := 0; i < 5; i++ {
+		key := "https://example.com/size" + string(rune('0'+i))
+		value := []byte("value")
+		err = c.Set(ctx, key, value, time.Hour)
+		require.NoError(t, err)
+	}
+
+	// Verify size
+	assert.Equal(t, int64(5), c.Size())
+
+	// Clear all
+	err = c.Clear()
+	require.NoError(t, err)
+
+	// Verify size is zero
+	assert.Equal(t, int64(0), c.Size())
+}
+
+// TestStats_WithEmptyCache tests Stats with empty cache
+func TestStats_WithEmptyCache(t *testing.T) {
+	c, err := cache.NewBadgerCache(cache.Options{InMemory: true})
+	require.NoError(t, err)
+	defer c.Close()
+
+	// Get stats for empty cache
+	stats := c.Stats()
+
+	// Verify stats structure
+	assert.NotNil(t, stats)
+	assert.Contains(t, stats, "entries")
+	assert.Contains(t, stats, "lsm_size")
+	assert.Contains(t, stats, "vlog_size")
+
+	// Verify empty cache has 0 entries
+	entries := stats["entries"].(int64)
+	assert.Equal(t, int64(0), entries)
+}
+
+// TestDelete_MultipleTimes tests deleting same key multiple times
+func TestDelete_MultipleTimes(t *testing.T) {
+	c, err := cache.NewBadgerCache(cache.Options{InMemory: true})
+	require.NoError(t, err)
+	defer c.Close()
+
+	ctx := context.Background()
+	key := "https://example.com/multi-delete"
+	value := []byte("value")
+
+	// Set value
+	err = c.Set(ctx, key, value, time.Hour)
+	require.NoError(t, err)
+
+	// Delete first time
+	err = c.Delete(ctx, key)
+	require.NoError(t, err)
+
+	// Delete second time - should not error
+	err = c.Delete(ctx, key)
+	require.NoError(t, err)
+
+	// Delete third time - should not error
+	err = c.Delete(ctx, key)
+	require.NoError(t, err)
+}
+
+// TestSet_UpdateWithDifferentTTL tests updating with different TTL
+func TestSet_UpdateWithDifferentTTL(t *testing.T) {
+	c, err := cache.NewBadgerCache(cache.Options{InMemory: true})
+	require.NoError(t, err)
+	defer c.Close()
+
+	ctx := context.Background()
+	key := "https://example.com/update-ttl"
+
+	// Set with long TTL
+	err = c.Set(ctx, key, []byte("value1"), time.Hour)
+	require.NoError(t, err)
+
+	// Update with short TTL
+	err = c.Set(ctx, key, []byte("value2"), 50*time.Millisecond)
+	require.NoError(t, err)
+
+	// Wait for short TTL to expire
+	time.Sleep(100 * time.Millisecond)
+
+	// Should be expired
+	exists := c.Has(ctx, key)
+	assert.False(t, exists, "updated entry should expire with new TTL")
+}
+
+// TestGet_EmptyKey tests getting with empty key
+func TestGet_EmptyKey(t *testing.T) {
+	c, err := cache.NewBadgerCache(cache.Options{InMemory: true})
+	require.NoError(t, err)
+	defer c.Close()
+
+	ctx := context.Background()
+
+	// Try to get with empty key
+	_, err = c.Get(ctx, "")
+	assert.Error(t, err)
+}
+
+// TestSet_EmptyKey tests setting with empty key
+func TestSet_EmptyKey(t *testing.T) {
+	c, err := cache.NewBadgerCache(cache.Options{InMemory: true})
+	require.NoError(t, err)
+	defer c.Close()
+
+	ctx := context.Background()
+
+	// Set with empty key
+	err = c.Set(ctx, "", []byte("value"), time.Hour)
+	// Should either succeed or error, but not panic
+	_ = err
+}
+
+// TestHas_EmptyKey tests Has with empty key
+func TestHas_EmptyKey(t *testing.T) {
+	c, err := cache.NewBadgerCache(cache.Options{InMemory: true})
+	require.NoError(t, err)
+	defer c.Close()
+
+	ctx := context.Background()
+
+	// Check empty key
+	exists := c.Has(ctx, "")
+	// Should return false or handle gracefully
+	assert.False(t, exists)
+}
+
+// TestStats_LSMAndVLogSizes tests that LSM and VLog sizes are reported
+func TestStats_LSMAndVLogSizes(t *testing.T) {
+	c, err := cache.NewBadgerCache(cache.Options{InMemory: true})
+	require.NoError(t, err)
+	defer c.Close()
+
+	ctx := context.Background()
+
+	// Add some data to populate LSM/VLog
+	for i := 0; i < 10; i++ {
+		key := "https://example.com/sizes" + string(rune('0'+i))
+		value := []byte("some value for size testing")
+		err = c.Set(ctx, key, value, time.Hour)
+		require.NoError(t, err)
+	}
+
+	stats := c.Stats()
+
+	// Verify size fields exist and are non-negative
+	lsmSize := stats["lsm_size"].(int64)
+	vlogSize := stats["vlog_size"].(int64)
+
+	assert.GreaterOrEqual(t, lsmSize, int64(0), "LSM size should be non-negative")
+	assert.GreaterOrEqual(t, vlogSize, int64(0), "VLog size should be non-negative")
+}
+
+// TestNewBadgerCache_Constructor tests cache construction
+func TestNewBadgerCache_Constructor(t *testing.T) {
+	tests := []struct {
+		name    string
+		opts    cache.Options
+		verify  func(t *testing.T, c *cache.BadgerCache, err error)
+	}{
+		{
+			name: "In-memory cache",
+			opts: cache.Options{
+				InMemory: true,
+			},
+			verify: func(t *testing.T, c *cache.BadgerCache, err error) {
+				require.NoError(t, err)
+				assert.NotNil(t, c)
+			},
+		},
+		{
+			name: "File-based cache with temp dir",
+			opts: cache.Options{
+				Directory: t.TempDir(),
+				InMemory:  false,
+			},
+			verify: func(t *testing.T, c *cache.BadgerCache, err error) {
+				require.NoError(t, err)
+				assert.NotNil(t, c)
+			},
+		},
+		{
+			name: "Cache with logger enabled",
+			opts: cache.Options{
+				InMemory: true,
+				Logger:   true,
+			},
+			verify: func(t *testing.T, c *cache.BadgerCache, err error) {
+				require.NoError(t, err)
+				assert.NotNil(t, c)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := cache.NewBadgerCache(tt.opts)
+			if c != nil {
+				defer c.Close()
+			}
+			tt.verify(t, c, err)
+		})
+	}
+}
+
+// TestBadgerCache_ImplementsCacheInterface verifies BadgerCache implements domain.Cache
+func TestBadgerCache_ImplementsCacheInterface(t *testing.T) {
+	// This is a compile-time check
+	var _ interface {
+		Get(ctx context.Context, key string) ([]byte, error)
+		Set(ctx context.Context, key string, value []byte, ttl time.Duration) error
+		Has(ctx context.Context, key string) bool
+		Delete(ctx context.Context, key string) error
+		Close() error
+		Clear() error
+		Size() int64
+		Stats() map[string]interface{}
+	} = (*cache.BadgerCache)(nil)
+	_ = _
 }

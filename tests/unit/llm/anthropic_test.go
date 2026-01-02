@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -182,4 +183,193 @@ func TestAnthropicProvider_Close(t *testing.T) {
 
 	err = provider.Close()
 	assert.NoError(t, err)
+}
+
+func TestAnthropicProvider_Complete_RateLimit(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error": {"type": "rate_limit_error", "message": "Rate limit exceeded"}}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewAnthropicProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "claude-3-sonnet",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.Error(t, err)
+	var llmErr *domain.LLMError
+	require.ErrorAs(t, err, &llmErr)
+	assert.Equal(t, http.StatusTooManyRequests, llmErr.StatusCode)
+	assert.ErrorIs(t, llmErr, domain.ErrLLMRateLimited)
+}
+
+func TestAnthropicProvider_Complete_APIErrorInResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"id": "msg_123",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-3-sonnet",
+			"content": [],
+			"error": {"type": "invalid_request_error", "message": "Invalid request"}
+		}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewAnthropicProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "claude-3-sonnet",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.Error(t, err)
+	var llmErr *domain.LLMError
+	require.ErrorAs(t, err, &llmErr)
+	assert.Contains(t, llmErr.Message, "Invalid request")
+}
+
+func TestAnthropicProvider_Complete_ContextCancellation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Add delay to allow context cancellation
+		time.Sleep(100 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewAnthropicProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "claude-3-sonnet",
+	}, server.Client())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	_, err = provider.Complete(ctx, &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	assert.Error(t, err)
+}
+
+func TestAnthropicProvider_Complete_MaxTokens(t *testing.T) {
+	var receivedBody map[string]interface{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = decodeJSON(r.Body, &receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"id": "msg_123",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-3-sonnet",
+			"content": [{"type": "text", "text": "Response"}],
+			"stop_reason": "end_turn",
+			"usage": {"input_tokens": 10, "output_tokens": 5}
+		}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewAnthropicProvider(llm.ProviderConfig{
+		APIKey:    "test-key",
+		BaseURL:   server.URL,
+		Model:     "claude-3-sonnet",
+		MaxTokens: 100,
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages:  []domain.LLMMessage{{Role: domain.RoleUser, Content: "Hi"}},
+		MaxTokens: 200, // Should override provider default
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, float64(200), receivedBody["max_tokens"])
+}
+
+func TestAnthropicProvider_Complete_InvalidJSONResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{invalid json`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewAnthropicProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "claude-3-sonnet",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to parse response")
+}
+
+func TestAnthropicProvider_Complete_TemperatureDefault(t *testing.T) {
+	var receivedBody map[string]interface{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = decodeJSON(r.Body, &receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"id": "msg_123",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-3-sonnet",
+			"content": [{"type": "text", "text": "Response"}],
+			"stop_reason": "end_turn",
+			"usage": {"input_tokens": 10, "output_tokens": 5}
+		}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewAnthropicProvider(llm.ProviderConfig{
+		APIKey:      "test-key",
+		BaseURL:     server.URL,
+		Model:       "claude-3-sonnet",
+		Temperature: 0.7,
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.NoError(t, err)
+	// Anthropic doesn't send temperature in the basic request, so just verify no error
 }

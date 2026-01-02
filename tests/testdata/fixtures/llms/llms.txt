@@ -1,0 +1,56 @@
+# API Documentation
+https://api.example.com/v1/users
+https://api.example.com/v1/posts
+https://api.example.com/v1/comments
+https://api.example.com/v1/auth
+
+# Getting Started Guides
+https://docs.example.com/getting-started/installation
+https://docs.example.com/getting-started/quickstart
+https://docs.example.com/getting-started/configuration
+
+# API Reference
+https://docs.example.com/api/authentication
+https://docs.example.com/api/endpoints
+https://docs.example.com/api/errors
+https://docs.example.com/api/rate-limits
+
+# SDK Documentation
+https://sdk.example.com/javascript
+https://sdk.example.com/python
+https://sdk.example.com/go
+https://sdk.example.com/rust
+
+# Guides
+https://docs.example.com/guides/webhooks
+https://docs.example.com/guides/websocket
+https://docs.example.com/guides/batch-operations
+https://docs.example.com/guides/testing
+
+# Examples
+https://examples.example.com/basic-auth
+https://examples.example.com/crud-operations
+https://examples.example.com/file-upload
+https://examples.example.com/pagination
+
+# Tutorials
+https://tutorial.example.com/intro
+https://tutorial.example.com/intermediate
+https://tutorial.example.com/advanced
+
+# Troubleshooting
+https://docs.example.com/troubleshooting/common-errors
+https://docs.example.com/troubleshooting/performance
+https://docs.example.com/troubleshooting/debugging
+
+# FAQ
+https://docs.example.com/faq/general
+https://docs.example.com/faq/billing
+https://docs.example.com/faq/security
+
+# Changelog
+https://docs.example.com/changelog
+
+# Legacy Documentation (v1)
+https://v1.docs.example.com/api
+https://v1.docs.example.com/guides

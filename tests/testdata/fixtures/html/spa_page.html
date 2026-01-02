@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single Page Application Documentation</title>
+    <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="/assets/main.css">
+</head>
+<body>
+    <div id="root"></div>
+    <div id="app"></div>
+
+    <noscript>
+        <div class="noscript-warning">
+            <h1>JavaScript Required</h1>
+            <p>This documentation requires JavaScript to be enabled.</p>
+        </div>
+    </noscript>
+
+    <script>
+        // React SPA initialization
+        window.__INITIAL_STATE__ = {
+            title: "Documentation",
+            version: "1.0.0",
+            routes: ["/home", "/api", "/guides"]
+        };
+
+        // Vue SPA initialization
+        const { createApp } = Vue;
+        createApp({
+            data() {
+                return {
+                    message: 'Hello Vue!',
+                    loading: false
+                };
+            }
+        }).mount('#app');
+
+        // Dynamic content loading
+        fetch('/api/content')
+            .then(response => response.json())
+            .then(data => {
+                // Render content dynamically
+                ReactDOM.createRoot(document.getElementById('root')).render(
+                    React.createElement(App, { data: data })
+                );
+            });
+
+        // Angular patterns
+        var app = angular.module('docsApp', []);
+        app.controller('DocsController', function($scope) {
+            $scope.title = "Documentation";
+            $scope.sections = [
+                { id: 1, name: "Getting Started" },
+                { id: 2, name: "API Reference" }
+            ];
+        });
+    </script>
+
+    <script src="/static/js/main.chunk.js"></script>
+    <script src="/static/js/vendor.chunk.js"></script>
+</body>
+</html>

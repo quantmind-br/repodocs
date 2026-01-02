@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Complex Tables Documentation</title>
+</head>
+<body>
+    <article>
+        <h1>API Reference Tables</h1>
+        <p>This page demonstrates various table structures for documentation.</p>
+
+        <h2>Simple Table</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>name</td>
+                    <td>string</td>
+                    <td>The name of the resource</td>
+                </tr>
+                <tr>
+                    <td>id</td>
+                    <td>integer</td>
+                    <td>Unique identifier</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Complex Table with Colspan/Rowspan</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th colspan="2">Authentication</th>
+                    <th colspan="3">Endpoints</th>
+                </tr>
+                <tr>
+                    <th>Method</th>
+                    <th>Header</th>
+                    <th>GET</th>
+                    <th>POST</th>
+                    <th>DELETE</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td rowspan="2">Bearer Token</td>
+                    <td>Authorization</td>
+                    <td>/api/data</td>
+                    <td>/api/create</td>
+                    <td>/api/delete</td>
+                </tr>
+                <tr>
+                    <td>Optional</td>
+                    <td>/api/search</td>
+                    <td>/api/update</td>
+                    <td>/api/remove</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Table with Nested Content</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>Details</th>
+                    <th>Example</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Authentication</td>
+                    <td>
+                        <ul>
+                            <li>OAuth 2.0</li>
+                            <li>JWT Tokens</li>
+                            <li>API Keys</li>
+                        </ul>
+                    </td>
+                    <td>
+                        <pre><code>Authorization: Bearer token123</code></pre>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Rate Limiting</td>
+                    <td>
+                        <p>Requests per minute:</p>
+                        <ul>
+                            <li>Free: 100</li>
+                            <li>Pro: 1000</li>
+                            <li>Enterprise: Unlimited</li>
+                        </ul>
+                    </td>
+                    <td>
+                        <pre><code>X-RateLimit: 100
+X-RateLimit-Remaining: 95</code></pre>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Table without Header</h2>
+        <table>
+            <tbody>
+                <tr>
+                    <td><strong>Name:</strong></td>
+                    <td>John Doe</td>
+                </tr>
+                <tr>
+                    <td><strong>Email:</strong></td>
+                    <td>john@example.com</td>
+                </tr>
+                <tr>
+                    <td><strong>Role:</strong></td>
+                    <td>Administrator</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Configuration Table</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Setting</th>
+                    <th>Default</th>
+                    <th>Description</th>
+                    <th>Required</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>host</code></td>
+                    <td><code>localhost</code></td>
+                    <td>Database host address</td>
+                    <td>Yes</td>
+                </tr>
+                <tr>
+                    <td><code>port</code></td>
+                    <td><code>5432</code></td>
+                    <td>Database port number</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><code>ssl</code></td>
+                    <td><code>false</code></td>
+                    <td>Enable SSL connection</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><code>pool_size</code></td>
+                    <td><code>10</code></td>
+                    <td>Connection pool size</td>
+                    <td>No</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4">
+                        <em>Note: All settings can be overridden via environment variables.</em>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <h2>Wide Table with Many Columns</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Format</th>
+                    <th>Required</th>
+                    <th>Default</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>user_id</td>
+                    <td>string</td>
+                    <td>uuid</td>
+                    <td>true</td>
+                    <td>-</td>
+                    <td>Unique user identifier</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>username</td>
+                    <td>string</td>
+                    <td>alphanumeric</td>
+                    <td>true</td>
+                    <td>-</td>
+                    <td>Unique username</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>email</td>
+                    <td>string</td>
+                    <td>email</td>
+                    <td>true</td>
+                    <td>-</td>
+                    <td>User email address</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>role</td>
+                    <td>enum</td>
+                    <td>user|admin</td>
+                    <td>false</td>
+                    <td>user</td>
+                    <td>User role</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>active</td>
+                    <td>boolean</td>
+                    <td>true|false</td>
+                    <td>false</td>
+                    <td>true</td>
+                    <td>Account status</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Status Codes Table</h2>
+        <table>
+            <tr>
+                <th>Code</th>
+                <th>Status</th>
+                <th>Description</th>
+                <th>Action</th>
+            </tr>
+            <tr>
+                <td>200</td>
+                <td>OK</td>
+                <td>Request successful</td>
+                <td>None</td>
+            </tr>
+            <tr>
+                <td>201</td>
+                <td>Created</td>
+                <td>Resource created</td>
+                <td>None</td>
+            </tr>
+            <tr>
+                <td>400</td>
+                <td>Bad Request</td>
+                <td>Invalid input</td>
+                <td>Check request parameters</td>
+            </tr>
+            <tr>
+                <td>401</td>
+                <td>Unauthorized</td>
+                <td>Missing or invalid credentials</td>
+                <td>Authenticate and retry</td>
+            </tr>
+            <tr>
+                <td>404</td>
+                <td>Not Found</td>
+                <td>Resource not found</td>
+                <td>Verify resource ID</td>
+            </tr>
+            <tr>
+                <td>500</td>
+                <td>Server Error</td>
+                <td>Internal server error</td>
+                <td>Contact support</td>
+            </tr>
+        </table>
+    </article>
+</body>
+</html>

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Code Examples Documentation</title>
+</head>
+<body>
+    <article>
+        <h1>Code Examples and Syntax Highlighting</h1>
+        <p>This page demonstrates various code blocks with different languages and formatting.</p>
+
+        <h2>Go Examples</h2>
+        <h3>Hello World</h3>
+        <pre><code class="language-go">package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, World!")
+}</code></pre>
+
+        <h3>HTTP Server</h3>
+        <pre><code class="language-go">package main
+
+import (
+    "fmt"
+    "net/http"
+)
+
+func handler(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, "Hello, %s!", r.URL.Path[1:])
+}
+
+func main() {
+    http.HandleFunc("/", handler)
+    http.ListenAndServe(":8080", nil)
+}</code></pre>
+
+        <h2>JavaScript Examples</h2>
+        <h3>Async/Await</h3>
+        <pre><code class="language-javascript">async function fetchUserData(userId) {
+    try {
+        const response = await fetch(`/api/users/${userId}`);
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Failed to fetch user:', error);
+        throw error;
+    }
+}
+
+// Usage
+fetchUserData(123)
+    .then(user => console.log(user))
+    .catch(err => console.error(err));</code></pre>
+
+        <h3>React Component</h3>
+        <pre><code class="language-jsx">import React, { useState, useEffect } from 'react';
+
+function UserProfile({ userId }) {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchUser(userId)
+            .then(data => {
+                setUser(data);
+                setLoading(false);
+            });
+    }, [userId]);
+
+    if (loading) return &lt;div&gt;Loading...&lt;/div&gt;;
+
+    return (
+        &lt;div className="user-profile"&gt;
+            &lt;h1&gt;{user.name}&lt;/h1&gt;
+            &lt;p&gt;{user.email}&lt;/p&gt;
+        &lt;/div&gt;
+    );
+}
+
+export default UserProfile;</code></pre>
+
+        <h2>Python Examples</h2>
+        <h3>Class Definition</h3>
+        <pre><code class="language-python">class UserService:
+    """Service class for user operations."""
+
+    def __init__(self, api_client):
+        self.api_client = api_client
+        self.cache = {}
+
+    def get_user(self, user_id: int) -> dict:
+        """Fetch user by ID with caching."""
+        if user_id in self.cache:
+            return self.cache[user_id]
+
+        user = self.api_client.fetch(f'/users/{user_id}')
+        self.cache[user_id] = user
+        return user
+
+    def create_user(self, **kwargs) -> dict:
+        """Create a new user."""
+        return self.api_client.post('/users', json=kwargs)</code></pre>
+
+        <h2>JSON Examples</h2>
+        <h3>Configuration File</h3>
+        <pre><code class="language-json">{
+  "name": "my-app",
+  "version": "1.0.0",
+  "description": "A sample application",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "jest",
+    "build": "webpack --mode production"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "webpack": "^5.0.0"
+  }
+}</code></pre>
+
+        <h2>YAML Examples</h2>
+        <h3>Docker Compose</h3>
+        <pre><code class="language-yaml">version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://db:5432/mydb
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=secret
+
+  redis:
+    image: redis:7-alpine
+
+volumes:
+  postgres_data:</code></pre>
+
+        <h2>Shell Script Examples</h2>
+        <h3>Bash Script</h3>
+        <pre><code class="language-bash">#!/bin/bash
+
+# Backup script
+BACKUP_DIR="/backups"
+SOURCE_DIR="/data"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+# Create backup directory
+mkdir -p "$BACKUP_DIR"
+
+# Function to create backup
+create_backup() {
+    local source=$1
+    local dest="$BACKUP_DIR/backup_$DATE.tar.gz"
+
+    echo "Creating backup of $source..."
+    tar -czf "$dest" "$source"
+
+    if [ $? -eq 0 ]; then
+        echo "Backup created: $dest"
+        return 0
+    else
+        echo "Backup failed!"
+        return 1
+    fi
+}
+
+# Main execution
+create_backup "$SOURCE_DIR"
+
+# Clean old backups (keep last 7 days)
+find "$BACKUP_DIR" -name "backup_*.tar.gz" -mtime +7 -delete</code></pre>
+
+        <h2>SQL Examples</h2>
+        <h3>Complex Query</h3>
+        <pre><code class="language-sql">SELECT
+    u.id,
+    u.username,
+    u.email,
+    COUNT(o.id) AS order_count,
+    SUM(o.total_amount) AS total_spent
+FROM
+    users u
+LEFT JOIN
+    orders o ON u.id = o.user_id
+WHERE
+    u.created_at >= '2024-01-01'
+    AND o.status = 'completed'
+GROUP BY
+    u.id, u.username, u.email
+HAVING
+    COUNT(o.id) > 5
+ORDER BY
+    total_spent DESC
+LIMIT 10;</code></pre>
+
+        <h2>Inline Code Examples</h2>
+        <p>Use the <code>fmt.Println()</code> function to print output in Go. The <code>main</code> package is the entry point for Go programs.</p>
+        <p>In JavaScript, you can use <code>console.log()</code>, <code>console.error()</code>, or <code>console.warn()</code> for logging.</p>
+        <p>For Python, use the <code>print()</code> function or <code>logging</code> module for more advanced logging.</p>
+
+        <h2>Command Line Examples</h2>
+        <h3>Git Commands</h3>
+        <pre><code class="language-shell"># Clone a repository
+git clone https://github.com/user/repo.git
+
+# Create a new branch
+git checkout -b feature/new-feature
+
+# Stage and commit changes
+git add .
+git commit -m "Add new feature"
+
+# Push to remote
+git push origin feature/new-feature</code></pre>
+
+        <h2>Markdown in Code Blocks</h2>
+        <pre><code class="language-markdown"># Heading 1
+## Heading 2
+
+**Bold text** and *italic text*
+
+- List item 1
+- List item 2
+  - Nested item
+
+| Column 1 | Column 2 |
+|----------|----------|
+| Data 1   | Data 2   |
+
+```javascript
+// Code in markdown
+console.log("Hello");
+```</code></pre>
+
+        <h2>HTML Template Example</h2>
+        <pre><code class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;title&gt;Page Title&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;header&gt;
+        &lt;nav&gt;
+            &lt;a href="/"&gt;Home&lt;/a&gt;
+            &lt;a href="/about"&gt;About&lt;/a&gt;
+        &lt;/nav&gt;
+    &lt;/header&gt;
+    &lt;main&gt;
+        &lt;h1&gt;Welcome&lt;/h1&gt;
+        &lt;p&gt;Content here...&lt;/p&gt;
+    &lt;/main&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+        <h2>CSS Example</h2>
+        <pre><code class="language-css">.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.button:hover {
+    background-color: #0056b3;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+}</code></pre>
+
+        <h2>TypeScript Example</h2>
+        <pre><code class="language-typescript">interface User {
+    id: number;
+    name: string;
+    email: string;
+    createdAt: Date;
+}
+
+class UserService {
+    private users: Map&lt;number, User&gt;;
+
+    constructor() {
+        this.users = new Map();
+    }
+
+    addUser(user: User): void {
+        this.users.set(user.id, user);
+    }
+
+    getUser(id: number): User | undefined {
+        return this.users.get(id);
+    }
+
+    async fetchUser(id: number): Promise&lt;User&gt; {
+        const response = await fetch(`/api/users/${id}`);
+        const data: User = await response.json();
+        return data;
+    }
+}</code></pre>
+
+        <h2>Rust Example</h2>
+        <pre><code class="language-rust">use std::collections::HashMap;
+
+struct User {
+    id: u32,
+    name: String,
+    email: String,
+}
+
+impl User {
+    fn new(id: u32, name: &str, email: &str) -> Self {
+        User {
+            id,
+            name: name.to_string(),
+            email: email.to_string(),
+        }
+    }
+
+    fn display(&self) {
+        println!("User {}: {} <{}>", self.id, self.name, self.email);
+    }
+}
+
+fn main() {
+    let mut users: HashMap&lt;u32, User&gt; = HashMap::new();
+
+    let user1 = User::new(1, "Alice", "alice@example.com");
+    let user2 = User::new(2, "Bob", "bob@example.com");
+
+    users.insert(user1.id, user1);
+    users.insert(user2.id, user2);
+
+    for (_, user) in &users {
+        user.display();
+    }
+}</code></pre>
+    </article>
+</body>
+</html>

@@ -178,3 +178,107 @@ func TestNoOpRateLimiter(t *testing.T) {
 	assert.True(t, limiter.TryAcquire())
 	assert.Equal(t, 1.0, limiter.Available())
 }
+
+func TestTokenBucket_RefillEdgeCases(t *testing.T) {
+	tests := []struct {
+		name              string
+		requestsPerMinute int
+		burstSize         int
+	}{
+		{
+			name:              "very_slow_refill",
+			requestsPerMinute: 6,  // 1 per 10 seconds
+			burstSize:         1,
+		},
+		{
+			name:              "very_fast_refill",
+			requestsPerMinute: 60000, // 1000 per second
+			burstSize:         10,
+		},
+		{
+			name:              "burst_equals_rate",
+			requestsPerMinute: 60,
+			burstSize:         60,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bucket := llm.NewTokenBucket(tt.requestsPerMinute, tt.burstSize)
+			ctx := context.Background()
+
+			// Exhaust burst
+			for i := 0; i < tt.burstSize; i++ {
+				assert.True(t, bucket.TryAcquire(), "Should acquire token %d", i+1)
+			}
+
+			// Should be exhausted
+			assert.False(t, bucket.TryAcquire())
+
+			// Wait for refill and verify tokens available
+			start := time.Now()
+			err := bucket.Wait(ctx)
+			elapsed := time.Since(start)
+
+			require.NoError(t, err)
+			assert.Greater(t, elapsed, 0, "Should have waited for refill")
+			assert.Less(t, elapsed, 5*time.Second, "Should not wait too long")
+		})
+	}
+}
+
+func TestTokenBucket_WaitPrecision(t *testing.T) {
+	bucket := llm.NewTokenBucket(60, 1) // 1 per second
+	ctx := context.Background()
+
+	// First token immediate
+	start := time.Now()
+	err := bucket.Wait(ctx)
+	elapsed := time.Since(start)
+
+	require.NoError(t, err)
+	assert.Less(t, elapsed, 100*time.Millisecond, "First token should be immediate")
+
+	// Second token should wait ~1 second
+	start = time.Now()
+	err = bucket.Wait(ctx)
+	elapsed = time.Since(start)
+
+	require.NoError(t, err)
+	assert.Greater(t, elapsed, 900*time.Millisecond, "Should wait for refill")
+	assert.Less(t, elapsed, 1500*time.Millisecond, "Should not wait too long")
+}
+
+func TestTokenBucket_MultipleWaits(t *testing.T) {
+	bucket := llm.NewTokenBucket(600, 1) // 10 per second
+	ctx := context.Background()
+
+	// Wait for 3 tokens with timing
+	start := time.Now()
+	for i := 0; i < 3; i++ {
+		err := bucket.Wait(ctx)
+		require.NoError(t, err)
+	}
+	elapsed := time.Since(start)
+
+	// Should wait approximately 200ms total (100ms per additional token)
+	assert.Greater(t, elapsed, 150*time.Millisecond)
+	assert.Less(t, elapsed, 500*time.Millisecond)
+}
+
+func TestTokenBucket_TryAcquireAccuracy(t *testing.T) {
+	bucket := llm.NewTokenBucket(60, 3)
+
+	// Should be able to acquire exactly burst size
+	acquired := 0
+	for acquired < 10 {
+		if bucket.TryAcquire() {
+			acquired++
+		} else {
+			break
+		}
+	}
+
+	assert.Equal(t, 3, acquired, "Should acquire exactly burst size tokens")
+	assert.Equal(t, float64(0), bucket.Available())
+}

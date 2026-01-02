@@ -21,10 +21,110 @@ jobs:
       - name: Run tests with coverage
         run: |
           set -euo pipefail
-          go test ./... -coverprofile=coverage.out
-          go tool cover -func=coverage.out | awk '/total:/ {print $3}' > coverage_pct.txt
-          pct=$(cat coverage_pct.txt | sed 's/%//')
-          echo "Coverage: ${pct}%"
-          min=15
-          awk -v p="$pct" -v m="$min" 'BEGIN{ if (p+0 < m+0) {print "below"; exit 1} else {print "ok"} }'
+          go test ./... -coverprofile=coverage.out -covermode=atomic
+
+      - name: Generate coverage reports per package
+        run: |
+          # Create output directory
+          mkdir -p coverage-reports
+
+          # Define packages and their coverage thresholds
+          declare -A thresholds=(
+            ["internal/strategies"]=85
+            ["internal/converter"]=85
+            ["internal/app"]=85
+            ["internal/llm"]=80
+            ["internal/config"]=85
+            ["internal/output"]=80
+            ["internal/cache"]=75
+            ["internal/fetcher"]=70
+            ["internal/git"]=80
+            ["cmd/repodocs"]=80
+            ["internal/domain"]=85
+            ["internal/renderer"]=40
+          )
+
+          # Track overall status
+          all_passed=true
+
+          # Check each package
+          for pkg in "${!thresholds[@]}"; do
+            threshold=${thresholds[$pkg]}
+
+            # Generate coverage for this package
+            if go test -coverprofile="coverage-reports/${pkg//\//_}.out" -covermode=atomic "./${pkg}/..." 2>/dev/null; then
+              # Extract coverage percentage
+              coverage=$(go tool cover -func="coverage-reports/${pkg//\//_}.out" 2>/dev/null | grep total: | awk '{print $3}' | sed 's/%//')
+
+              if [ -n "$coverage" ]; then
+                # Convert to integer for comparison
+                coverage_int=${coverage%.*}
+
+                # Check if meets threshold
+                if [ "$coverage_int" -lt "$threshold" ]; then
+                  echo "❌ FAIL: $pkg - Coverage: ${coverage}% (required: ${threshold}%)"
+                  all_passed=false
+                else
+                  echo "✅ PASS: $pkg - Coverage: ${coverage}% (required: ${threshold}%)"
+                fi
+
+                # Save to summary file
+                echo "$pkg: ${coverage}%" >> coverage-reports/summary.txt
+              else
+                echo "⚠️  WARN: $pkg - No coverage data available"
+                echo "$pkg: N/A" >> coverage-reports/summary.txt
+              fi
+            else
+              echo "⚠️  WARN: $pkg - Tests failed or no tests found"
+              echo "$pkg: ERROR" >> coverage-reports/summary.txt
+            fi
+          done
+
+          # Generate HTML report
+          go tool cover -html=coverage.out -o coverage-reports/coverage.html
+
+          # Display summary
+          echo ""
+          echo "=== Coverage Summary ==="
+          cat coverage-reports/summary.txt
+
+          # Fail if any package is below threshold
+          if [ "$all_passed" = false ]; then
+            echo ""
+            echo "❌ Coverage threshold failed for one or more packages"
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ All packages meet coverage requirements"
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            coverage-reports/
+            coverage.out
+
+      - name: Comment PR with coverage
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('coverage-reports/summary.txt', 'utf8');
+
+            const comment = `## 📊 Coverage Report\n\n${summary.split('\n').map(line => {
+              const [pkg, cov] = line.split(': ');
+              if (!pkg || !cov) return line;
+              const emoji = cov === 'N/A' ? '⚠️' : (cov === 'ERROR' ? '❌' : '✅');
+              return `${emoji} **${pkg}**: ${cov}`;
+            }).join('\n')}\n\n📝 Full report available in workflow artifacts`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
 

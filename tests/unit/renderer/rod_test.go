@@ -1,4 +1,4 @@
-package app_test
+package renderer_test
 
 import (
 	"testing"

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Malformed HTML Examples</title>
+</head>
+<body>
+    <article>
+        <h1>Malformed HTML for Edge Case Testing</h1>
+        <p>This page contains various types of malformed HTML structures.</p>
+
+        <h2>Unclosed Tags</h2>
+        <div>
+            <p>This paragraph is not closed
+            <p>This paragraph is also not closed
+            <div>And this div is unclosed too
+        <p>Some text outside proper structure
+
+        <h2>Mismatched Tags</h2>
+        <div><p>Opening div, closing p</div></p>
+        <span><strong>Opening span, closing strong</span></strong>
+        <section><div>Nested incorrectly</section></div>
+
+        <h2>Missing Required Attributes</h2>
+        <img>
+        <img src>
+        <input>
+        <textarea></textarea>
+        <link>
+
+        <h2>Invalid Nesting</h2>
+        <ul>
+            <div>Invalid div inside ul</div>
+            <li>Valid list item</li>
+            <p>Invalid paragraph inside ul</p>
+        </ul>
+
+        <table>
+            <tr>
+                <td>Valid cell</td>
+                <div>Invalid div inside table</div>
+            </tr>
+        </table>
+
+        <h2>Broken HTML Entities</h2>
+        <p>Broken entity: &nbsp</p>
+        <p>Invalid entity: &fake;</p>
+        <p>Unterminated entity: &amp</p>
+        <p>Double ampersand: &&nbsp;</p>
+
+        <h2>Improperly Closed Comments</h2>
+        <!-- This comment is not properly closed
+        <p>Content after unclosed comment</p>
+
+        <! Another broken comment >
+        <p>More content</p>
+
+        <!-- Properly closed comment --><p>Content after proper comment</p>
+
+        <h2>Multiple HTML/Body Tags</h2>
+        <html>
+        <body>
+            <p>First body</p>
+        </body>
+        </html>
+
+        <html>
+        <body>
+            <p>Second body (invalid)</p>
+        </body>
+        </html>
+
+        <h2>Mixed Content Issues</h2>
+        <p>This paragraph has <div>a div inside it</div> which is invalid</p>
+        <span>This span contains <h1>a heading inside it</h1> which is invalid</span>
+
+        <h2>Tag Soup</h2>
+        <b><i><u>All mixed up</b></i></u>
+        <p><div><span>Nesting chaos</p></div></span>
+
+        <h2>Self-Closing Tag Issues</h2>
+        <br>
+        <br/>
+        <br />
+        <img src="test.jpg">
+        <img src="test.jpg"/>
+        <img src="test.jpg" />
+
+        <h2>Missing Quotes</h2>
+        <p><a href=/link/no-quotes>Link without quotes</a></p>
+        <p><img src=image.jpg alt=Image></p>
+        <p><div class=content>Div with unquoted class</div></p>
+
+        <h2>Quotes Mismatch</h2>
+        <p><a href='link.html" class="link>Mismatched quotes</a></p>
+        <p><img src="image.jpg' alt='Image"></p>
+
+        <h2>Attribute Without Value</h2>
+        <input type="checkbox" checked>
+        <input type="text" disabled>
+        <button disabled>Click me</button>
+
+        <h2>Invalid Attribute Characters</h2>
+        <p><a href="link.html" data@attr="value">Invalid attribute name</a></p>
+        <div class="class with spaces">Class with spaces</div>
+
+        <h2>Empty Tags</h2>
+        <div></div>
+        <span></span>
+        <p></p>
+        <script></script>
+        <style></style>
+
+        <h2>Whitespace Issues</h2>
+        <p>Text with     excessive     whitespace</p>
+        <div>
+
+            Content with lots of blank lines around it
+
+
+        </div>
+
+        <h2>Script and Style in Body</h2>
+        <p>Some content</p>
+        <script>alert('This script should be removed');</script>
+        <p>More content</p>
+        <style>body { color: red; }</style>
+        <p>Even more content</p>
+
+        <h2>Tables with Issues</h2>
+        <table>
+            <tr>
+                <td>Cell 1</td>
+                <td>Cell 2</td>
+            <!-- Missing </tr> -->
+        </table>
+
+        <table>
+            <tbody>
+                <tr><td>Cell in tbody</td></tr>
+            <!-- Missing </tbody> -->
+        </table>
+
+        <h2>Lists with Issues</h2>
+        <ul>
+            Item 1 without li tag
+            <li>Item 2 with li tag</li>
+            Item 3 without li tag
+        </ul>
+
+        <h2>Improper CDATA Sections</h2>
+        <script><![CDATA[
+            function test() {
+                alert('<test>');
+            }
+        ]]></script>
+
+        <h2>Broken CDATA</h2>
+        <script><![CDATA[
+            function test() {
+                alert('broken');
+        ]]></script>
+
+        <h2>Deeply Nested Invalid Structure</h2>
+        <ul>
+            <div>
+                <span>
+                    <p>
+                        <table>
+                            <tr>
+                                <td>
+                                    <a href="#">Link</a>
+                                </td>
+                            </tr>
+                        </table>
+                    </p>
+                </span>
+            </div>
+        </ul>
+
+        <h2>Tags in Uppercase</h2>
+        <DIV>Uppercase div</DIV>
+        <P>Uppercase paragraph</P>
+        <TABLE>
+            <TR>
+                <TD>Uppercase table cell</TD>
+            </TR>
+        </TABLE>
+
+        <h2>Non-Standard Tags</h2>
+        <custom-tag>This is a custom tag</custom-tag>
+        <foobar>Another non-standard tag</foobar>
+        <my-element>Data element</my-element>
+
+        <h2>Incomplete DOCTYPE</h2>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>With DOCTYPE</title>
+        </head>
+        <body>
+            <p>Page with DOCTYPE</p>
+        </body>
+        </html>
+
+        <!-- Without DOCTYPE - should still be parsed -->
+        <html>
+        <head>
+            <title>Without DOCTYPE</title>
+        </head>
+        <body>
+            <p>Page without DOCTYPE</p>
+        </body>
+        </html>
+
+        <h2>Broken Head Section</h2>
+        <head>
+            <meta charset="UTF-8"
+            <title>Unclosed meta tag
+        </head>
+        <body>
+            <p>Content after broken head</p>
+        </body>
+
+        <h2>Form with Issues</h2>
+        <form action="/submit" method="POST">
+            <input type="text" name="name">
+            <select name="choice">
+                <option value="1">Option 1
+                <option value="2">Option 2
+            </select>
+            <textarea name="comment"></textarea>
+            <button type="submit">Submit</button>
+        </form>
+
+        <h2>IFrame and Embed</h2>
+        <iframe src="https://example.com"></iframe>
+        <embed src="file.swf">
+        <object data="file.pdf"></object>
+
+        <h2>Duplicate IDs</h2>
+        <div id="main">First main</div>
+        <div id="main">Second main with same ID</div>
+        <p id="main">Third element with same ID</p>
+
+        <h2>Inline Scripts with Issues</h2>
+        <a href="javascript:void(0)" onclick="alert('click')">JavaScript link</a>
+        <div onmouseover="alert('over')">Mouse over me</div>
+
+        <h2>Text Outside HTML Structure</h2>
+        Some text before html tag
+
+        <html>
+        <body>
+            <p>Properly structured content</p>
+        </body>
+        </html>
+
+        Some text after html tag
+
+        <h2>Multiple Head Sections</h2>
+        <html>
+        <head>
+            <title>First Head</title>
+        </head>
+        <body>
+            <p>Content</p>
+            <head>
+                <title>Second Head (invalid)</title>
+            </head>
+        </body>
+        </html>
+
+        <h2>Broken Attributes</h2>
+        <a href=>Link with empty href</a>
+        <img src="" alt="">
+        <input type="" value="test">
+        <div class=>Div with empty class</div>
+
+        <h2>Special Characters in Attributes</h2>
+        <a href="http://example.com?param=value&other=value">Link with ampersand</a>
+        <a href="http://example.com?param=value&amp;other=value">Link with encoded ampersand</a>
+        <img src="/path/to/image with spaces.jpg" alt="Image">
+        <div data-json='{"key": "value"}'>JSON attribute</div>
+
+        <h2>Very Long Attributes</h2>
+        <div style="color: red; background-color: blue; font-size: 14px; padding: 10px; margin: 20px; border: 1px solid black;">
+            Div with very long style attribute
+        </div>
+        <a href="https://example.com/very/long/path/that/goes/on/and/on/forever/and/ever/and/ever/and/keeps/going">Very long href</a>
+
+        <h2>Zero-Width Spaces and Invisible Characters</h2>
+        <p>Text with​zero-width​space</p>
+        <p>Text with&nbsp;non-breaking&nbsp;spaces</p>
+        <p>Text withsoft hyphen</p>
+
+        <h2>RTL and LTR Overrides</p>
+        <p>Normal text</p>
+        <p dir="rtl">מלל מימין לשמאל</p>
+        <p dir="ltr">שמאל לימין</p>
+
+        <h2>Broken Unicode Escapes</h2>
+        <p>Broken escape: \uXYZ</p>
+        <p>Incomplete escape: \u123</p>
+        <p>Valid escape: \u0041</p>
+
+        <h2>HTML Comments with Script</h2>
+        <!-- <script>alert('commented script');</script> -->
+        <p>Content after commented script</p>
+
+        <!--
+        <script>
+            alert('multi-line commented script');
+        </script>
+        -->
+        <p>Content after multi-line comment</p>
+
+        <h2>Mixed Case Tags</h2>
+        <DIV>Mixed case DIV</div>
+        <Div>Mixed case Div</DIV>
+        <DiV>Mixed case DiV</div>
+
+        <h2>Final Content</h2>
+        <p>Despite all the malformed HTML above, parsers should still extract meaningful content.</p>
+    </article>
+</body>
+</html>

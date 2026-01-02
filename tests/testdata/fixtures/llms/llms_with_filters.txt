@@ -1,0 +1,55 @@
+# This file demonstrates llms.txt with various filter directives
+# Format: URL | filters
+# Filters can include: include/exclude patterns, content types, etc
+
+# Main Documentation
+https://docs.example.com/ | include:guides,tutorials,api
+https://docs.example.com/getting-started | priority:high
+https://docs.example.com/api-reference | type:reference
+
+# API Endpaces
+https://api.example.com/v1/users | include:endpoints,schemas
+https://api.example.com/v1/posts | exclude:internal,deprecated
+https://api.example.com/v1/comments | type:endpoint
+
+# Authentication
+https://docs.example.com/auth | priority:high
+https://docs.example.com/auth/oauth | type:guide
+https://docs.example.com/auth/api-keys | type:guide
+
+# SDKs with language-specific filters
+https://sdk.example.com/javascript | lang:js,typescript
+https://sdk.example.com/python | lang:python
+https://sdk.example.com/go | lang:go
+https://sdk.example.com/rust | lang:rust
+
+# Guides with topics
+https://docs.example.com/guides/webhooks | include:examples,code
+https://docs.example.com/guides/websocket | include:examples,code
+https://docs.example.com/guides/batch-operations | include:examples,best-practices
+
+# Examples
+https://examples.example.com/basic-auth | type:example
+https://examples.example.com/crud-operations | type:example
+https://examples.example.com/file-upload | type:example
+
+# Tutorial series
+https://tutorial.example.com/intro | level:beginner
+https://tutorial.example.com/intermediate | level:intermediate
+https://tutorial.example.com/advanced | level:advanced
+
+# Legacy docs - marked for exclusion
+https://v1.docs.example.com/api | exclude:deprecated
+https://v1.docs.example.com/guides | exclude:deprecated
+
+# Internal docs - exclude from public
+https://internal.example.com/team | exclude:internal
+https://internal.example.com/onboarding | exclude:internal
+
+# Blog posts - include for context
+https://blog.example.com/announcements/v2-release | include:announcements
+https://blog.example.com/best-practices/performance | include:blog
+
+# Community resources
+https://community.example.com/questions | type:forum
+https://community.example.com/tutorials | type:community

@@ -24,7 +24,9 @@ INSTALL_DIR_GLOBAL=/usr/local/bin
 CONFIG_DIR=$(HOME)/.repodocs
 CONFIG_TEMPLATE=./configs/config.yaml.template
 
-.PHONY: all build clean test coverage lint fmt vet deps help install uninstall install-global uninstall-global install-config release release-dry
+.PHONY: all build clean test coverage lint fmt vet deps help install uninstall install-global uninstall-global install-config release release-dry \
+	test-all test-app test-cache test-config test-converter test-domain test-fetcher test-git test-llm test-output test-renderer test-strategies test-cmd \
+	coverage-all coverage-app coverage-cache coverage-config coverage-converter coverage-domain coverage-fetcher coverage-git coverage-llm coverage-output coverage-renderer coverage-strategies coverage-cmd coverage-view coverage-summary
 
 ## Main commands
 
@@ -69,12 +71,162 @@ test-all: ## Run all tests
 	$(GOTEST) -v ./tests/integration/...
 	$(GOTEST) -v ./tests/e2e/...
 
-coverage: ## Generate coverage report
-	@echo "Generating coverage report..."
+## Package-specific tests
+
+test-app: ## Run app package tests
+	@echo "Running app package tests..."
+	$(GOTEST) -v -race ./tests/unit/app/...
+
+test-cache: ## Run cache package tests
+	@echo "Running cache package tests..."
+	$(GOTEST) -v -race ./tests/unit/cache/...
+	$(GOTEST) -v ./tests/integration/cache/...
+
+test-config: ## Run config package tests
+	@echo "Running config package tests..."
+	$(GOTEST) -v -race ./tests/unit/config/...
+
+test-converter: ## Run converter package tests
+	@echo "Running converter package tests..."
+	$(GOTEST) -v -race ./tests/unit/converter/...
+
+test-domain: ## Run domain package tests
+	@echo "Running domain package tests..."
+	$(GOTEST) -v -race ./tests/unit/domain/...
+
+test-fetcher: ## Run fetcher package tests
+	@echo "Running fetcher package tests..."
+	$(GOTEST) -v -race ./tests/unit/fetcher/...
+	$(GOTEST) -v ./tests/integration/fetcher/...
+
+test-git: ## Run git package tests
+	@echo "Running git package tests..."
+	$(GOTEST) -v -race ./tests/unit/git/...
+
+test-llm: ## Run llm package tests
+	@echo "Running llm package tests..."
+	$(GOTEST) -v -race ./tests/unit/llm/...
+	$(GOTEST) -v ./tests/integration/llm/...
+
+test-output: ## Run output package tests
+	@echo "Running output package tests..."
+	$(GOTEST) -v -race ./tests/unit/output/...
+
+test-renderer: ## Run renderer package tests
+	@echo "Running renderer package tests..."
+	$(GOTEST) -v -race ./tests/unit/renderer/...
+	$(GOTEST) -v ./tests/integration/renderer/...
+
+test-strategies: ## Run strategies package tests
+	@echo "Running strategies package tests..."
+	$(GOTEST) -v -race ./tests/unit/strategies/...
+
+test-cmd: ## Run cmd/repodocs tests
+	@echo "Running cmd/repodocs tests..."
+	$(GOTEST) -v -race ./cmd/repodocs/...
+
+## Coverage reports
+
+coverage: ## Generate overall coverage report
+	@echo "Generating overall coverage report..."
 	@mkdir -p $(COVERAGE_DIR)
-	$(GOTEST) -coverprofile=$(COVERAGE_DIR)/coverage.out ./...
+	$(GOTEST) -coverprofile=$(COVERAGE_DIR)/coverage.out -covermode=atomic ./...
 	$(GOCMD) tool cover -html=$(COVERAGE_DIR)/coverage.out -o $(COVERAGE_DIR)/coverage.html
-	@echo "Coverage report: $(COVERAGE_DIR)/coverage.html"
+	@echo "Overall coverage report: $(COVERAGE_DIR)/coverage.html"
+
+coverage-all: ## Generate coverage reports for all packages
+	@echo "Generating coverage reports for all packages..."
+	@mkdir -p $(COVERAGE_DIR)
+	@echo "# Package Coverage Report" > $(COVERAGE_DIR)/coverage-summary.md
+	@echo "" >> $(COVERAGE_DIR)/coverage-summary.md
+	@echo "| Package | Coverage | Target | Status |" >> $(COVERAGE_DIR)/coverage-summary.md
+	@echo "|---------|----------|--------|--------|" >> $(COVERAGE_DIR)/coverage-summary.md
+	@$(MAKE) coverage-app coverage-cache coverage-config coverage-converter coverage-domain coverage-fetcher coverage-git coverage-llm coverage-output coverage-renderer coverage-strategies coverage-cmd
+	@echo "Coverage summary: $(COVERAGE_DIR)/coverage-summary.md"
+
+coverage-app: ## Generate coverage for app package
+	@mkdir -p $(COVERAGE_DIR)
+	@$(GOTEST) -coverprofile=$(COVERAGE_DIR)/coverage-app.out -covermode=atomic ./internal/app/...
+	@COV=$$($(GOCMD) tool cover -func=$(COVERAGE_DIR)/coverage-app.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	printf "| internal/app | %s%% | 85%% | %s |\n" "$$COV" "$$(echo "$$COV" | awk '{if ($$1>=85) print "✅ PASS"; else print "❌ FAIL"}')" >> $(COVERAGE_DIR)/coverage-summary.md
+
+coverage-cache: ## Generate coverage for cache package
+	@mkdir -p $(COVERAGE_DIR)
+	@$(GOTEST) -coverprofile=$(COVERAGE_DIR)/coverage-cache.out -covermode=atomic ./internal/cache/...
+	@COV=$$($(GOCMD) tool cover -func=$(COVERAGE_DIR)/coverage-cache.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	printf "| internal/cache | %s%% | 75%% | %s |\n" "$$COV" "$$(echo "$$COV" | awk '{if ($$1>=75) print "✅ PASS"; else print "❌ FAIL"}')" >> $(COVERAGE_DIR)/coverage-summary.md
+
+coverage-config: ## Generate coverage for config package
+	@mkdir -p $(COVERAGE_DIR)
+	@$(GOTEST) -coverprofile=$(COVERAGE_DIR)/coverage-config.out -covermode=atomic ./internal/config/...
+	@COV=$$($(GOCMD) tool cover -func=$(COVERAGE_DIR)/coverage-config.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	printf "| internal/config | %s%% | 85%% | %s |\n" "$$COV" "$$(echo "$$COV" | awk '{if ($$1>=85) print "✅ PASS"; else print "❌ FAIL"}')" >> $(COVERAGE_DIR)/coverage-summary.md
+
+coverage-converter: ## Generate coverage for converter package
+	@mkdir -p $(COVERAGE_DIR)
+	@$(GOTEST) -coverprofile=$(COVERAGE_DIR)/coverage-converter.out -covermode=atomic ./internal/converter/...
+	@COV=$$($(GOCMD) tool cover -func=$(COVERAGE_DIR)/coverage-converter.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	printf "| internal/converter | %s%% | 85%% | %s |\n" "$$COV" "$$(echo "$$COV" | awk '{if ($$1>=85) print "✅ PASS"; else print "❌ FAIL"}')" >> $(COVERAGE_DIR)/coverage-summary.md
+
+coverage-domain: ## Generate coverage for domain package
+	@mkdir -p $(COVERAGE_DIR)
+	@$(GOTEST) -coverprofile=$(COVERAGE_DIR)/coverage-domain.out -covermode=atomic ./internal/domain/...
+	@COV=$$($(GOCMD) tool cover -func=$(COVERAGE_DIR)/coverage-domain.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	printf "| internal/domain | %s%% | 85%% | %s |\n" "$$COV" "$$(echo "$$COV" | awk '{if ($$1>=85) print "✅ PASS"; else print "❌ FAIL"}')" >> $(COVERAGE_DIR)/coverage-summary.md
+
+coverage-fetcher: ## Generate coverage for fetcher package
+	@mkdir -p $(COVERAGE_DIR)
+	@$(GOTEST) -coverprofile=$(COVERAGE_DIR)/coverage-fetcher.out -covermode=atomic ./internal/fetcher/...
+	@COV=$$($(GOCMD) tool cover -func=$(COVERAGE_DIR)/coverage-fetcher.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	printf "| internal/fetcher | %s%% | 70%% | %s |\n" "$$COV" "$$(echo "$$COV" | awk '{if ($$1>=70) print "✅ PASS"; else print "❌ FAIL"}')" >> $(COVERAGE_DIR)/coverage-summary.md
+
+coverage-git: ## Generate coverage for git package
+	@mkdir -p $(COVERAGE_DIR)
+	@$(GOTEST) -coverprofile=$(COVERAGE_DIR)/coverage-git.out -covermode=atomic ./internal/git/...
+	@COV=$$($(GOCMD) tool cover -func=$(COVERAGE_DIR)/coverage-git.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	printf "| internal/git | %s%% | 80%% | %s |\n" "$$COV" "$$(echo "$$COV" | awk '{if ($$1>=80) print "✅ PASS"; else print "❌ FAIL"}')" >> $(COVERAGE_DIR)/coverage-summary.md
+
+coverage-llm: ## Generate coverage for llm package
+	@mkdir -p $(COVERAGE_DIR)
+	@$(GOTEST) -coverprofile=$(COVERAGE_DIR)/coverage-llm.out -covermode=atomic ./internal/llm/...
+	@COV=$$($(GOCMD) tool cover -func=$(COVERAGE_DIR)/coverage-llm.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	printf "| internal/llm | %s%% | 80%% | %s |\n" "$$COV" "$$(echo "$$COV" | awk '{if ($$1>=80) print "✅ PASS"; else print "❌ FAIL"}')" >> $(COVERAGE_DIR)/coverage-summary.md
+
+coverage-output: ## Generate coverage for output package
+	@mkdir -p $(COVERAGE_DIR)
+	@$(GOTEST) -coverprofile=$(COVERAGE_DIR)/coverage-output.out -covermode=atomic ./internal/output/...
+	@COV=$$($(GOCMD) tool cover -func=$(COVERAGE_DIR)/coverage-output.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	printf "| internal/output | %s%% | 80%% | %s |\n" "$$COV" "$$(echo "$$COV" | awk '{if ($$1>=80) print "✅ PASS"; else print "❌ FAIL"}')" >> $(COVERAGE_DIR)/coverage-summary.md
+
+coverage-renderer: ## Generate coverage for renderer package
+	@mkdir -p $(COVERAGE_DIR)
+	@$(GOTEST) -coverprofile=$(COVERAGE_DIR)/coverage-renderer.out -covermode=atomic ./internal/renderer/...
+	@COV=$$($(GOCMD) tool cover -func=$(COVERAGE_DIR)/coverage-renderer.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	printf "| internal/renderer | %s%% | 40%% | %s |\n" "$$COV" "$$(echo "$$COV" | awk '{if ($$1>=40) print "✅ PASS"; else print "❌ FAIL"}')" >> $(COVERAGE_DIR)/coverage-summary.md
+
+coverage-strategies: ## Generate coverage for strategies package
+	@mkdir -p $(COVERAGE_DIR)
+	@$(GOTEST) -coverprofile=$(COVERAGE_DIR)/coverage-strategies.out -covermode=atomic ./internal/strategies/...
+	@COV=$$($(GOCMD) tool cover -func=$(COVERAGE_DIR)/coverage-strategies.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	printf "| internal/strategies | %s%% | 85%% | %s |\n" "$$COV" "$$(echo "$$COV" | awk '{if ($$1>=85) print "✅ PASS"; else print "❌ FAIL"}')" >> $(COVERAGE_DIR)/coverage-summary.md
+
+coverage-cmd: ## Generate coverage for cmd/repodocs package
+	@mkdir -p $(COVERAGE_DIR)
+	@$(GOTEST) -coverprofile=$(COVERAGE_DIR)/coverage-cmd.out -covermode=atomic ./cmd/repodocs/...
+	@COV=$$($(GOCMD) tool cover -func=$(COVERAGE_DIR)/coverage-cmd.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	printf "| cmd/repodocs | %s%% | 80%% | %s |\n" "$$COV" "$$(echo "$$COV" | awk '{if ($$1>=80) print "✅ PASS"; else print "❌ FAIL"}')" >> $(COVERAGE_DIR)/coverage-summary.md
+
+coverage-view: ## View overall coverage HTML report
+	@command -v xdg-open >/dev/null 2>&1 && xdg-open $(COVERAGE_DIR)/coverage.html || \
+	command -v open >/dev/null 2>&1 && open $(COVERAGE_DIR)/coverage.html || \
+	echo "Open $(COVERAGE_DIR)/coverage.html in your browser"
+
+coverage-summary: ## Show coverage summary
+	@if [ -f $(COVERAGE_DIR)/coverage-summary.md ]; then \
+		cat $(COVERAGE_DIR)/coverage-summary.md; \
+	else \
+		echo "Coverage summary not found. Run 'make coverage-all' first."; \
+	fi
 
 ## Code quality
 
