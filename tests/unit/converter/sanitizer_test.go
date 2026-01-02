@@ -167,9 +167,7 @@ func TestSanitizer_RemoveNavigationDisabled(t *testing.T) {
 	result, err := sanitizer.Sanitize(html)
 
 	require.NoError(t, err)
-	// Navigation elements are always removed by TagsToRemove list
-	// The RemoveNavigation flag only controls class-based removal
-	assert.NotContains(t, result, "Home")
+	assert.Contains(t, result, "Home")
 	assert.Contains(t, result, "Main Content")
 }
 
@@ -565,14 +563,14 @@ func TestSanitizer_MalformedHTML(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:         "unclosed tags",
-			html:         `<div><p>Content`,
-			wantErr:      false,
+			name:    "unclosed tags",
+			html:    `<div><p>Content`,
+			wantErr: false,
 		},
 		{
-			name:         "invalid nesting",
-			html:         `<div><p>Content</div></p>`,
-			wantErr:      false,
+			name:    "invalid nesting",
+			html:    `<div><p>Content</div></p>`,
+			wantErr: false,
 		},
 		{
 			name:    "completely invalid",
