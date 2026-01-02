@@ -289,6 +289,10 @@ func normalizeFilterPath(path string) string {
 		return ""
 	}
 
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		path = extractPathFromTreeURL(path)
+	}
+
 	decoded, err := url.PathUnescape(path)
 	if err == nil {
 		path = decoded
@@ -299,6 +303,27 @@ func normalizeFilterPath(path string) string {
 	path = filepath.Clean(path)
 
 	return path
+}
+
+// extractPathFromTreeURL parses tree/blob URLs and returns the subdirectory path.
+// Regex patterns for each platform (complex, documented for maintainability):
+//   - GitHub:    github.com/owner/repo/tree/branch/path
+//   - GitLab:    gitlab.com/owner/repo/-/tree/branch/path
+//   - Bitbucket: bitbucket.org/owner/repo/src/branch/path
+func extractPathFromTreeURL(rawURL string) string {
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`github\.com/[^/]+/[^/]+/(?:tree|blob)/[^/]+/(.+)$`),
+		regexp.MustCompile(`gitlab\.com/[^/]+/[^/]+/-/(?:tree|blob)/[^/]+/(.+)$`),
+		regexp.MustCompile(`bitbucket\.org/[^/]+/[^/]+/src/[^/]+/(.+)$`),
+	}
+
+	for _, p := range patterns {
+		if matches := p.FindStringSubmatch(rawURL); len(matches) >= 2 {
+			return matches[1]
+		}
+	}
+
+	return rawURL
 }
 
 // parseGitURL extracts owner and repo from various git URL formats

@@ -940,7 +940,8 @@ func TestParseGitURLWithPath_InvalidURL(t *testing.T) {
 	deps := &Dependencies{Writer: writer, Logger: logger}
 	strategy := NewGitStrategy(deps)
 
-	_, err := strategy.parseGitURLWithPath("https://example.com/something")
+	// Use non-HTTP URL to trigger error (HTTP/HTTPS URLs are now accepted as "generic" platform)
+	_, err := strategy.parseGitURLWithPath("ftp://example.com/something")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported git URL format")
 }
@@ -963,6 +964,62 @@ func TestNormalizeFilterPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+			result := normalizeFilterPath(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestNormalizeFilterPath_WithFullURLs(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "GitHub tree URL with docs path",
+			input:    "https://github.com/QwenLM/qwen-code/tree/main/docs",
+			expected: "docs",
+		},
+		{
+			name:     "GitHub tree URL with nested path",
+			input:    "https://github.com/owner/repo/tree/main/docs/api/v2",
+			expected: "docs/api/v2",
+		},
+		{
+			name:     "GitHub blob URL",
+			input:    "https://github.com/owner/repo/blob/main/docs/readme.md",
+			expected: "docs/readme.md",
+		},
+		{
+			name:     "GitLab tree URL",
+			input:    "https://gitlab.com/owner/repo/-/tree/main/documentation",
+			expected: "documentation",
+		},
+		{
+			name:     "GitLab blob URL",
+			input:    "https://gitlab.com/owner/repo/-/blob/develop/src/lib",
+			expected: "src/lib",
+		},
+		{
+			name:     "Bitbucket src URL",
+			input:    "https://bitbucket.org/owner/repo/src/master/docs/guide",
+			expected: "docs/guide",
+		},
+		{
+			name:     "GitHub tree URL without path returns full URL",
+			input:    "https://github.com/owner/repo/tree/main",
+			expected: "https:/github.com/owner/repo/tree/main",
+		},
+		{
+			name:     "Plain path unchanged",
+			input:    "docs/api",
+			expected: "docs/api",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			result := normalizeFilterPath(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
