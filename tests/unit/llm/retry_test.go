@@ -463,16 +463,27 @@ func TestRetrier_BackoffWithJitter(t *testing.T) {
 	}
 	retrier := llm.NewRetrier(config, nil)
 
-	backoffs := make([]time.Duration, 5)
-	for i := 0; i < 5; i++ {
-		backoffs[i] = retrier.Execute(context.Background(), func() error {
-			return nil
-		})
-	}
+	var delays []time.Duration
+	lastCall := time.Now()
 
-	// With jitter, backoffs should vary (though we can't test exact randomness here)
-	// Just verify the retrier was created successfully
+	callCount := 0
+	_ = retrier.Execute(context.Background(), func() error {
+		now := time.Now()
+		if callCount > 0 {
+			delays = append(delays, now.Sub(lastCall))
+		}
+		lastCall = now
+		callCount++
+		if callCount <= 2 {
+			return domain.ErrLLMRateLimited
+		}
+		return nil
+	})
+
+	// With jitter, delays should vary (we can't test exact randomness here)
+	// Just verify the retrier was created successfully and delays were recorded
 	assert.NotNil(t, retrier)
+	assert.Len(t, delays, 2)
 }
 
 func TestRetrier_ZeroMaxRetries(t *testing.T) {

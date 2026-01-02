@@ -30,6 +30,11 @@ type SitemapStrategy struct {
 
 // NewSitemapStrategy creates a new sitemap strategy
 func NewSitemapStrategy(deps *Dependencies) *SitemapStrategy {
+	if deps == nil {
+		return &SitemapStrategy{
+			markdownReader: converter.NewMarkdownReader(),
+		}
+	}
 	return &SitemapStrategy{
 		deps:           deps,
 		fetcher:        deps.Fetcher,

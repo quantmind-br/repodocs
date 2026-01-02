@@ -2,6 +2,7 @@ package strategies
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -88,24 +89,27 @@ func TestLLMSStrategy_CanHandle(t *testing.T) {
 
 // TestLLMSStrategy_Execute_Success tests successful execution
 func TestLLMSStrategy_Execute_Success(t *testing.T) {
-	llmsContent := `[Home](https://example.com/)
-[Getting Started](https://example.com/getting-started)
-[API Reference](https://example.com/api)
-[Guide](https://example.com/guide "Optional Title")
-`
-
+	var serverURL string
 	var fetchedPages []string
 	var server *httptest.Server
+
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "llms.txt") {
+			// Return llms.txt with absolute URLs pointing to this server
+			llmsContent := fmt.Sprintf(`[Home](%s/)
+[Getting Started](%s/getting-started)
+[API Reference](%s/api)
+[Guide](%s/guide)
+`, serverURL, serverURL, serverURL, serverURL)
 			w.Header().Set("Content-Type", "text/plain")
 			w.Write([]byte(llmsContent))
 		} else {
-			fetchedPages = append(fetchedPages, r.URL.String())
+			fetchedPages = append(fetchedPages, r.URL.Path)
 			w.Header().Set("Content-Type", "text/html")
 			w.Write([]byte(`<html><head><title>Page</title></head><body><h1>Content</h1></body></html>`))
 		}
 	}))
+	serverURL = server.URL
 	defer server.Close()
 
 	tmpDir := t.TempDir()
@@ -491,7 +495,7 @@ func TestFilterLLMSLinks(t *testing.T) {
 		{
 			name:     "empty filter",
 			filter:   "",
-			expected: 0,
+			expected: 4, // Empty filter means return all links
 		},
 	}
 

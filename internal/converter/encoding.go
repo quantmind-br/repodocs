@@ -23,7 +23,7 @@ func DetectEncoding(content []byte) string {
 
 	// Use golang.org/x/net/html/charset for detection
 	_, name, _ := charset.DetermineEncoding(content, "")
-	if name != "" {
+	if name != "" && name != "windows-1252" {
 		return name
 	}
 

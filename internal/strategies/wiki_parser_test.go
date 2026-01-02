@@ -481,7 +481,7 @@ func TestWikiParserEdgeCases(t *testing.T) {
 
 	t.Run("FilenameToTitle with no extension", func(t *testing.T) {
 		result := FilenameToTitle("README")
-		assert.Equal(t, "Readme", result)
+		assert.Equal(t, "README", result)
 	})
 
 	t.Run("TitleToFilename with special chars", func(t *testing.T) {

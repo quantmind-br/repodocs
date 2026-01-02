@@ -29,6 +29,9 @@ type CrawlerStrategy struct {
 
 // NewCrawlerStrategy creates a new crawler strategy
 func NewCrawlerStrategy(deps *Dependencies) *CrawlerStrategy {
+	if deps == nil {
+		return &CrawlerStrategy{}
+	}
 	return &CrawlerStrategy{
 		deps:           deps,
 		fetcher:        deps.Fetcher,

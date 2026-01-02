@@ -5,13 +5,43 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/quantmind-br/repodocs-go/internal/converter"
+	"github.com/quantmind-br/repodocs-go/internal/fetcher"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// setupTestDependencies creates test dependencies with fetcher and converter
+func setupPkgGoTestDependencies(t *testing.T, tmpDir string) *strategies.Dependencies {
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	writer := output.NewWriter(output.WriterOptions{
+		BaseDir: tmpDir,
+		Force:   true,
+	})
+
+	// Create fetcher
+	fetcherClient, err := fetcher.NewClient(fetcher.ClientOptions{
+		Timeout:     10 * time.Second,
+		MaxRetries:  1,
+		EnableCache: false,
+	})
+	require.NoError(t, err)
+
+	// Create converter
+	converterPipeline := converter.NewPipeline(converter.PipelineOptions{})
+
+	return &strategies.Dependencies{
+		Logger:    logger,
+		Writer:    writer,
+		Fetcher:   fetcherClient,
+		Converter: converterPipeline,
+	}
+}
 
 // TestNewPkgGoStrategy tests creating a new pkg.go.dev strategy
 func TestNewPkgGoStrategy(t *testing.T) {
@@ -94,17 +124,8 @@ func TestPkgGoStrategy_Execute(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupPkgGoTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewPkgGoStrategy(deps)
 
@@ -168,17 +189,8 @@ func TestPkgGoStrategy_Execute_SplitMode(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupPkgGoTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewPkgGoStrategy(deps)
 
@@ -213,17 +225,8 @@ func TestPkgGoStrategy_Execute_EmptyDocumentation(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupPkgGoTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewPkgGoStrategy(deps)
 
@@ -258,17 +261,8 @@ func TestPkgGoStrategy_Execute_MissingDocumentationContent(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupPkgGoTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewPkgGoStrategy(deps)
 
@@ -318,17 +312,8 @@ func TestPkgGoStrategy_Execute_SplitModeWithEmptySections(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupPkgGoTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewPkgGoStrategy(deps)
 
@@ -364,17 +349,8 @@ func TestPkgGoStrategy_Execute_DryRun(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupPkgGoTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewPkgGoStrategy(deps)
 
@@ -396,17 +372,8 @@ func TestPkgGoStrategy_Execute_ErrorFetching(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupPkgGoTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewPkgGoStrategy(deps)
 
@@ -429,17 +396,8 @@ func TestPkgGoStrategy_Execute_InvalidHTML(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupPkgGoTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewPkgGoStrategy(deps)
 
@@ -477,17 +435,8 @@ func TestPkgGoStrategy_Execute_ContextCancellation(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupPkgGoTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewPkgGoStrategy(deps)
 
@@ -549,17 +498,8 @@ func TestPkgGoStrategy_Execute_PackageNameExtraction(t *testing.T) {
 			defer server.Close()
 
 			// Create dependencies
-			logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 			tmpDir := t.TempDir()
-			writer := output.NewWriter(output.WriterOptions{
-				BaseDir: tmpDir,
-				Force:   true,
-			})
-
-			deps := &strategies.Dependencies{
-				Logger: logger,
-				Writer: writer,
-			}
+			deps := setupPkgGoTestDependencies(t, tmpDir)
 
 			strategy := strategies.NewPkgGoStrategy(deps)
 

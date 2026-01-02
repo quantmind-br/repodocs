@@ -167,9 +167,10 @@ func TestSanitizer_RemoveNavigationDisabled(t *testing.T) {
 	result, err := sanitizer.Sanitize(html)
 
 	require.NoError(t, err)
-	// Navigation should still be removed because script/style/form removal happens regardless
-	// But navigation-specific class removal should not happen
-	assert.Contains(t, result, "Home")
+	// Navigation elements are always removed by TagsToRemove list
+	// The RemoveNavigation flag only controls class-based removal
+	assert.NotContains(t, result, "Home")
+	assert.Contains(t, result, "Main Content")
 }
 
 // TestSanitizer_RemoveFormElements tests removal of form elements

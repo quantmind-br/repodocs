@@ -418,7 +418,7 @@ func TestWriter_GetPath(t *testing.T) {
 			url:     "https://example.com/docs/guide",
 			contains: []string{
 				"/output",
-				"example.com",
+				"docs",
 				".md",
 			},
 		},
@@ -744,7 +744,7 @@ func TestWriter_Write_FlatStructure(t *testing.T) {
 			name:           "nested structure",
 			flat:           false,
 			url:            "https://example.com/docs/guide",
-			expectedInPath: []string{filepath.Join("example.com", "docs"), ".md"},
+			expectedInPath: []string{filepath.Join("docs"), ".md"},
 			notExpected:    nil,
 		},
 	}

@@ -600,7 +600,8 @@ func TestGetAllStrategies(t *testing.T) {
 	}
 
 	// Verify strategy names
-	expectedNames := []string{"llms", "sitemap", "wiki", "git", "pkggo", "crawler"}
+	// Order must match DetectStrategy priority: llms > pkggo > sitemap > wiki > git > crawler
+	expectedNames := []string{"llms", "pkggo", "sitemap", "wiki", "git", "crawler"}
 	actualNames := make([]string, len(strategies))
 	for i, strategy := range strategies {
 		actualNames[i] = strategy.Name()
@@ -702,8 +703,15 @@ func TestOrchestrator_NewOrchestrator_CustomStrategyFactory(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, orchestrator)
 
-	// Verify factory was used during creation
-	assert.True(t, factoryCalled, "Custom strategy factory should be called")
+	// Factory is not called during NewOrchestrator, only during Run
+	assert.False(t, factoryCalled, "Custom strategy factory should not be called during orchestrator creation")
+
+	// Run the orchestrator to trigger the factory
+	err = orchestrator.Run(context.Background(), "https://example.com", opts)
+	require.NoError(t, err)
+
+	// Verify factory was used during Run
+	assert.True(t, factoryCalled, "Custom strategy factory should be called during Run")
 
 	_ = orchestrator.Close()
 }

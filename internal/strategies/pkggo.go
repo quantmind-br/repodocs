@@ -2,6 +2,7 @@ package strategies
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -23,6 +24,9 @@ type PkgGoStrategy struct {
 
 // NewPkgGoStrategy creates a new pkg.go.dev strategy
 func NewPkgGoStrategy(deps *Dependencies) *PkgGoStrategy {
+	if deps == nil {
+		return &PkgGoStrategy{}
+	}
 	return &PkgGoStrategy{
 		deps:      deps,
 		fetcher:   deps.Fetcher,
@@ -49,6 +53,26 @@ func (s *PkgGoStrategy) CanHandle(url string) bool {
 
 // Execute runs the pkg.go.dev extraction strategy
 func (s *PkgGoStrategy) Execute(ctx context.Context, url string, opts Options) error {
+	// Check context cancellation early
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	if s.fetcher == nil {
+		return fmt.Errorf("pkggo strategy fetcher is nil")
+	}
+	if s.converter == nil {
+		return fmt.Errorf("pkggo strategy converter is nil")
+	}
+	if s.writer == nil {
+		return fmt.Errorf("pkggo strategy writer is nil")
+	}
+	if s.logger == nil {
+		return fmt.Errorf("pkggo strategy logger is nil")
+	}
+
 	s.logger.Info().Str("url", url).Msg("Fetching pkg.go.dev documentation")
 
 	// Fetch page
@@ -97,7 +121,10 @@ func (s *PkgGoStrategy) Execute(ctx context.Context, url string, opts Options) e
 	document.FetchedAt = time.Now()
 
 	if !opts.DryRun {
-		return s.deps.WriteDocument(ctx, document)
+		if s.deps != nil {
+			return s.deps.WriteDocument(ctx, document)
+		}
+		return s.writer.Write(ctx, document)
 	}
 
 	return nil
@@ -156,8 +183,14 @@ func (s *PkgGoStrategy) extractSections(ctx context.Context, doc *goquery.Docume
 		document.FetchedAt = time.Now()
 
 		if !opts.DryRun {
-			if err := s.deps.WriteDocument(ctx, document); err != nil {
-				s.logger.Warn().Err(err).Str("section", section.name).Msg("Failed to write section")
+			if s.deps != nil {
+				if err := s.deps.WriteDocument(ctx, document); err != nil {
+					s.logger.Warn().Err(err).Str("section", section.name).Msg("Failed to write section")
+				}
+			} else {
+				if err := s.writer.Write(ctx, document); err != nil {
+					s.logger.Warn().Err(err).Str("section", section.name).Msg("Failed to write section")
+				}
 			}
 		}
 	}

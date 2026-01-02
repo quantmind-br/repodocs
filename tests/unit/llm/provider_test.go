@@ -3,6 +3,7 @@ package llm_test
 import (
 	"encoding/json"
 	"io"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

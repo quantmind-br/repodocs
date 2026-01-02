@@ -461,7 +461,8 @@ llm:
 	// Clean environment
 	os.Unsetenv("REPODOCS_OUTPUT_DIRECTORY")
 
-	cfg, err := config.Load()
+	// Use LoadWithViper for isolated testing
+	cfg, _, err := config.LoadWithViper()
 	require.NoError(t, err)
 
 	// Verify all complex values
@@ -534,7 +535,8 @@ concurrency:
 
 	os.Unsetenv("REPODOCS_OUTPUT_DIRECTORY")
 
-	cfg, err := config.Load()
+	// Use LoadWithViper for isolated testing
+	cfg, _, err := config.LoadWithViper()
 	require.NoError(t, err)
 
 	assert.Equal(t, "/commented", cfg.Output.Directory)
@@ -766,7 +768,8 @@ rendering:
 
 	os.Unsetenv("REPODOCS_OUTPUT_DIRECTORY")
 
-	cfg, err := config.Load()
+	// Use LoadWithViper for isolated testing
+	cfg, _, err := config.LoadWithViper()
 	require.NoError(t, err)
 
 	// All invalid values should be corrected to defaults
@@ -799,11 +802,11 @@ output:
 	require.NoError(t, os.Chdir(tmpDir))
 	os.Unsetenv("REPODOCS_OUTPUT_DIRECTORY")
 
-	// Load config concurrently
+	// Load config concurrently using LoadWithViper for isolation
 	done := make(chan bool, 10)
 	for i := 0; i < 10; i++ {
 		go func() {
-			cfg, err := config.Load()
+			cfg, _, err := config.LoadWithViper()
 			require.NoError(t, err)
 			assert.Equal(t, "/test/concurrent", cfg.Output.Directory)
 			done <- true

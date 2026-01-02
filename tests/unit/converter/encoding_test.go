@@ -15,9 +15,9 @@ func TestDetectEncoding(t *testing.T) {
 		html   string
 		expect string
 	}{
-		{"UTF-8 meta", `<meta charset="UTF-8">`, "UTF-8"},
+		{"UTF-8_meta", `<meta charset="UTF-8">`, "utf-8"},
 		{"utf-8 lowercase", `<meta charset="utf-8">`, "utf-8"},
-		{"no charset", `<!DOCTYPE html><html><body>Content</body></html>`, "utf-8"},
+		{"no_charset", `<!DOCTYPE html><html><body>Content</body></html>`, "utf-8"},
 		{"empty", "", "utf-8"},
 	}
 	for _, tt := range tests {
@@ -50,12 +50,14 @@ func TestConvertToUTF8(t *testing.T) {
 // TestIsUTF8 tests UTF-8 detection
 func TestIsUTF8(t *testing.T) {
 	tests := []struct {
-		name  string
-		bytes []byte
+		name   string
+		bytes  []byte
 		expect bool
 	}{
 		{"UTF-8", []byte("Hello"), true},
 		{"empty", []byte(""), true},
+		{"UTF-8 with meta", []byte(`<meta charset="utf-8">`), true},
+		{"UTF-8 content", []byte(`<meta charset="UTF-8">Hello`), true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

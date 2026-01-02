@@ -22,7 +22,6 @@ var TagsToRemove = []string{
 	"button",
 	"select",
 	"textarea",
-	"nav",
 	"footer",
 	"header",
 	"aside",
@@ -108,6 +107,8 @@ func (s *Sanitizer) Sanitize(html string) (string, error) {
 		for _, id := range IDsToRemove {
 			doc.Find("#" + id).Remove()
 		}
+
+		doc.Find("nav").Remove()
 	}
 
 	// Remove hidden elements

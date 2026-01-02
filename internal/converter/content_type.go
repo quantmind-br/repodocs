@@ -21,6 +21,7 @@ func IsMarkdownContent(contentType, url string) bool {
 	}
 
 	if strings.HasSuffix(lowerURL, ".md") ||
+		strings.HasSuffix(lowerURL, ".mdx") ||
 		strings.HasSuffix(lowerURL, ".markdown") ||
 		strings.HasSuffix(lowerURL, ".mdown") {
 		return true

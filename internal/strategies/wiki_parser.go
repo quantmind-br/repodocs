@@ -42,6 +42,11 @@ type WikiInfo struct {
 func ParseWikiURL(rawURL string) (*WikiInfo, error) {
 	url := strings.TrimSuffix(rawURL, "/")
 
+	// Check for SSH format: git@github.com:owner/repo.wiki.git
+	if strings.HasPrefix(url, "git@") {
+		return nil, fmt.Errorf("invalid wiki URL format (SSH not supported): %s", rawURL)
+	}
+
 	// github.com/{owner}/{repo}/wiki[/{page}] or {repo}.wiki.git
 	wikiPattern := regexp.MustCompile(
 		`github\.com[:/]([^/]+)/([^/]+?)(?:\.wiki)?(?:/wiki)?(?:/([^/]+))?(?:\.git)?$`,
@@ -72,7 +77,15 @@ func ParseWikiURL(rawURL string) (*WikiInfo, error) {
 }
 
 func FilenameToTitle(filename string) string {
-	name := strings.TrimSuffix(filename, filepath.Ext(filename))
+	// Extract base name without extension
+	ext := filepath.Ext(filename)
+	name := strings.TrimSuffix(filename, ext)
+
+	// If name is empty after removing extension, return empty
+	if name == "" {
+		return ""
+	}
+
 	name = strings.ReplaceAll(name, "-", " ")
 	name = strings.ReplaceAll(name, "_", " ")
 
@@ -181,15 +194,23 @@ func ParseSidebarContent(content string, pages map[string]*WikiPage) []WikiSecti
 }
 
 func findPageFilename(pageName string, pages map[string]*WikiPage) string {
+	// Exact match first
+	if _, exists := pages[pageName]; exists {
+		return pageName
+	}
+
+	// Match with .md extension
 	if _, exists := pages[pageName+".md"]; exists {
 		return pageName + ".md"
 	}
 
+	// Hyphenated match
 	hyphenated := strings.ReplaceAll(pageName, " ", "-") + ".md"
 	if _, exists := pages[hyphenated]; exists {
 		return hyphenated
 	}
 
+	// Case-insensitive match
 	for filename := range pages {
 		baseName := strings.TrimSuffix(filename, ".md")
 		if strings.EqualFold(baseName, pageName) ||

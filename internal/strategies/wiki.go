@@ -27,6 +27,11 @@ type WikiStrategy struct {
 
 // NewWikiStrategy creates a new wiki strategy
 func NewWikiStrategy(deps *Dependencies) *WikiStrategy {
+	if deps == nil {
+		return &WikiStrategy{
+			gitClient: internalgit.NewClient(),
+		}
+	}
 	return &WikiStrategy{
 		deps:      deps,
 		writer:    deps.Writer,
@@ -50,7 +55,7 @@ func (s *WikiStrategy) CanHandle(url string) bool {
 	return IsWikiURL(url)
 }
 
-// IsWikiURL checks if a URL points to a GitHub wiki
+// IsWikiURL checks if a URL points to a wiki (GitHub or Bitbucket)
 func IsWikiURL(url string) bool {
 	lower := strings.ToLower(url)
 
@@ -59,7 +64,12 @@ func IsWikiURL(url string) bool {
 		return true
 	}
 
-	// Pattern 2: {repo}.wiki.git
+	// Pattern 2: bitbucket.org/{owner}/{repo}/wiki
+	if strings.Contains(lower, "bitbucket.org") && strings.Contains(lower, "/wiki") {
+		return true
+	}
+
+	// Pattern 3: {repo}.wiki.git
 	if strings.HasSuffix(lower, ".wiki.git") {
 		return true
 	}

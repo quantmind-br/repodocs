@@ -57,7 +57,10 @@ func (c *MetadataCollector) Add(doc *domain.Document, filePath string) {
 	}
 	relPath = filepath.ToSlash(relPath)
 
-	c.documents = append(c.documents, doc.ToSimpleDocumentMetadata(relPath))
+	metadata := doc.ToSimpleDocumentMetadata(relPath)
+	// Use the collector's strategy as the source, overriding the document's SourceStrategy
+	metadata.Source = c.strategy
+	c.documents = append(c.documents, metadata)
 }
 
 func (c *MetadataCollector) Flush() error {

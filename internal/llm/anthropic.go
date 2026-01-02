@@ -140,10 +140,20 @@ func (p *AnthropicProvider) Complete(ctx context.Context, req *domain.LLMRequest
 	}
 
 	if anthropicResp.Error != nil {
+		// Check if this is a rate limit error based on status code or error type
+		if resp.StatusCode == http.StatusTooManyRequests || anthropicResp.Error.Type == "rate_limit_error" {
+			return nil, &domain.LLMError{
+				Provider:   "anthropic",
+				StatusCode: resp.StatusCode,
+				Message:    anthropicResp.Error.Message,
+				Err:        domain.ErrLLMRateLimited,
+			}
+		}
 		return nil, &domain.LLMError{
 			Provider:   "anthropic",
 			StatusCode: resp.StatusCode,
 			Message:    anthropicResp.Error.Message,
+			Err:        domain.ErrLLMRequestFailed,
 		}
 	}
 

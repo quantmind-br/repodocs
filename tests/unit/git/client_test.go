@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/go-git/go-git/v5"
+	gogit "github.com/go-git/go-git/v5"
 	"github.com/quantmind-br/repodocs-go/internal/git"
 	"github.com/quantmind-br/repodocs-go/tests/mocks"
 	"github.com/stretchr/testify/assert"
@@ -39,10 +39,10 @@ func TestPlainCloneContext_Success(t *testing.T) {
 	t.Run("successfully clones repository", func(t *testing.T) {
 		// Setup: Create mock client and repository
 		mockClient := new(mocks.MockGitClient)
-		mockRepo := &git.Repository{}
+		mockRepo := &gogit.Repository{}
 
 		mockClient.On("PlainCloneContext",
-			mock.AnythingOfType("*context.timerCtx"),
+			mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 			"/tmp/repo",
 			false,
 			mock.AnythingOfType("*git.CloneOptions"),
@@ -51,7 +51,7 @@ func TestPlainCloneContext_Success(t *testing.T) {
 		ctx := context.Background()
 
 		// Execute: Clone the repository
-		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &git.CloneOptions{
+		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &gogit.CloneOptions{
 			URL: "https://github.com/example/repo.git",
 		})
 
@@ -64,10 +64,10 @@ func TestPlainCloneContext_Success(t *testing.T) {
 	t.Run("clones with bare repository option", func(t *testing.T) {
 		// Setup: Create mock client
 		mockClient := new(mocks.MockGitClient)
-		mockRepo := &git.Repository{}
+		mockRepo := &gogit.Repository{}
 
 		mockClient.On("PlainCloneContext",
-			mock.AnythingOfType("*context.emptyCtx"),
+			mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 			"/tmp/bare-repo",
 			true,
 			mock.AnythingOfType("*git.CloneOptions"),
@@ -76,7 +76,7 @@ func TestPlainCloneContext_Success(t *testing.T) {
 		ctx := context.Background()
 
 		// Execute: Clone as bare repository
-		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/bare-repo", true, &git.CloneOptions{
+		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/bare-repo", true, &gogit.CloneOptions{
 			URL: "https://github.com/example/repo.git",
 		})
 
@@ -97,14 +97,14 @@ func TestPlainCloneContext_ContextCancellation(t *testing.T) {
 		expectedErr := errors.New("context canceled")
 
 		mockClient.On("PlainCloneContext",
-			mock.AnythingOfType("*context.cancelCtx"),
+			mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 			"/tmp/repo",
 			false,
 			mock.AnythingOfType("*git.CloneOptions"),
 		).Return(nil, expectedErr)
 
 		// Execute: Try to clone with cancelled context
-		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &git.CloneOptions{
+		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &gogit.CloneOptions{
 			URL: "https://github.com/example/repo.git",
 		})
 
@@ -124,14 +124,14 @@ func TestPlainCloneContext_ContextCancellation(t *testing.T) {
 		expectedErr := errors.New("context deadline exceeded")
 
 		mockClient.On("PlainCloneContext",
-			mock.AnythingOfType("*context.timerCtx"),
+			mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 			"/tmp/repo",
 			false,
 			mock.AnythingOfType("*git.CloneOptions"),
 		).Return(nil, expectedErr)
 
 		// Execute: Try to clone with timed-out context
-		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &git.CloneOptions{
+		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &gogit.CloneOptions{
 			URL: "https://github.com/example/repo.git",
 		})
 
@@ -149,14 +149,14 @@ func TestPlainCloneContext_ErrorCases(t *testing.T) {
 		expectedErr := errors.New("invalid git URL")
 
 		mockClient.On("PlainCloneContext",
-			mock.AnythingOfType("*context.emptyCtx"),
+			mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 			"/tmp/repo",
 			false,
 			mock.AnythingOfType("*git.CloneOptions"),
 		).Return(nil, expectedErr)
 
 		// Execute: Try to clone with invalid URL
-		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &git.CloneOptions{
+		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &gogit.CloneOptions{
 			URL: "not-a-valid-git-url",
 		})
 
@@ -173,14 +173,14 @@ func TestPlainCloneContext_ErrorCases(t *testing.T) {
 		expectedErr := errors.New("repository not found")
 
 		mockClient.On("PlainCloneContext",
-			mock.AnythingOfType("*context.emptyCtx"),
+			mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 			"/tmp/repo",
 			false,
 			mock.AnythingOfType("*git.CloneOptions"),
 		).Return(nil, expectedErr)
 
 		// Execute: Try to clone non-existent repository
-		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &git.CloneOptions{
+		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &gogit.CloneOptions{
 			URL: "https://github.com/nonexistent/repo.git",
 		})
 
@@ -197,14 +197,14 @@ func TestPlainCloneContext_ErrorCases(t *testing.T) {
 		expectedErr := errors.New("authentication failed")
 
 		mockClient.On("PlainCloneContext",
-			mock.AnythingOfType("*context.emptyCtx"),
+			mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 			"/tmp/private-repo",
 			false,
 			mock.AnythingOfType("*git.CloneOptions"),
 		).Return(nil, expectedErr)
 
 		// Execute: Try to clone private repo with invalid credentials
-		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/private-repo", false, &git.CloneOptions{
+		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/private-repo", false, &gogit.CloneOptions{
 			URL: "https://github.com/private/repo.git",
 		})
 
@@ -221,14 +221,14 @@ func TestPlainCloneContext_ErrorCases(t *testing.T) {
 		expectedErr := errors.New("network unreachable")
 
 		mockClient.On("PlainCloneContext",
-			mock.AnythingOfType("*context.emptyCtx"),
+			mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 			"/tmp/repo",
 			false,
 			mock.AnythingOfType("*git.CloneOptions"),
 		).Return(nil, expectedErr)
 
 		// Execute: Try to clone when network is unavailable
-		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &git.CloneOptions{
+		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &gogit.CloneOptions{
 			URL: "https://github.com/example/repo.git",
 		})
 
@@ -245,14 +245,14 @@ func TestPlainCloneContext_ErrorCases(t *testing.T) {
 		expectedErr := errors.New("destination path exists")
 
 		mockClient.On("PlainCloneContext",
-			mock.AnythingOfType("*context.emptyCtx"),
+			mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 			"/invalid/path",
 			false,
 			mock.AnythingOfType("*git.CloneOptions"),
 		).Return(nil, expectedErr)
 
 		// Execute: Try to clone to invalid path
-		repo, err := mockClient.PlainCloneContext(ctx, "/invalid/path", false, &git.CloneOptions{
+		repo, err := mockClient.PlainCloneContext(ctx, "/invalid/path", false, &gogit.CloneOptions{
 			URL: "https://github.com/example/repo.git",
 		})
 
@@ -267,7 +267,7 @@ func TestPlainCloneContext_ParameterPassing(t *testing.T) {
 	t.Run("passes context correctly", func(t *testing.T) {
 		ctx := context.Background()
 		mockClient := new(mocks.MockGitClient)
-		mockRepo := &git.Repository{}
+		mockRepo := &gogit.Repository{}
 
 		mockClient.On("PlainCloneContext",
 			mock.MatchedBy(func(c context.Context) bool {
@@ -279,7 +279,7 @@ func TestPlainCloneContext_ParameterPassing(t *testing.T) {
 		).Return(mockRepo, nil)
 
 		// Execute: Clone with context
-		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &git.CloneOptions{
+		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &gogit.CloneOptions{
 			URL: "https://github.com/example/repo.git",
 		})
 
@@ -292,19 +292,19 @@ func TestPlainCloneContext_ParameterPassing(t *testing.T) {
 	t.Run("passes path correctly", func(t *testing.T) {
 		ctx := context.Background()
 		mockClient := new(mocks.MockGitClient)
-		mockRepo := &git.Repository{}
+		mockRepo := &gogit.Repository{}
 
 		expectedPath := "/custom/path/to/repo"
 
 		mockClient.On("PlainCloneContext",
-			mock.AnythingOfType("*context.emptyCtx"),
+			mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 			expectedPath,
 			false,
 			mock.AnythingOfType("*git.CloneOptions"),
 		).Return(mockRepo, nil)
 
 		// Execute: Clone to specific path
-		repo, err := mockClient.PlainCloneContext(ctx, expectedPath, false, &git.CloneOptions{
+		repo, err := mockClient.PlainCloneContext(ctx, expectedPath, false, &gogit.CloneOptions{
 			URL: "https://github.com/example/repo.git",
 		})
 
@@ -327,17 +327,17 @@ func TestPlainCloneContext_ParameterPassing(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				ctx := context.Background()
 				mockClient := new(mocks.MockGitClient)
-				mockRepo := &git.Repository{}
+				mockRepo := &gogit.Repository{}
 
 				mockClient.On("PlainCloneContext",
-					mock.AnythingOfType("*context.emptyCtx"),
+					mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 					"/tmp/repo",
 					tt.isBare,
 					mock.AnythingOfType("*git.CloneOptions"),
 				).Return(mockRepo, nil)
 
 				// Execute: Clone with isBare option
-				repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", tt.isBare, &git.CloneOptions{
+				repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", tt.isBare, &gogit.CloneOptions{
 					URL: "https://github.com/example/repo.git",
 				})
 
@@ -352,20 +352,20 @@ func TestPlainCloneContext_ParameterPassing(t *testing.T) {
 	t.Run("passes clone options correctly", func(t *testing.T) {
 		ctx := context.Background()
 		mockClient := new(mocks.MockGitClient)
-		mockRepo := &git.Repository{}
+		mockRepo := &gogit.Repository{}
 
-		opts := &git.CloneOptions{
+		opts := &gogit.CloneOptions{
 			URL:      "https://github.com/example/repo.git",
 			Depth:    1,
 			Progress: nil,
-			Tags:     git.NoTags,
+			Tags:     gogit.NoTags,
 		}
 
 		mockClient.On("PlainCloneContext",
-			mock.AnythingOfType("*context.emptyCtx"),
+			mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 			"/tmp/repo",
 			false,
-			mock.MatchedBy(func(o *git.CloneOptions) bool {
+			mock.MatchedBy(func(o *gogit.CloneOptions) bool {
 				return o != nil && o.URL == opts.URL && o.Depth == opts.Depth
 			}),
 		).Return(mockRepo, nil)
@@ -387,16 +387,16 @@ func TestPlainCloneContext_EdgeCases(t *testing.T) {
 		expectedErr := errors.New("URL cannot be empty")
 
 		mockClient.On("PlainCloneContext",
-			mock.AnythingOfType("*context.emptyCtx"),
+			mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 			"/tmp/repo",
 			false,
-			mock.MatchedBy(func(o *git.CloneOptions) bool {
+			mock.MatchedBy(func(o *gogit.CloneOptions) bool {
 				return o != nil && o.URL == ""
 			}),
 		).Return(nil, expectedErr)
 
 		// Execute: Clone with empty URL
-		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &git.CloneOptions{
+		repo, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &gogit.CloneOptions{
 			URL: "",
 		})
 
@@ -409,13 +409,13 @@ func TestPlainCloneContext_EdgeCases(t *testing.T) {
 	t.Run("handles nil clone options", func(t *testing.T) {
 		ctx := context.Background()
 		mockClient := new(mocks.MockGitClient)
-		mockRepo := &git.Repository{}
+		mockRepo := &gogit.Repository{}
 
 		mockClient.On("PlainCloneContext",
-			mock.AnythingOfType("*context.emptyCtx"),
+			mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 			"/tmp/repo",
 			false,
-			(*git.CloneOptions)(nil),
+			(*gogit.CloneOptions)(nil),
 		).Return(mockRepo, nil)
 
 		// Execute: Clone with nil options
@@ -430,12 +430,12 @@ func TestPlainCloneContext_EdgeCases(t *testing.T) {
 	t.Run("handles concurrent clone operations", func(t *testing.T) {
 		ctx := context.Background()
 		mockClient := new(mocks.MockGitClient)
-		mockRepo := &git.Repository{}
+		mockRepo := &gogit.Repository{}
 
 		// Setup: Expect multiple concurrent calls
 		for i := 0; i < 3; i++ {
 			mockClient.On("PlainCloneContext",
-				mock.AnythingOfType("*context.emptyCtx"),
+				mock.MatchedBy(func(c context.Context) bool { return c != nil }),
 				"/tmp/repo",
 				false,
 				mock.AnythingOfType("*git.CloneOptions"),
@@ -446,7 +446,7 @@ func TestPlainCloneContext_EdgeCases(t *testing.T) {
 		errChan := make(chan error, 3)
 		for i := 0; i < 3; i++ {
 			go func() {
-				_, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &git.CloneOptions{
+				_, err := mockClient.PlainCloneContext(ctx, "/tmp/repo", false, &gogit.CloneOptions{
 					URL: "https://github.com/example/repo.git",
 				})
 				errChan <- err

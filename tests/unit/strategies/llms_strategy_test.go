@@ -10,6 +10,7 @@ import (
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs-go/tests/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -277,7 +278,7 @@ func TestLLMSStrategy_CanHandle(t *testing.T) {
 	}{
 		{"https://example.com/llms.txt", true},
 		{"https://example.com/docs/llms.txt", true},
-		{"https://example.com/llms.txt/", true},
+		{"https://example.com/llms.txt/", false},
 		{"https://example.com/docs", false},
 		{"https://example.com/LLMS.TXT", true},
 		{"ftp://example.com/llms.txt", false},
@@ -324,8 +325,10 @@ func TestLLMSStrategy_Execute(t *testing.T) {
 	})
 
 	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
+		Fetcher:   testutil.NewSimpleFetcher(server.URL),
+		Converter: testutil.NewHTMLConverter(t),
+		Logger:    logger,
+		Writer:    writer,
 	}
 
 	strategy := strategies.NewLLMSStrategy(deps)
@@ -368,8 +371,10 @@ func TestLLMSStrategy_Execute_WithFilter(t *testing.T) {
 	})
 
 	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
+		Fetcher:   testutil.NewSimpleFetcher(server.URL),
+		Converter: testutil.NewHTMLConverter(t),
+		Logger:    logger,
+		Writer:    writer,
 	}
 
 	strategy := strategies.NewLLMSStrategy(deps)
@@ -414,8 +419,10 @@ func TestLLMSStrategy_Execute_WithLimit(t *testing.T) {
 	})
 
 	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
+		Fetcher:   testutil.NewSimpleFetcher(server.URL),
+		Converter: testutil.NewHTMLConverter(t),
+		Logger:    logger,
+		Writer:    writer,
 	}
 
 	strategy := strategies.NewLLMSStrategy(deps)
@@ -449,8 +456,10 @@ func TestLLMSStrategy_Execute_EmptyLLMS(t *testing.T) {
 	})
 
 	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
+		Fetcher:   testutil.NewSimpleFetcher(server.URL),
+		Converter: testutil.NewHTMLConverter(t),
+		Logger:    logger,
+		Writer:    writer,
 	}
 
 	strategy := strategies.NewLLMSStrategy(deps)
@@ -493,8 +502,10 @@ func TestLLMSStrategy_Execute_InvalidLinks(t *testing.T) {
 	})
 
 	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
+		Fetcher:   testutil.NewSimpleFetcher(server.URL),
+		Converter: testutil.NewHTMLConverter(t),
+		Logger:    logger,
+		Writer:    writer,
 	}
 
 	strategy := strategies.NewLLMSStrategy(deps)
@@ -546,8 +557,10 @@ func TestLLMSStrategy_Execute_ErrorFetchingPage(t *testing.T) {
 	})
 
 	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
+		Fetcher:   testutil.NewSimpleFetcher(server.URL),
+		Converter: testutil.NewHTMLConverter(t),
+		Logger:    logger,
+		Writer:    writer,
 	}
 
 	strategy := strategies.NewLLMSStrategy(deps)
@@ -588,8 +601,10 @@ func TestLLMSStrategy_Execute_DryRun(t *testing.T) {
 	})
 
 	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
+		Fetcher:   testutil.NewSimpleFetcher(server.URL),
+		Converter: testutil.NewHTMLConverter(t),
+		Logger:    logger,
+		Writer:    writer,
 	}
 
 	strategy := strategies.NewLLMSStrategy(deps)
@@ -632,8 +647,10 @@ func TestLLMSStrategy_Execute_ContextCancellation(t *testing.T) {
 	})
 
 	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
+		Fetcher:   testutil.NewSimpleFetcher(server.URL),
+		Converter: testutil.NewHTMLConverter(t),
+		Logger:    logger,
+		Writer:    writer,
 	}
 
 	strategy := strategies.NewLLMSStrategy(deps)

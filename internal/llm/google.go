@@ -160,10 +160,20 @@ func (p *GoogleProvider) Complete(ctx context.Context, req *domain.LLMRequest) (
 	}
 
 	if googleResp.Error != nil {
+		// Check if this is a rate limit error based on status code or error status
+		if resp.StatusCode == http.StatusTooManyRequests || googleResp.Error.Status == "RESOURCE_EXHAUSTED" {
+			return nil, &domain.LLMError{
+				Provider:   "google",
+				StatusCode: googleResp.Error.Code,
+				Message:    googleResp.Error.Message,
+				Err:        domain.ErrLLMRateLimited,
+			}
+		}
 		return nil, &domain.LLMError{
 			Provider:   "google",
 			StatusCode: googleResp.Error.Code,
 			Message:    googleResp.Error.Message,
+			Err:        domain.ErrLLMRequestFailed,
 		}
 	}
 

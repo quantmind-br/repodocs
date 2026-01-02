@@ -358,17 +358,19 @@ func TestConfig_Validate_NegativeValues(t *testing.T) {
 
 func TestConfig_Validate_BoundaryValues(t *testing.T) {
 	tests := []struct {
-		name     string
-		value    time.Duration
-		expected time.Duration
+		name                  string
+		value                 time.Duration
+		expectedTimeout       time.Duration
+		expectedCacheTTL      time.Duration
+		expectedJSTimeout     time.Duration
 	}{
-		{"zero timeout", 0, config.DefaultTimeout},
-		{"one nanosecond", 1 * time.Nanosecond, config.DefaultTimeout},
-		{"999 milliseconds", 999 * time.Millisecond, config.DefaultTimeout},
-		{"exactly one second", 1 * time.Second, 1 * time.Second},
-		{"one second minus one ns", 1*time.Second - 1, config.DefaultTimeout},
-		{"59 seconds for cache TTL", 59 * time.Second, config.DefaultCacheTTL},
-		{"exactly one minute", 1 * time.Minute, 1 * time.Minute},
+		{"zero timeout", 0, config.DefaultTimeout, config.DefaultCacheTTL, config.DefaultJSTimeout},
+		{"one nanosecond", 1 * time.Nanosecond, config.DefaultTimeout, config.DefaultCacheTTL, config.DefaultJSTimeout},
+		{"999 milliseconds", 999 * time.Millisecond, config.DefaultTimeout, config.DefaultCacheTTL, config.DefaultJSTimeout},
+		{"exactly one second", 1 * time.Second, 1 * time.Second, config.DefaultCacheTTL, 1 * time.Second},
+		{"one second minus one ns", 1*time.Second - 1, config.DefaultTimeout, config.DefaultCacheTTL, config.DefaultJSTimeout},
+		{"59 seconds for cache TTL", 59 * time.Second, 59 * time.Second, config.DefaultCacheTTL, 59 * time.Second},
+		{"exactly one minute", 1 * time.Minute, 1 * time.Minute, 1 * time.Minute, 1 * time.Minute},
 	}
 
 	for _, tt := range tests {
@@ -389,7 +391,9 @@ func TestConfig_Validate_BoundaryValues(t *testing.T) {
 
 			err := cfg.Validate()
 			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, cfg.Concurrency.Timeout)
+			assert.Equal(t, tt.expectedTimeout, cfg.Concurrency.Timeout)
+			assert.Equal(t, tt.expectedCacheTTL, cfg.Cache.TTL)
+			assert.Equal(t, tt.expectedJSTimeout, cfg.Rendering.JSTimeout)
 		})
 	}
 }

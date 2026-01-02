@@ -189,8 +189,17 @@ func TestWikiStrategy_Execute_Success(t *testing.T) {
 	structure, err := strategy.parseWikiStructure(tmpDir)
 	require.NoError(t, err)
 	assert.NotNil(t, structure)
-	assert.Equal(t, 3, len(structure.Pages))
+	assert.Equal(t, 4, len(structure.Pages)) // All pages including special ones
 	assert.True(t, structure.HasSidebar)
+
+	// Count non-special pages
+	nonSpecialCount := 0
+	for _, page := range structure.Pages {
+		if !page.IsSpecial {
+			nonSpecialCount++
+		}
+	}
+	assert.Equal(t, 3, nonSpecialCount)
 
 	// Test processPages
 	err = strategy.processPages(ctx, structure, wikiInfo, opts)

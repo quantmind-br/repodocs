@@ -225,7 +225,9 @@ func TestGetAllStrategies_Ordering(t *testing.T) {
 	assert.Len(t, strategies, 6, "Should have exactly 6 strategies")
 
 	// Check expected order (priority order for detection)
-	expectedOrder := []string{"llms", "sitemap", "wiki", "git", "pkggo", "crawler"}
+	// Order must match DetectStrategy priority: llms > pkggo > sitemap > wiki > git > crawler
+	// pkggo must come before git because pkg.go.dev URLs contain github.com in the path
+	expectedOrder := []string{"llms", "pkggo", "sitemap", "wiki", "git", "crawler"}
 	actualNames := make([]string, len(strategies))
 
 	for i, strategy := range strategies {

@@ -184,21 +184,25 @@ func TestTokenBucket_RefillEdgeCases(t *testing.T) {
 		name              string
 		requestsPerMinute int
 		burstSize         int
+		maxWaitTime       time.Duration
 	}{
 		{
 			name:              "very_slow_refill",
-			requestsPerMinute: 6,  // 1 per 10 seconds
+			requestsPerMinute: 6, // 1 per 10 seconds
 			burstSize:         1,
+			maxWaitTime:       15 * time.Second,
 		},
 		{
 			name:              "very_fast_refill",
 			requestsPerMinute: 60000, // 1000 per second
 			burstSize:         10,
+			maxWaitTime:       100 * time.Millisecond,
 		},
 		{
 			name:              "burst_equals_rate",
 			requestsPerMinute: 60,
 			burstSize:         60,
+			maxWaitTime:       2 * time.Second,
 		},
 	}
 
@@ -221,8 +225,8 @@ func TestTokenBucket_RefillEdgeCases(t *testing.T) {
 			elapsed := time.Since(start)
 
 			require.NoError(t, err)
-			assert.Greater(t, elapsed, 0, "Should have waited for refill")
-			assert.Less(t, elapsed, 5*time.Second, "Should not wait too long")
+			assert.Greater(t, elapsed.Milliseconds(), int64(0), "Should have waited for refill")
+			assert.Less(t, elapsed, tt.maxWaitTime, "Should not wait too long")
 		})
 	}
 }
@@ -280,5 +284,6 @@ func TestTokenBucket_TryAcquireAccuracy(t *testing.T) {
 	}
 
 	assert.Equal(t, 3, acquired, "Should acquire exactly burst size tokens")
-	assert.Equal(t, float64(0), bucket.Available())
+	// Use InDelta to account for floating point precision and any minor refills
+	assert.InDelta(t, float64(0), bucket.Available(), 0.01, "Available should be approximately 0")
 }

@@ -48,17 +48,34 @@ var IgnoreDirs = map[string]bool{
 // GitStrategy extracts documentation from git repositories
 // Uses archive download as primary method (faster) with git clone as fallback
 type GitStrategy struct {
-	deps              *Dependencies
-	writer            *output.Writer
-	logger            *utils.Logger
-	httpClient        *http.Client
-	skipBranchDetect  bool // Skip branch detection (for testing)
+	deps             *Dependencies
+	writer           *output.Writer
+	logger           *utils.Logger
+	httpClient       *http.Client
+	skipBranchDetect bool // Skip branch detection (for testing)
 }
 
 // NewGitStrategy creates a new git strategy
 func NewGitStrategy(deps *Dependencies) *GitStrategy {
-	client := deps.HTTPClient
-	skipBranchDetect := false
+	var client *http.Client
+	var skipBranchDetect bool
+
+	if deps == nil {
+		client = &http.Client{
+			Timeout: 10 * time.Minute,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if len(via) >= 10 {
+					return fmt.Errorf("too many redirects")
+				}
+				return nil
+			},
+		}
+		return &GitStrategy{
+			httpClient: client,
+		}
+	}
+
+	client = deps.HTTPClient
 	if client == nil {
 		client = &http.Client{
 			Timeout: 10 * time.Minute,
@@ -97,6 +114,10 @@ func (s *GitStrategy) CanHandle(url string) bool {
 		strings.Contains(lower, "github.io")
 
 	if isDocsSubdomain {
+		return false
+	}
+
+	if IsWikiURL(url) {
 		return false
 	}
 

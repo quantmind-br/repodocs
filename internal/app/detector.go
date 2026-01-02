@@ -1,6 +1,7 @@
 package app
 
 import (
+	"net/url"
 	"strings"
 
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
@@ -20,11 +21,47 @@ const (
 )
 
 // DetectStrategy determines the appropriate strategy based on URL patterns
-func DetectStrategy(url string) StrategyType {
-	lower := strings.ToLower(url)
+func DetectStrategy(rawURL string) StrategyType {
+	// Trim whitespace
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return StrategyUnknown
+	}
 
-	// Check for llms.txt first
-	if strings.HasSuffix(lower, "/llms.txt") || strings.HasSuffix(lower, "llms.txt") {
+	lower := strings.ToLower(rawURL)
+
+	// Check for SSH Git URLs first (git@host:path/repo.git)
+	// These don't parse with url.Parse, so handle them before parsing
+	if strings.HasPrefix(rawURL, "git@") || strings.HasPrefix(rawURL, "git+ssh://") {
+		return StrategyGit
+	}
+
+	// Parse URL to strip query and fragment for path-based matching
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		// If URL parsing fails, do basic checks on the raw string
+		if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+			return StrategyCrawler
+		}
+		return StrategyUnknown
+	}
+
+	// Check if the URL has a valid host (for cases like "https://")
+	if parsed.Host == "" && (parsed.Scheme == "http" || parsed.Scheme == "https") {
+		return StrategyUnknown
+	}
+
+	// For path-based matching, use the path without query/fragment
+	path := parsed.Path
+	lowerPath := strings.ToLower(path)
+
+	// Check for git:// protocol (unsupported)
+	if parsed.Scheme == "git" {
+		return StrategyUnknown
+	}
+
+	// Check for llms.txt first (using path without query/fragment)
+	if strings.HasSuffix(lowerPath, "/llms.txt") || strings.HasSuffix(lowerPath, "llms.txt") {
 		return StrategyLLMS
 	}
 
@@ -33,15 +70,15 @@ func DetectStrategy(url string) StrategyType {
 		return StrategyPkgGo
 	}
 
-	// Check for sitemap
-	if strings.HasSuffix(lower, "sitemap.xml") ||
-		strings.HasSuffix(lower, "sitemap.xml.gz") ||
-		strings.Contains(lower, "sitemap") && strings.HasSuffix(lower, ".xml") {
+	// Check for sitemap (using path without query/fragment)
+	if strings.HasSuffix(lowerPath, "sitemap.xml") ||
+		strings.HasSuffix(lowerPath, "sitemap.xml.gz") ||
+		strings.Contains(lowerPath, "sitemap") && strings.HasSuffix(lowerPath, ".xml") {
 		return StrategySitemap
 	}
 
-	// Check for GitHub Wiki (before generic Git)
-	if strategies.IsWikiURL(url) {
+	// Check for Wiki (before generic Git) - pass raw URL to support all wiki patterns
+	if strategies.IsWikiURL(rawURL) {
 		return StrategyWiki
 	}
 
@@ -51,16 +88,15 @@ func DetectStrategy(url string) StrategyType {
 		strings.Contains(lower, "pages.github.io") ||
 		strings.Contains(lower, "github.io")
 
-	if !isDocsSubdomain && (strings.HasPrefix(url, "git@") ||
-		strings.HasSuffix(lower, ".git") ||
-		(strings.Contains(lower, "github.com") && !strings.Contains(lower, "/blob/")) ||
-		(strings.Contains(lower, "gitlab.com") && !strings.Contains(lower, "/-/blob/")) ||
+	if !isDocsSubdomain && (strings.HasSuffix(lowerPath, ".git") ||
+		(strings.Contains(lower, "github.com") && !strings.Contains(lowerPath, "/blob/")) ||
+		(strings.Contains(lower, "gitlab.com") && !strings.Contains(lowerPath, "/-/blob/")) ||
 		strings.Contains(lower, "bitbucket.org")) {
 		return StrategyGit
 	}
 
 	// Default to crawler for HTTP URLs
-	if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+	if parsed.Scheme == "http" || parsed.Scheme == "https" {
 		return StrategyCrawler
 	}
 

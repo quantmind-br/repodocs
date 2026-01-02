@@ -138,6 +138,7 @@ func (p *OpenAIProvider) Complete(ctx context.Context, req *domain.LLMRequest) (
 			Provider:   "openai",
 			StatusCode: resp.StatusCode,
 			Message:    openAIResp.Error.Message,
+			Err:        domain.ErrLLMRequestFailed,
 		}
 	}
 
