@@ -134,12 +134,13 @@ func TestDetectStrategy_Unknown(t *testing.T) {
 
 func TestDetectStrategy_GitHubBlobExcluded(t *testing.T) {
 	// GitHub blob URLs should be treated as crawler, not git
+	// Note: /tree/ URLs are now handled by git strategy for subdirectory extraction
 	tests := []struct {
 		url      string
 		expected app.StrategyType
 	}{
 		{"https://github.com/user/repo/blob/main/README.md", app.StrategyCrawler},
-		{"https://github.com/user/repo/tree/main/src", app.StrategyCrawler},
+		{"https://github.com/user/repo/tree/main/src", app.StrategyGit}, // Changed: now supports subdirectory extraction
 	}
 
 	for _, tc := range tests {

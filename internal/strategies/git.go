@@ -273,6 +273,14 @@ func (s *GitStrategy) parseGitURLWithPath(rawURL string) (*gitURLInfo, error) {
 		return info, nil
 	}
 
+	// Fallback for generic URLs (e.g., localhost in tests, or other HTTP(S) URLs)
+	// This allows the strategy to work with custom git servers
+	if strings.HasPrefix(rawURL, "http://") || strings.HasPrefix(rawURL, "https://") {
+		info.platform = "generic"
+		info.repoURL = rawURL
+		return info, nil
+	}
+
 	return nil, fmt.Errorf("unsupported git URL format: %s", rawURL)
 }
 
