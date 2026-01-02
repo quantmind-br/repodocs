@@ -271,9 +271,12 @@ func DefaultRenderOptions() domain.RenderOptions {
 func (r *Renderer) Close() error {
 	if r.pool != nil {
 		r.pool.Close()
+		r.pool = nil
 	}
 	if r.browser != nil {
-		return r.browser.Close()
+		browser := r.browser
+		r.browser = nil
+		return browser.Close()
 	}
 	return nil
 }
