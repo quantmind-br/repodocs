@@ -22,6 +22,10 @@ var (
 	cfgFile string
 	verbose bool
 	log     *utils.Logger
+
+	// Dependencies for testing
+	osStat       = os.Stat
+	execLookPath = exec.LookPath
 )
 
 func main() {
@@ -54,7 +58,7 @@ func init() {
 	rootCmd.PersistentFlags().IntP("limit", "l", 0, "Max pages to process (0=unlimited)")
 	rootCmd.PersistentFlags().IntP("max-depth", "d", 4, "Max crawl depth")
 	rootCmd.PersistentFlags().StringSlice("exclude", nil, "Regex patterns to exclude")
-	rootCmd.PersistentFlags().String("filter", "", "Base URL filter (only crawl URLs starting with this path)")
+	rootCmd.PersistentFlags().String("filter", "", "Path filter (web: base URL; git: subdirectory)")
 	rootCmd.PersistentFlags().Bool("nofolders", false, "Flat output structure")
 	rootCmd.PersistentFlags().Bool("force", false, "Overwrite existing files")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
@@ -297,19 +301,19 @@ func checkChrome() string {
 	}
 
 	for _, path := range paths {
-		if _, err := os.Stat(path); err == nil {
+		if _, err := osStat(path); err == nil {
 			return path
 		}
 	}
 
 	// Try to find via which/where command
-	if path, err := exec.LookPath("google-chrome"); err == nil {
+	if path, err := execLookPath("google-chrome"); err == nil {
 		return path
 	}
-	if path, err := exec.LookPath("chromium"); err == nil {
+	if path, err := execLookPath("chromium"); err == nil {
 		return path
 	}
-	if path, err := exec.LookPath("chromium-browser"); err == nil {
+	if path, err := execLookPath("chromium-browser"); err == nil {
 		return path
 	}
 

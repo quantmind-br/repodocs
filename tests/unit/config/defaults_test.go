@@ -431,7 +431,7 @@ func TestDefault_LLMCircuitBreakerConstants(t *testing.T) {
 
 func TestDirectoryPaths_AreNotAbsolute(t *testing.T) {
 	// ConfigDir and CacheDir should be absolute when home dir is available
-	home, err := os.UserHomeDir()
+	_, err := os.UserHomeDir()
 	if err != nil {
 		t.Skip("Cannot test absolute paths without home directory")
 	}

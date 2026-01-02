@@ -26,6 +26,7 @@ type testStrategy struct {
 	execErr    error
 	execCalled bool
 	lastOpts   strategies.Options
+	execFunc   func(ctx context.Context, url string, opts strategies.Options) error
 }
 
 func (s *testStrategy) Name() string {
@@ -39,6 +40,9 @@ func (s *testStrategy) CanHandle(url string) bool {
 func (s *testStrategy) Execute(ctx context.Context, url string, opts strategies.Options) error {
 	s.execCalled = true
 	s.lastOpts = opts
+	if s.execFunc != nil {
+		return s.execFunc(ctx, url, opts)
+	}
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -829,10 +833,9 @@ func TestOrchestrator_Run_StrategyOptionsMapping(t *testing.T) {
 	}
 
 	// Override Execute on mockStrategy to capture options
-	originalExecute := mockStrategy.Execute
-	mockStrategy.Execute = func(ctx context.Context, url string, opts strategies.Options) error {
+	mockStrategy.execFunc = func(ctx context.Context, url string, opts strategies.Options) error {
 		capturedOptions = opts
-		return originalExecute(ctx, url, opts)
+		return nil
 	}
 
 	opts := app.OrchestratorOptions{

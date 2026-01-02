@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/converter"
-	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs-go/internal/fetcher"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
@@ -17,19 +17,37 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestNewCrawlerStrategy tests creating a new crawler strategy
-func TestNewCrawlerStrategy(t *testing.T) {
+// setupTestDependencies creates test dependencies with fetcher
+func setupTestDependencies(t *testing.T, tmpDir string) *strategies.Dependencies {
 	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
-	tmpDir := t.TempDir()
 	writer := output.NewWriter(output.WriterOptions{
 		BaseDir: tmpDir,
 		Force:   true,
 	})
 
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
+	// Create fetcher
+	fetcherClient, err := fetcher.NewClient(fetcher.ClientOptions{
+		Timeout:     10 * time.Second,
+		MaxRetries:  1,
+		EnableCache: false,
+	})
+	require.NoError(t, err)
+
+	// Create converter
+	converterPipeline := converter.NewPipeline(converter.PipelineOptions{})
+
+	return &strategies.Dependencies{
+		Logger:    logger,
+		Writer:    writer,
+		Fetcher:   fetcherClient,
+		Converter: converterPipeline,
 	}
+}
+
+// TestNewCrawlerStrategy tests creating a new crawler strategy
+func TestNewCrawlerStrategy(t *testing.T) {
+	tmpDir := t.TempDir()
+	deps := setupTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewCrawlerStrategy(deps)
 
@@ -39,17 +57,8 @@ func TestNewCrawlerStrategy(t *testing.T) {
 
 // TestCrawlerStrategy_CanHandle tests URL handling for crawler strategy
 func TestCrawlerStrategy_CanHandle(t *testing.T) {
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewCrawlerStrategy(deps)
 
@@ -76,42 +85,42 @@ func TestCrawlerStrategy_CanHandle(t *testing.T) {
 // TestIsHTMLContentType tests content type detection
 func TestIsHTMLContentType(t *testing.T) {
 	tests := []struct {
-		name       string
+		name        string
 		contentType string
 		expected    bool
 	}{
 		{
-			name:       "HTML content type",
+			name:        "HTML content type",
 			contentType: "text/html",
 			expected:    true,
 		},
 		{
-			name:       "HTML with charset",
+			name:        "HTML with charset",
 			contentType: "text/html; charset=utf-8",
 			expected:    true,
 		},
 		{
-			name:       "XHTML",
+			name:        "XHTML",
 			contentType: "application/xhtml+xml",
 			expected:    true,
 		},
 		{
-			name:       "Plain text",
+			name:        "Plain text",
 			contentType: "text/plain",
 			expected:    false,
 		},
 		{
-			name:       "JSON",
+			name:        "JSON",
 			contentType: "application/json",
 			expected:    false,
 		},
 		{
-			name:       "Empty content type",
+			name:        "Empty content type",
 			contentType: "",
 			expected:    false,
 		},
 		{
-			name:       "Case insensitive HTML",
+			name:        "Case insensitive HTML",
 			contentType: "TEXT/HTML",
 			expected:    true,
 		},
@@ -150,17 +159,8 @@ func TestCrawlerStrategy_Execute_SimpleHTML(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewCrawlerStrategy(deps)
 
@@ -193,17 +193,8 @@ This is a test markdown file.
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewCrawlerStrategy(deps)
 
@@ -239,17 +230,8 @@ func TestCrawlerStrategy_Execute_WithExclude(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewCrawlerStrategy(deps)
 
@@ -289,17 +271,8 @@ func TestCrawlerStrategy_Execute_WithLimit(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewCrawlerStrategy(deps)
 
@@ -336,17 +309,8 @@ func TestCrawlerStrategy_Execute_ContextCancellation(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewCrawlerStrategy(deps)
 
@@ -377,17 +341,8 @@ func TestCrawlerStrategy_Execute_NonHTMLContent(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewCrawlerStrategy(deps)
 
@@ -418,17 +373,8 @@ func TestCrawlerStrategy_Execute_DryRun(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewCrawlerStrategy(deps)
 
@@ -455,17 +401,8 @@ func TestCrawlerStrategy_Execute_WithError(t *testing.T) {
 	defer server.Close()
 
 	// Create dependencies
-	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	tmpDir := t.TempDir()
-	writer := output.NewWriter(output.WriterOptions{
-		BaseDir: tmpDir,
-		Force:   true,
-	})
-
-	deps := &strategies.Dependencies{
-		Logger: logger,
-		Writer: writer,
-	}
+	deps := setupTestDependencies(t, tmpDir)
 
 	strategy := strategies.NewCrawlerStrategy(deps)
 

@@ -2,7 +2,6 @@ package fetcher_test
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -244,8 +243,8 @@ func TestFetcherIntegration_Caching(t *testing.T) {
 
 		// Setup: Create cache with very short TTL
 		cache := &inMemoryCache{
-			data:     make(map[string][]byte),
-			expiry:   100 * time.Millisecond,
+			data:   make(map[string][]byte),
+			expiry: 100 * time.Millisecond,
 		}
 
 		// Setup: Create fetcher client

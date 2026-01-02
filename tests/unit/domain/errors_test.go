@@ -237,11 +237,11 @@ func TestLLMSentinelErrors_NotNil(t *testing.T) {
 
 func TestNewFetchError(t *testing.T) {
 	tests := []struct {
-		name        string
-		url         string
-		statusCode  int
-		err         error
-		verify      func(t *testing.T, fe *domain.FetchError)
+		name       string
+		url        string
+		statusCode int
+		err        error
+		verify     func(t *testing.T, fe *domain.FetchError)
 	}{
 		{
 			name:       "with status code",
@@ -345,14 +345,14 @@ func TestFetchError_Error(t *testing.T) {
 			url:        "https://example.com/unknown",
 			statusCode: 500,
 			err:        nil,
-			want:       "fetch error for https://example.com/unknown: status 500: ",
+			want:       "fetch error for https://example.com/unknown: status 500: <nil>",
 		},
 		{
 			name:       "with nil error and no status code",
 			url:        "https://example.com/unknown",
 			statusCode: 0,
 			err:        nil,
-			want:       "fetch error for https://example.com/unknown: ",
+			want:       "fetch error for https://example.com/unknown: <nil>",
 		},
 	}
 
@@ -410,7 +410,7 @@ func TestRetryableError_Error(t *testing.T) {
 			name:       "with nil error",
 			err:        nil,
 			retryAfter: 10,
-			want:       "retryable error (retry after 10s): ",
+			want:       "retryable error (retry after 10s): <nil>",
 		},
 	}
 
@@ -766,7 +766,7 @@ func TestStrategyError_Error(t *testing.T) {
 			strategy: "pkggo",
 			url:      "https://pkg.go.dev/example",
 			err:      nil,
-			want:     "strategy pkggo failed for https://pkg.go.dev/example: ",
+			want:     "strategy pkggo failed for https://pkg.go.dev/example: <nil>",
 		},
 		{
 			name:     "with sentinel error",
@@ -804,12 +804,12 @@ func TestStrategyError_UnwrapNil(t *testing.T) {
 
 func TestNewLLMError(t *testing.T) {
 	tests := []struct {
-		name        string
-		provider    string
-		statusCode  int
-		message     string
-		err         error
-		verify      func(t *testing.T, le *domain.LLMError)
+		name       string
+		provider   string
+		statusCode int
+		message    string
+		err        error
+		verify     func(t *testing.T, le *domain.LLMError)
 	}{
 		{
 			name:       "full LLM error with status code",

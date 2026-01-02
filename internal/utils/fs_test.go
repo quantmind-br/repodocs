@@ -247,7 +247,7 @@ func TestGeneratePathFromRelative(t *testing.T) {
 			baseDir:  "/output",
 			relPath:  "docs/api.md",
 			flat:     true,
-			expected: "/output/api.md",
+			expected: "/output/docs-api.md",
 		},
 		{
 			name:     "nested mode",
@@ -261,7 +261,7 @@ func TestGeneratePathFromRelative(t *testing.T) {
 			baseDir:  "/output",
 			relPath:  "docs/api",
 			flat:     true,
-			expected: "/output/api.md",
+			expected: "/output/docs-api.md",
 		},
 		{
 			name:     "nested mode with subdirs",
@@ -275,7 +275,28 @@ func TestGeneratePathFromRelative(t *testing.T) {
 			baseDir:  "/output",
 			relPath:  "docs/my file name.md",
 			flat:     true,
-			expected: "/output/my-file-name.md",
+			expected: "/output/docs-my-file-name.md",
+		},
+		{
+			name:     "flat mode deep path",
+			baseDir:  "/output",
+			relPath:  "docs/developers/tools/memory.md",
+			flat:     true,
+			expected: "/output/docs-developers-tools-memory.md",
+		},
+		{
+			name:     "flat mode root file",
+			baseDir:  "/output",
+			relPath:  "README.md",
+			flat:     true,
+			expected: "/output/README.md",
+		},
+		{
+			name:     "flat mode with mdx extension",
+			baseDir:  "/output",
+			relPath:  "docs/guide/intro.mdx",
+			flat:     true,
+			expected: "/output/docs-guide-intro.md",
 		},
 	}
 

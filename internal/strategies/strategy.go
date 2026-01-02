@@ -2,6 +2,7 @@ package strategies
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/cache"
@@ -72,6 +73,7 @@ type Dependencies struct {
 	LLMProvider      domain.LLMProvider
 	MetadataEnhancer *llm.MetadataEnhancer
 	Collector        *output.MetadataCollector
+	HTTPClient       *http.Client // Optional custom HTTP client (e.g., for testing)
 }
 
 // NewDependencies creates new dependencies for strategies

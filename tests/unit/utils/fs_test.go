@@ -178,8 +178,20 @@ func TestGeneratePath(t *testing.T) {
 func TestGeneratePathFromRelative(t *testing.T) {
 	baseDir := "/output"
 
-	t.Run("flat mode", func(t *testing.T) {
+	t.Run("flat mode preserves full path", func(t *testing.T) {
 		result := utils.GeneratePathFromRelative(baseDir, "docs/README.md", true)
+		expected := filepath.Join(baseDir, "docs-README.md")
+		assert.Equal(t, expected, result)
+	})
+
+	t.Run("flat mode deep path", func(t *testing.T) {
+		result := utils.GeneratePathFromRelative(baseDir, "docs/developers/tools/memory.md", true)
+		expected := filepath.Join(baseDir, "docs-developers-tools-memory.md")
+		assert.Equal(t, expected, result)
+	})
+
+	t.Run("flat mode root file unchanged", func(t *testing.T) {
+		result := utils.GeneratePathFromRelative(baseDir, "README.md", true)
 		expected := filepath.Join(baseDir, "README.md")
 		assert.Equal(t, expected, result)
 	})

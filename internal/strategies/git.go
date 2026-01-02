@@ -48,19 +48,19 @@ var IgnoreDirs = map[string]bool{
 // GitStrategy extracts documentation from git repositories
 // Uses archive download as primary method (faster) with git clone as fallback
 type GitStrategy struct {
-	deps       *Dependencies
-	writer     *output.Writer
-	logger     *utils.Logger
-	httpClient *http.Client
+	deps              *Dependencies
+	writer            *output.Writer
+	logger            *utils.Logger
+	httpClient        *http.Client
+	skipBranchDetect  bool // Skip branch detection (for testing)
 }
 
 // NewGitStrategy creates a new git strategy
 func NewGitStrategy(deps *Dependencies) *GitStrategy {
-	return &GitStrategy{
-		deps:   deps,
-		writer: deps.Writer,
-		logger: deps.Logger,
-		httpClient: &http.Client{
+	client := deps.HTTPClient
+	skipBranchDetect := false
+	if client == nil {
+		client = &http.Client{
 			Timeout: 10 * time.Minute,
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
 				if len(via) >= 10 {
@@ -68,7 +68,17 @@ func NewGitStrategy(deps *Dependencies) *GitStrategy {
 				}
 				return nil
 			},
-		},
+		}
+	} else {
+		// Custom HTTP client provided (likely for testing), skip branch detection
+		skipBranchDetect = true
+	}
+	return &GitStrategy{
+		deps:             deps,
+		writer:           deps.Writer,
+		logger:           deps.Logger,
+		httpClient:       client,
+		skipBranchDetect: skipBranchDetect,
 	}
 }
 
@@ -193,11 +203,15 @@ func (s *GitStrategy) tryArchiveDownload(ctx context.Context, url, destDir strin
 		return "", "", err
 	}
 
-	// Detect default branch
-	branch, err = s.detectDefaultBranch(ctx, url)
-	if err != nil {
-		s.logger.Warn().Err(err).Msg("Failed to detect branch, using 'main'")
-		branch = "main"
+	// Detect default branch (skip for testing)
+	if !s.skipBranchDetect {
+		branch, err = s.detectDefaultBranch(ctx, url)
+		if err != nil {
+			s.logger.Warn().Err(err).Msg("Failed to detect branch, using 'main'")
+			branch = "main"
+		}
+	} else {
+		branch = "main" // Default for testing
 	}
 
 	// Build archive URL

@@ -161,16 +161,30 @@ func GeneratePath(baseDir, rawURL string, flat bool) string {
 // Used for Git-sourced files to preserve the repository's directory structure
 func GeneratePathFromRelative(baseDir, relPath string, flat bool) string {
 	if flat {
-		// For flat mode, use only the filename
-		filename := filepath.Base(relPath)
-		// Remove extension and add .md if needed
-		ext := filepath.Ext(filename)
-		name := strings.TrimSuffix(filename, ext)
-		name = SanitizeFilename(name)
-		if !strings.HasSuffix(name, ".md") {
-			name += ".md"
+		// For flat mode, convert full path to filename by replacing "/" with "-"
+		// Example: docs/developers/tools/memory.md → docs-developers-tools-memory.md
+
+		// Normalize separators to forward slash
+		normalized := filepath.ToSlash(relPath)
+
+		// Remove .md/.mdx extension if present
+		ext := filepath.Ext(normalized)
+		if ext == ".md" || ext == ".mdx" {
+			normalized = strings.TrimSuffix(normalized, ext)
 		}
-		return filepath.Join(baseDir, name)
+
+		// Replace "/" with "-" to create flat filename
+		flatName := strings.ReplaceAll(normalized, "/", "-")
+
+		// Sanitize the result
+		flatName = SanitizeFilename(flatName)
+
+		// Add .md extension
+		if !strings.HasSuffix(flatName, ".md") {
+			flatName += ".md"
+		}
+
+		return filepath.Join(baseDir, flatName)
 	}
 
 	// For nested mode, preserve directory structure

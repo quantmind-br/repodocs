@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testResponseBody = "<html><body>Test content</body></html>"
+
 func TestNewStealthTransport(t *testing.T) {
 	t.Run("creates transport with client", func(t *testing.T) {
 		// Setup: Create client
@@ -40,14 +42,14 @@ func TestNewStealthTransport(t *testing.T) {
 
 func TestStealthTransport_RoundTrip_Success(t *testing.T) {
 	ctx := context.Background()
-	responseBody := "<html><body>Test content</body></html>"
+	testResponseBody := "<html><body>Test content</body></html>"
 
 	t.Run("successful GET request", func(t *testing.T) {
 		// Setup: Create test server
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html")
 			w.WriteHeader(200)
-			w.Write([]byte(responseBody))
+			w.Write([]byte(testResponseBody))
 		}))
 		defer server.Close()
 
@@ -76,7 +78,7 @@ func TestStealthTransport_RoundTrip_Success(t *testing.T) {
 		// Verify: Body can be read
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		assert.Equal(t, responseBody, string(body))
+		assert.Equal(t, testResponseBody, string(body))
 	})
 
 	t.Run("request with custom headers", func(t *testing.T) {
@@ -88,7 +90,7 @@ func TestStealthTransport_RoundTrip_Success(t *testing.T) {
 
 			w.Header().Set("Content-Type", "text/html")
 			w.WriteHeader(200)
-			w.Write([]byte(responseBody))
+			w.Write([]byte(testResponseBody))
 		}))
 		defer server.Close()
 
@@ -289,6 +291,7 @@ func TestStealthTransport_RoundTrip_Error(t *testing.T) {
 
 func TestStealthTransport_ContentEncoding(t *testing.T) {
 	ctx := context.Background()
+	testResponseBody := "<html><body>Test content</body></html>"
 
 	t.Run("content-encoding header is removed", func(t *testing.T) {
 		// Setup: Create test server
@@ -296,7 +299,7 @@ func TestStealthTransport_ContentEncoding(t *testing.T) {
 			w.Header().Set("Content-Type", "text/html")
 			w.Header().Set("Content-Encoding", "gzip")
 			w.WriteHeader(200)
-			w.Write([]byte(responseBody))
+			w.Write([]byte(testResponseBody))
 		}))
 		defer server.Close()
 
@@ -327,7 +330,7 @@ func TestStealthTransport_ContentEncoding(t *testing.T) {
 		// Verify: Body can still be read
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		assert.Equal(t, responseBody, string(body))
+		assert.Equal(t, testResponseBody, string(body))
 	})
 
 	t.Run("multiple content-encoding values", func(t *testing.T) {
@@ -336,7 +339,7 @@ func TestStealthTransport_ContentEncoding(t *testing.T) {
 			w.Header().Set("Content-Type", "text/html")
 			w.Header().Set("Content-Encoding", "gzip, deflate")
 			w.WriteHeader(200)
-			w.Write([]byte(responseBody))
+			w.Write([]byte(testResponseBody))
 		}))
 		defer server.Close()
 
@@ -396,7 +399,7 @@ func TestClient_Transport(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html")
 			w.WriteHeader(200)
-			w.Write([]byte(responseBody))
+			w.Write([]byte(testResponseBody))
 		}))
 		defer server.Close()
 
@@ -430,7 +433,7 @@ func TestClient_Transport(t *testing.T) {
 		// Verify: Body can be read
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		assert.Equal(t, responseBody, string(body))
+		assert.Equal(t, testResponseBody, string(body))
 		resp.Body.Close()
 	})
 }

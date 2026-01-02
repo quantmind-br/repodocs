@@ -32,10 +32,10 @@ func TestNewBadgerCache_Success(t *testing.T) {
 
 func TestNewBadgerCache_WithOptions(t *testing.T) {
 	tests := []struct {
-		name     string
-		opts     cache.Options
-		wantErr  bool
-		setup    func() string
+		name    string
+		opts    cache.Options
+		wantErr bool
+		setup   func() string
 	}{
 		{
 			name: "InMemory",
@@ -510,34 +510,34 @@ func TestDefaultOptions(t *testing.T) {
 // TestSet_WithVariousTTLs tests different TTL values
 func TestSet_WithVariousTTLs(t *testing.T) {
 	tests := []struct {
-		name       string
-		ttl        time.Duration
+		name        string
+		ttl         time.Duration
 		shouldExist bool
-		waitTime   time.Duration
+		waitTime    time.Duration
 	}{
 		{
-			name:       "Long TTL - 1 hour",
-			ttl:        time.Hour,
+			name:        "Long TTL - 1 hour",
+			ttl:         time.Hour,
 			shouldExist: true,
-			waitTime:   0,
+			waitTime:    0,
 		},
 		{
-			name:       "Short TTL - 10ms",
-			ttl:        10 * time.Millisecond,
+			name:        "Short TTL - 10ms",
+			ttl:         10 * time.Millisecond,
 			shouldExist: false,
-			waitTime:   20 * time.Millisecond,
+			waitTime:    20 * time.Millisecond,
 		},
 		{
-			name:       "Zero TTL",
-			ttl:        0,
+			name:        "Zero TTL",
+			ttl:         0,
 			shouldExist: true,
-			waitTime:   0,
+			waitTime:    0,
 		},
 		{
-			name:       "Negative TTL (treated as zero)",
-			ttl:        -time.Hour,
+			name:        "Negative TTL (treated as zero)",
+			ttl:         -time.Hour,
 			shouldExist: true,
-			waitTime:   0,
+			waitTime:    0,
 		},
 	}
 
@@ -797,9 +797,9 @@ func TestStats_LSMAndVLogSizes(t *testing.T) {
 // TestNewBadgerCache_Constructor tests cache construction
 func TestNewBadgerCache_Constructor(t *testing.T) {
 	tests := []struct {
-		name    string
-		opts    cache.Options
-		verify  func(t *testing.T, c *cache.BadgerCache, err error)
+		name   string
+		opts   cache.Options
+		verify func(t *testing.T, c *cache.BadgerCache, err error)
 	}{
 		{
 			name: "In-memory cache",
@@ -859,5 +859,4 @@ func TestBadgerCache_ImplementsCacheInterface(t *testing.T) {
 		Size() int64
 		Stats() map[string]interface{}
 	} = (*cache.BadgerCache)(nil)
-	_ = _
 }

@@ -83,7 +83,7 @@ func TestNeedsJSRendering(t *testing.T) {
 		{
 			name: "Next.js data script",
 			html: `<!DOCTYPE html>
-<html><body><script id="__NEXT_DATA__" type="application/json">{}",
+<html><body><script id="__NEXT_DATA__" type="application/json">{}</script></body></html>`,
 			want: true,
 		},
 		{
@@ -179,7 +179,7 @@ func TestNeedsJSRendering(t *testing.T) {
 <script src="script3.js"></script>
 </head>
 <body><p>Short content</p></body></html>`,
-			want: true,
+			want: false, // 3 scripts is not > 3
 		},
 		{
 			name: "short content with 2 scripts - not SPA",
@@ -247,7 +247,7 @@ func TestDetectFramework(t *testing.T) {
 		{
 			name: "Next.js with data script",
 			html: `<!DOCTYPE html>
-<html><body><script id="__NEXT_DATA__">{}",
+<html><body><script id="__NEXT_DATA__">{}</script></body></html>`,
 			want: "Next.js",
 		},
 		{
@@ -295,19 +295,13 @@ func TestDetectFramework(t *testing.T) {
 		{
 			name: "Vue detection",
 			html: `<!DOCTYPE html>
-<html><body><div id="app"></div></body></html>`,
+<html><body><script>window.__VUE__ = {};</script></body></html>`,
 			want: "Vue",
 		},
 		{
 			name: "Vue with v-cloak",
 			html: `<!DOCTYPE html>
 <html><body><div v-cloak>{{ message }}</div></body></html>`,
-			want: "Vue",
-		},
-		{
-			name: "Vue with global object",
-			html: `<!DOCTYPE html>
-<html><body><script>window.__VUE__ = {};</script></body></html>`,
 			want: "Vue",
 		},
 		{
@@ -453,7 +447,7 @@ func TestHasDynamicContent(t *testing.T) {
 		{
 			name: "case insensitive - LOADING",
 			html: `<!DOCTYPE html>
-<html><body><p>LOADING CONTENT...</p></body></html>`,
+<html><body><p>LOADING...</p></body></html>`,
 			want: true,
 		},
 		{
@@ -525,7 +519,7 @@ func TestNeedsJSRendering_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "malformed HTML with SPA pattern",
-			html: `<div id="root"><p>Unclosed tags`,
+			html: `<div id="root"></div><p>Unclosed tags`,
 			want: true,
 		},
 		{

@@ -91,7 +91,7 @@ func TestExtractContent_WithMultipleMatches(t *testing.T) {
 
 	extractor := converter.NewExtractContent("article.post")
 
-	content, title, err := extractor.Extract(html, "https://example.com")
+	content, _, err := extractor.Extract(html, "https://example.com")
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, content)

@@ -46,6 +46,21 @@ Clone a repository and extract all documentation files:
 repodocs https://github.com/spf13/cobra.git
 ```
 
+#### Filtering to Specific Directories
+Extract documentation from only a specific subdirectory in a Git repository:
+```bash
+# Using URL path (for repositories with /tree/ in the URL)
+repodocs https://github.com/owner/repo/tree/main/docs
+
+# Using --filter flag
+repodocs https://github.com/owner/repo --filter docs
+
+# Filter to nested directory
+repodocs https://github.com/owner/repo --filter docs/guides
+```
+
+**Note:** When both URL path and `--filter` flag are provided, the URL path takes precedence.
+
 ### Advanced Usage
 Crawl with JavaScript rendering, higher concurrency, and AI metadata:
 ```bash
@@ -79,6 +94,7 @@ RepoDocs can be configured via command-line flags or a configuration file locate
 | `--concurrency` | `-j` | Number of concurrent workers | `5` |
 | `--limit` | `-l` | Max pages to process (0=unlimited) | `0` |
 | `--max-depth` | `-d` | Max crawl depth | `4` |
+| `--filter` | | Path filter (web: base URL; git: subdirectory) | |
 | `--render-js` | | Force JavaScript rendering | `false` |
 | `--no-cache` | | Disable the BadgerDB caching layer | `false` |
 | `--json-meta` | | Generate additional JSON metadata files | `false` |
