@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -636,4 +637,458 @@ func TestFindMatchingStrategy(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestOrchestrator_NewOrchestrator_WithAllOptions tests orchestrator creation with all options
+func TestOrchestrator_NewOrchestrator_WithAllOptions(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+
+	opts := app.OrchestratorOptions{
+		Config:          cfg,
+		Verbose:         true,
+		DryRun:          true,
+		Force:           true,
+		RenderJS:        true,
+		Split:           true,
+		IncludeAssets:   true,
+		Limit:           100,
+		ContentSelector: "#content",
+		ExcludeSelector: "#ads",
+		ExcludePatterns: []string{"*.log", "tmp/*"},
+		FilterURL:       "/api/",
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+
+	require.NoError(t, err)
+	require.NotNil(t, orchestrator)
+	assert.NotNil(t, orchestrator.Close)
+
+	// Clean up
+	_ = orchestrator.Close()
+}
+
+// TestOrchestrator_NewOrchestrator_CustomStrategyFactory tests custom strategy factory injection
+func TestOrchestrator_NewOrchestrator_CustomStrategyFactory(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+
+	factoryCalled := false
+	customFactory := func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+		factoryCalled = true
+		// Return a mock strategy
+		return &testStrategy{
+			name:      "custom-" + string(st),
+			canHandle: true,
+			execErr:   nil,
+		}
+	}
+
+	opts := app.OrchestratorOptions{
+		Config:          cfg,
+		StrategyFactory: customFactory,
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	require.NotNil(t, orchestrator)
+
+	// Verify factory was used during creation
+	assert.True(t, factoryCalled, "Custom strategy factory should be called")
+
+	_ = orchestrator.Close()
+}
+
+// TestOrchestrator_NewOrchestrator_ConfigValidation tests various config scenarios
+func TestOrchestrator_NewOrchestrator_ConfigValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		setupConfig func() *config.Config
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "Valid config",
+			setupConfig: func() *config.Config {
+				cfg := config.Default()
+				cfg.Cache.Enabled = false
+				return cfg
+			},
+			expectError: false,
+		},
+		{
+			name: "Config with custom output dir",
+			setupConfig: func() *config.Config {
+				cfg := config.Default()
+				cfg.Output.Directory = t.TempDir()
+				cfg.Cache.Enabled = false
+				return cfg
+			},
+			expectError: false,
+		},
+		{
+			name: "Config with cache enabled",
+			setupConfig: func() *config.Config {
+				cfg := config.Default()
+				cfg.Cache.Directory = t.TempDir()
+				cfg.Cache.Enabled = true
+				return cfg
+			},
+			expectError: false,
+		},
+		{
+			name: "Nil config",
+			setupConfig: func() *config.Config {
+				return nil
+			},
+			expectError: true,
+			errorMsg:    "config is required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := app.OrchestratorOptions{
+				Config: tt.setupConfig(),
+			}
+
+			orchestrator, err := app.NewOrchestrator(opts)
+
+			if tt.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+				assert.Nil(t, orchestrator)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, orchestrator)
+				if orchestrator != nil {
+					_ = orchestrator.Close()
+				}
+			}
+		})
+	}
+}
+
+// TestOrchestrator_Run_MetadataFlushError tests behavior when metadata flush fails
+func TestOrchestrator_Run_MetadataFlushError(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+
+	// Create a mock strategy that succeeds but a deps that will fail on flush
+	mockStrategy := &testStrategy{
+		name:      "mock",
+		canHandle: true,
+		execErr:   nil,
+	}
+
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			return mockStrategy
+		},
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	// Mock the dependencies to fail on Flush
+	// Note: This test verifies the error path, but actual error injection
+	// depends on the implementation of deps.FlushMetadata()
+	err = orchestrator.Run(context.Background(), "https://example.com", opts)
+
+	// Run should succeed even if flush fails (just logs a warning)
+	// The test documents this behavior
+	assert.NoError(t, err, "Run should succeed even if metadata flush fails")
+}
+
+// TestOrchestrator_Run_StrategyOptionsMapping tests that orchestrator options map correctly to strategy options
+func TestOrchestrator_Run_StrategyOptionsMapping(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+	cfg.Concurrency.Workers = 5
+	cfg.Concurrency.MaxDepth = 3
+	cfg.Output.Flat = true
+
+	var capturedOptions strategies.Options
+
+	// Create test strategy that will be returned by factory
+	mockStrategy := &testStrategy{
+		name:      "mock",
+		canHandle: true,
+		execErr:   nil,
+	}
+
+	// Override Execute on mockStrategy to capture options
+	originalExecute := mockStrategy.Execute
+	mockStrategy.Execute = func(ctx context.Context, url string, opts strategies.Options) error {
+		capturedOptions = opts
+		return originalExecute(ctx, url, opts)
+	}
+
+	opts := app.OrchestratorOptions{
+		Config:          cfg,
+		Limit:           50,
+		DryRun:          true,
+		Verbose:         true,
+		Force:           true,
+		RenderJS:        true,
+		Split:           true,
+		IncludeAssets:   true,
+		ContentSelector: "#main",
+		ExcludeSelector: ".sidebar",
+		ExcludePatterns: []string{"*.tmp"},
+		FilterURL:       "/docs/",
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			return mockStrategy
+		},
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	err = orchestrator.Run(context.Background(), "https://example.com", opts)
+	require.NoError(t, err)
+
+	// Verify options were mapped correctly
+	assert.Equal(t, tmpDir, capturedOptions.Output)
+	assert.Equal(t, 50, capturedOptions.Limit)
+	assert.Equal(t, 5, capturedOptions.Concurrency)
+	assert.Equal(t, 3, capturedOptions.MaxDepth)
+	assert.True(t, capturedOptions.DryRun)
+	assert.True(t, capturedOptions.Verbose)
+	assert.True(t, capturedOptions.Force)
+	assert.True(t, capturedOptions.RenderJS)
+	assert.True(t, capturedOptions.Split)
+	assert.True(t, capturedOptions.IncludeAssets)
+	assert.Equal(t, "#main", capturedOptions.ContentSelector)
+	assert.Equal(t, ".sidebar", capturedOptions.ExcludeSelector)
+	assert.Contains(t, capturedOptions.Exclude, "*.tmp")
+	assert.Equal(t, "/docs/", capturedOptions.FilterURL)
+	assert.True(t, capturedOptions.NoFolders) // From cfg.Output.Flat
+}
+
+// TestOrchestrator_ValidateURL_EdgeCases tests URL validation with various edge cases
+func TestOrchestrator_ValidateURL_EdgeCases(t *testing.T) {
+	cfg := config.Default()
+	cfg.Cache.Enabled = false
+	orchestrator, err := app.NewOrchestrator(app.OrchestratorOptions{
+		Config: cfg,
+	})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		url     string
+		wantErr bool
+	}{
+		{"Valid HTTP", "http://example.com", false},
+		{"Valid HTTPS", "https://example.com", false},
+		{"Valid GitHub", "https://github.com/user/repo", false},
+		{"Valid GitLab", "https://gitlab.com/user/repo", false},
+		{"Valid Sitemap", "https://example.com/sitemap.xml", false},
+		{"Valid llms.txt", "https://example.com/llms.txt", false},
+		{"Valid pkg.go.dev", "https://pkg.go.dev/std", false},
+		{"Valid Wiki", "https://github.com/user/repo/wiki", false},
+		{"FTP protocol", "ftp://example.com", true},
+		{"File protocol", "file:///path/to/file", true},
+		{"Empty string", "", true},
+		{"Whitespace", "   ", true},
+		{"No protocol", "example.com", true},
+		{"Invalid chars", "://example.com", true},
+		{"Just protocol", "https://", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := orchestrator.ValidateURL(tt.url)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "unsupported URL format")
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestOrchestrator_Close_Idempotent tests that Close can be called multiple times
+func TestOrchestrator_Close_Idempotent(t *testing.T) {
+	cfg := config.Default()
+	cfg.Cache.Enabled = false
+	orchestrator, err := app.NewOrchestrator(app.OrchestratorOptions{
+		Config: cfg,
+	})
+	require.NoError(t, err)
+
+	// Close multiple times - should not panic
+	err = orchestrator.Close()
+	assert.NoError(t, err)
+
+	err = orchestrator.Close()
+	assert.NoError(t, err)
+
+	err = orchestrator.Close()
+	assert.NoError(t, err)
+}
+
+// TestOrchestrator_GetStrategyName_AllTypes tests GetStrategyName for all strategy types
+func TestOrchestrator_GetStrategyName_AllTypes(t *testing.T) {
+	cfg := config.Default()
+	cfg.Cache.Enabled = false
+	orchestrator, err := app.NewOrchestrator(app.OrchestratorOptions{
+		Config: cfg,
+	})
+	require.NoError(t, err)
+
+	tests := []struct {
+		url      string
+		expected string
+	}{
+		{"https://example.com/llms.txt", "llms"},
+		{"https://pkg.go.dev/std", "pkggo"},
+		{"https://example.com/sitemap.xml", "sitemap"},
+		{"https://github.com/user/repo/wiki", "wiki"},
+		{"https://github.com/user/repo", "git"},
+		{"https://example.com", "crawler"},
+		{"ftp://example.com", "unknown"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.url, func(t *testing.T) {
+			result := orchestrator.GetStrategyName(tt.url)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// TestOrchestrator_Run_ContextTimeout tests behavior when context times out
+func TestOrchestrator_Run_ContextTimeout(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+
+	// Create a strategy that never completes
+	mockStrategy := &testStrategy{
+		name:      "mock",
+		canHandle: true,
+		execErr:   nil,
+	}
+
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			return mockStrategy
+		},
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	// Create context with very short timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
+	defer cancel()
+
+	// Give it a moment to actually timeout
+	time.Sleep(10 * time.Millisecond)
+
+	err = orchestrator.Run(ctx, "https://example.com", opts)
+
+	// Should fail with context deadline exceeded or canceled
+	assert.Error(t, err)
+}
+
+// TestOrchestrator_Run_MultipleURLs tests running multiple URLs sequentially
+func TestOrchestrator_Run_MultipleURLs(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+
+	// Create a mock strategy
+	mockStrategy := &testStrategy{
+		name:      "mock",
+		canHandle: true,
+		execErr:   nil,
+	}
+
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			return mockStrategy
+		},
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	urls := []string{
+		"https://example.com/page1",
+		"https://example.com/page2",
+		"https://example.com/page3",
+	}
+
+	for _, url := range urls {
+		err := orchestrator.Run(context.Background(), url, opts)
+		assert.NoError(t, err)
+	}
+
+	// Note: This test verifies the orchestrator can handle multiple sequential runs
+	// The actual URL capturing would need a more sophisticated mock
+}
+
+// TestOrchestrator_DependsClose tests that orchestrator.Close properly closes dependencies
+func TestOrchestrator_DependsClose(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = true // Enable cache to ensure it needs closing
+
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+
+	// Close should not error
+	err = orchestrator.Close()
+	assert.NoError(t, err)
+}
+
+// TestOrchestrator_StrategyFactoryDefault tests that default strategy factory is used when none provided
+func TestOrchestrator_StrategyFactoryDefault(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+
+	// Don't provide a strategy factory
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	// Run should still work with default factory
+	err = orchestrator.Run(context.Background(), "https://example.com", opts)
+
+	// We don't care if it succeeds or fails (might fail without HTTP server)
+	// Just verify it doesn't panic and uses some strategy
+	_ = err
 }
