@@ -468,8 +468,8 @@ func TestFindDocumentationFiles_Markdown(t *testing.T) {
 	assert.GreaterOrEqual(t, len(found), 3)
 }
 
-// TestFindDocumentationFiles_AsciiDoc tests finding AsciiDoc files
-func TestFindDocumentationFiles_AsciiDoc(t *testing.T) {
+// TestFindDocumentationFiles_MDX tests finding MDX files
+func TestFindDocumentationFiles_MDX(t *testing.T) {
 	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
 	writer := output.NewWriter(output.WriterOptions{BaseDir: "/tmp"})
 
@@ -484,11 +484,12 @@ func TestFindDocumentationFiles_AsciiDoc(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	// Create test AsciiDoc files
+	// Create test MDX files
 	files := map[string]string{
-		"README.adoc":     "# Test",
-		"README.asciidoc": "# Test",
-		"INSTALL.adoc":    "Installation",
+		"README.mdx":       "# Test",
+		"docs/intro.mdx":   "# Intro",
+		"docs/guide.md":    "# Guide",
+		"src/component.tsx": "export default () => <div />",
 	}
 
 	for relPath, content := range files {
@@ -503,7 +504,12 @@ func TestFindDocumentationFiles_AsciiDoc(t *testing.T) {
 
 	found, err := strategy.findDocumentationFiles(tmpDir)
 	require.NoError(t, err)
-	assert.GreaterOrEqual(t, len(found), 3)
+	assert.Equal(t, 3, len(found)) // Should find .md and .mdx only
+
+	// Verify .tsx was not found
+	for _, f := range found {
+		assert.NotContains(t, f, ".tsx")
+	}
 }
 
 // TestFindDocumentationFiles_Empty tests finding no documentation files
@@ -562,11 +568,12 @@ func TestFindDocumentationFiles_Nested(t *testing.T) {
 
 	// Create nested documentation files
 	files := map[string]string{
-		"docs/README.md":                "# Test",
-		"docs/api/reference.rst":        "API Reference",
-		"docs/guides/tutorial.adoc":     "Tutorial",
-		"src/main.go":                   "package main",
-		"docs/advanced/deeply/nested.md": "# Deep",
+		"docs/README.md":                  "# Test",
+		"docs/api/reference.mdx":          "# API Reference",
+		"docs/guides/tutorial.md":         "# Tutorial",
+		"src/main.go":                     "package main",
+		"docs/advanced/deeply/nested.md":  "# Deep",
+		"docs/advanced/deeply/nested.mdx": "# Deep MDX",
 	}
 
 	for relPath, content := range files {
@@ -581,15 +588,16 @@ func TestFindDocumentationFiles_Nested(t *testing.T) {
 
 	found, err := strategy.findDocumentationFiles(tmpDir)
 	require.NoError(t, err)
-	assert.GreaterOrEqual(t, len(found), 4)
+	assert.Equal(t, 5, len(found)) // Only .md and .mdx files
 
-	// Verify deeply nested file was found
+	// Verify deeply nested files were found
 	var foundPaths []string
 	for _, f := range found {
 		rel, _ := filepath.Rel(tmpDir, f)
 		foundPaths = append(foundPaths, rel)
 	}
 	assert.Contains(t, foundPaths, "docs/advanced/deeply/nested.md")
+	assert.Contains(t, foundPaths, "docs/advanced/deeply/nested.mdx")
 }
 
 // TestProcessFiles_Success tests successful processing of multiple files
@@ -612,7 +620,7 @@ func TestProcessFiles_Success(t *testing.T) {
 	files := []string{
 		filepath.Join(tmpDir, "README.md"),
 		filepath.Join(tmpDir, "docs/guide.md"),
-		filepath.Join(tmpDir, "CHANGELOG.txt"),
+		filepath.Join(tmpDir, "docs/intro.mdx"),
 	}
 
 	for _, file := range files {
@@ -875,7 +883,7 @@ func testProcessFile(t *testing.T, strategy *GitStrategy, ctx context.Context, p
 
 	// For markdown files, the content is already markdown
 	ext := strings.ToLower(filepath.Ext(path))
-	if ext != ".md" {
+	if ext != ".md" && ext != ".mdx" {
 		// For other formats, wrap in code block
 		doc.Content = "```\n" + string(content) + "\n```"
 	}
@@ -888,7 +896,7 @@ func testProcessFile(t *testing.T, strategy *GitStrategy, ctx context.Context, p
 	assert.Equal(t, relPath, doc.RelativePath)
 
 	// For non-markdown, should be wrapped in code blocks
-	if ext != ".md" {
+	if ext != ".md" && ext != ".mdx" {
 		assert.Contains(t, doc.Content, "```")
 	} else {
 		// For markdown, content should be unchanged

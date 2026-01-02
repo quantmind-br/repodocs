@@ -24,7 +24,7 @@ INSTALL_DIR_GLOBAL=/usr/local/bin
 CONFIG_DIR=$(HOME)/.repodocs
 CONFIG_TEMPLATE=./configs/config.yaml.template
 
-.PHONY: all build clean test coverage lint fmt vet deps help install uninstall install-global uninstall-global install-config
+.PHONY: all build clean test coverage lint fmt vet deps help install uninstall install-global uninstall-global install-config release release-dry
 
 ## Main commands
 
@@ -169,6 +169,50 @@ check-install: ## Check installation status
 	else \
 		echo "✗ Config file not found at $(CONFIG_DIR)/config.yaml"; \
 	fi
+
+## Release
+
+release: ## Create and push a new release tag (usage: make release VERSION=v1.0.0)
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is required"; \
+		echo "Usage: make release VERSION=v1.0.0"; \
+		exit 1; \
+	fi
+	@if ! echo "$(VERSION)" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then \
+		echo "Error: VERSION must match semver format (e.g., v1.0.0)"; \
+		exit 1; \
+	fi
+	@if [ -n "$$(git status --porcelain)" ]; then \
+		echo "Error: Working directory is not clean. Commit or stash changes first."; \
+		exit 1; \
+	fi
+	@CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
+	if [ "$$CURRENT_BRANCH" != "main" ] && [ "$$CURRENT_BRANCH" != "master" ]; then \
+		echo "Warning: Not on main/master branch (current: $$CURRENT_BRANCH)"; \
+		read -p "Continue anyway? [y/N] " confirm; \
+		if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
+			exit 1; \
+		fi; \
+	fi
+	@if git rev-parse "$(VERSION)" >/dev/null 2>&1; then \
+		echo "Error: Tag $(VERSION) already exists"; \
+		exit 1; \
+	fi
+	@echo "Creating release $(VERSION)..."
+	@git tag -a $(VERSION) -m "Release $(VERSION)"
+	@echo "Pushing tag $(VERSION) to origin..."
+	@git push origin $(VERSION)
+	@echo ""
+	@echo "✓ Release $(VERSION) created and pushed!"
+	@echo "  GitHub Actions will now build and publish the release."
+	@echo "  Monitor: https://github.com/quantmind-br/repodocs-go/actions"
+
+release-dry: ## Test release build locally without publishing
+	@echo "Running dry-run release..."
+	@which goreleaser > /dev/null || (echo "Installing goreleaser..." && go install github.com/goreleaser/goreleaser/v2@latest)
+	goreleaser release --snapshot --clean
+	@echo ""
+	@echo "✓ Dry-run complete. Artifacts in ./dist/"
 
 ## Help
 

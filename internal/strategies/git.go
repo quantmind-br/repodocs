@@ -24,13 +24,10 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-// DocumentExtensions are file extensions to process
+// DocumentExtensions are file extensions to process (markdown only)
 var DocumentExtensions = map[string]bool{
-	".md":       true,
-	".txt":      true,
-	".rst":      true,
-	".adoc":     true,
-	".asciidoc": true,
+	".md":  true,
+	".mdx": true,
 }
 
 // IgnoreDirs are directories to skip
@@ -476,7 +473,7 @@ func (s *GitStrategy) processFile(ctx context.Context, path, tmpDir, repoURL, br
 
 	// For markdown files, the content is already markdown
 	ext := strings.ToLower(filepath.Ext(path))
-	if ext != ".md" {
+	if ext != ".md" && ext != ".mdx" {
 		// For other formats, wrap in code block
 		doc.Content = "```\n" + string(content) + "\n```"
 	}
