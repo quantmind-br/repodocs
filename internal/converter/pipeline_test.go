@@ -50,11 +50,11 @@ func TestNewPipeline(t *testing.T) {
 // TestPipeline_Convert tests HTML to Document conversion
 func TestPipeline_Convert(t *testing.T) {
 	tests := []struct {
-		name         string
-		opts         PipelineOptions
-		html         string
-		sourceURL    string
-		wantErr      bool
+		name          string
+		opts          PipelineOptions
+		html          string
+		sourceURL     string
+		wantErr       bool
 		shouldContain string
 	}{
 		{
@@ -62,9 +62,9 @@ func TestPipeline_Convert(t *testing.T) {
 			opts: PipelineOptions{
 				BaseURL: "https://example.com",
 			},
-			html:      `<html><head><title>Test Page</title></head><body><h1>Main Heading</h1><p>This is content.</p></body></html>`,
-			sourceURL: "https://example.com/page",
-			wantErr:   false,
+			html:          `<html><head><title>Test Page</title></head><body><h1>Main Heading</h1><p>This is content.</p></body></html>`,
+			sourceURL:     "https://example.com/page",
+			wantErr:       false,
 			shouldContain: "Main Heading",
 		},
 		{
@@ -73,9 +73,9 @@ func TestPipeline_Convert(t *testing.T) {
 				BaseURL:         "https://example.com",
 				ContentSelector: ".main-content",
 			},
-			html:      `<html><body><div class="main-content">Main content</div><div class="sidebar">Sidebar</div></body></html>`,
-			sourceURL: "https://example.com",
-			wantErr:   false,
+			html:          `<html><body><div class="main-content"><p>Main content</p><a href="/page">Link</a></div><div class="sidebar">Sidebar</div></body></html>`,
+			sourceURL:     "https://example.com",
+			wantErr:       false,
 			shouldContain: "Main content",
 		},
 		{
@@ -90,8 +90,8 @@ func TestPipeline_Convert(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name: "empty HTML",
-			opts: PipelineOptions{},
+			name:      "empty HTML",
+			opts:      PipelineOptions{},
 			html:      "",
 			sourceURL: "https://example.com",
 			wantErr:   false,
@@ -108,8 +108,8 @@ func TestPipeline_Convert(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name: "HTML with multiple headers",
-			opts: PipelineOptions{},
+			name:      "HTML with multiple headers",
+			opts:      PipelineOptions{},
 			html:      `<html><body><h1>Header 1</h1><p>Content</p><h2>Header 2</h2><p>More</p></body></html>`,
 			sourceURL: "https://example.com",
 			wantErr:   false,
@@ -139,6 +139,10 @@ func TestPipeline_Convert(t *testing.T) {
 					assert.NotEmpty(t, doc.Content)
 					assert.Contains(t, doc.Content, tt.shouldContain)
 				}
+
+				if tt.opts.ContentSelector != "" && strings.Contains(tt.html, "href=") {
+					assert.NotEmpty(t, doc.Links)
+				}
 			}
 		})
 	}
@@ -147,17 +151,17 @@ func TestPipeline_Convert(t *testing.T) {
 // TestConvertHTML tests convenience function
 func TestConvertHTML(t *testing.T) {
 	tests := []struct {
-		name         string
-		html         string
-		sourceURL    string
-		wantErr      bool
+		name          string
+		html          string
+		sourceURL     string
+		wantErr       bool
 		shouldContain string
 	}{
 		{
-			name:         "simple conversion",
-			html:         `<html><body><h1>Title</h1><p>Content</p></body></html>`,
-			sourceURL:    "https://example.com",
-			wantErr:      false,
+			name:          "simple conversion",
+			html:          `<html><body><h1>Title</h1><p>Content</p></body></html>`,
+			sourceURL:     "https://example.com",
+			wantErr:       false,
 			shouldContain: "Title",
 		},
 		{
@@ -239,50 +243,50 @@ func TestCalculateHash(t *testing.T) {
 // TestPipeline_RemoveExcluded tests exclusion selector
 func TestPipeline_RemoveExcluded(t *testing.T) {
 	tests := []struct {
-		name         string
-		exclude      string
-		html         string
+		name          string
+		exclude       string
+		html          string
 		shouldContain string
-		notContains []string
+		notContains   []string
 	}{
 		{
-			name:         "exclude by class",
-			exclude:      ".sidebar",
-			html:         `<html><body><div class="sidebar">Sidebar</div><p>Content</p></body></html>`,
+			name:          "exclude by class",
+			exclude:       ".sidebar",
+			html:          `<html><body><div class="sidebar">Sidebar</div><p>Content</p></body></html>`,
 			shouldContain: "Content",
 			notContains:   []string{"Sidebar"},
 		},
 		{
-			name:         "exclude by ID",
-			exclude:      "#ads",
-			html:         `<html><body><div id="ads">Ads</div><p>Content</p></body></html>`,
+			name:          "exclude by ID",
+			exclude:       "#ads",
+			html:          `<html><body><div id="ads">Ads</div><p>Content</p></body></html>`,
 			shouldContain: "Content",
 			notContains:   []string{"Ads"},
 		},
 		{
-			name:         "exclude by tag",
-			exclude:      "script",
-			html:         `<html><body><script>alert('xss')</script><p>Content</p></body></html>`,
+			name:          "exclude by tag",
+			exclude:       "script",
+			html:          `<html><body><script>alert('xss')</script><p>Content</p></body></html>`,
 			shouldContain: "Content",
 			notContains:   []string{"alert"},
 		},
 		{
-			name:         "multiple selectors",
-			exclude:      ".sidebar, .ads, script",
-			html:         `<html><body><div class="sidebar">Side</div><div class="ads">Ads</div><script>alert()</script><p>Content</p></body></html>`,
+			name:          "multiple selectors",
+			exclude:       ".sidebar, .ads, script",
+			html:          `<html><body><div class="sidebar">Side</div><div class="ads">Ads</div><script>alert()</script><p>Content</p></body></html>`,
 			shouldContain: "Content",
 			notContains:   []string{"Side", "Ads", "alert"},
 		},
 		{
-			name:         "no exclusion",
-			exclude:      "",
-			html:         `<html><body><p>Content</p></body></html>`,
+			name:          "no exclusion",
+			exclude:       "",
+			html:          `<html><body><p>Content</p></body></html>`,
 			shouldContain: "Content",
 		},
 		{
-			name:         "selector not found",
-			exclude:      ".nonexistent",
-			html:         `<html><body><p>Content</p></body></html>`,
+			name:          "selector not found",
+			exclude:       ".nonexistent",
+			html:          `<html><body><p>Content</p></body></html>`,
 			shouldContain: "Content",
 		},
 	}
@@ -360,18 +364,18 @@ func TestPipeline_Convert_Metadata(t *testing.T) {
 // TestPipeline_Convert_UTF8Encoding tests UTF-8 encoding handling
 func TestPipeline_Convert_UTF8Encoding(t *testing.T) {
 	tests := []struct {
-		name      string
-		html      string
+		name           string
+		html           string
 		shouldContains []string
 	}{
 		{
-			name: "UTF-8 content",
-			html: `<html><body><p>Hello 世界 🌍</p></body></html>`,
+			name:           "UTF-8 content",
+			html:           `<html><body><p>Hello 世界 🌍</p></body></html>`,
 			shouldContains: []string{"Hello", "世界", "🌍"},
 		},
 		{
-			name: "UTF-8 with meta charset",
-			html: `<html><head><meta charset="utf-8"></head><body><p>UTF-8 字符</p></body></html>`,
+			name:           "UTF-8 with meta charset",
+			html:           `<html><head><meta charset="utf-8"></head><body><p>UTF-8 字符</p></body></html>`,
 			shouldContains: []string{"UTF-8", "字符"},
 		},
 	}

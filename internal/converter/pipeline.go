@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"strings"
 	"time"
 
@@ -60,38 +61,95 @@ func (p *Pipeline) Convert(ctx context.Context, html string, sourceURL string) (
 	}
 	html = string(htmlBytes)
 
-	// Step 2: Extract main content
-	content, title, err := p.extractor.Extract(html, sourceURL)
+	// Step 2: Parse original HTML once
+	origDoc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return nil, err
 	}
 
-	// Step 2.5: Apply exclusion selector (remove unwanted elements)
+	// Step 3: Extract main content
+	var contentHTML string
+	var title string
+	var contentSel *goquery.Selection
+	usedSelector := false
+
+	if p.extractor.selector != "" {
+		contentHTML, title, err = p.extractor.ExtractFromDocument(origDoc, sourceURL)
+		if err != nil {
+			if errors.Is(err, ErrSelectorNotFound) {
+				contentHTML, title, err = p.extractor.extractWithReadability(html, sourceURL)
+			} else {
+				return nil, err
+			}
+		} else {
+			usedSelector = true
+			contentSel = origDoc.Find(p.extractor.selector)
+		}
+	} else {
+		contentHTML, title, err = p.extractor.extractWithReadability(html, sourceURL)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 3.5: Apply exclusion selector (remove unwanted elements)
 	if p.excludeSelector != "" {
-		content = p.removeExcluded(content)
+		if usedSelector {
+			contentSel = p.removeExcludedFromSelection(contentSel)
+		} else {
+			contentHTML = p.removeExcluded(contentHTML)
+		}
 	}
 
-	// Step 3: Sanitize HTML
-	sanitized, err := p.sanitizer.Sanitize(content)
+	if usedSelector && contentSel == nil {
+		return nil, ErrSelectorNotFound
+	}
+
+	// Step 4: Sanitize HTML
+	var sanitizedHTML string
+	var headers map[string][]string
+	var links []string
+
+	description := ExtractDescription(origDoc)
+
+	if usedSelector {
+		sanitizedSel, selErr := p.sanitizer.SanitizeSelection(contentSel)
+		if selErr != nil {
+			return nil, selErr
+		}
+
+		headers = extractHeadersFromSelection(sanitizedSel)
+		links = extractLinksFromSelection(sanitizedSel, sourceURL)
+
+		sanitizedHTML, err = selectionHTML(sanitizedSel)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		contentDoc, docErr := goquery.NewDocumentFromReader(strings.NewReader(contentHTML))
+		if docErr != nil {
+			return nil, docErr
+		}
+
+		sanitizedDoc, docErr := p.sanitizer.SanitizeDocument(contentDoc)
+		if docErr != nil {
+			return nil, docErr
+		}
+
+		headers = ExtractHeadersFromDoc(sanitizedDoc)
+		links = ExtractLinksFromDoc(sanitizedDoc, sourceURL)
+
+		sanitizedHTML, err = sanitizedDoc.Html()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Step 5: Convert to Markdown
+	markdown, err := p.mdConverter.Convert(sanitizedHTML)
 	if err != nil {
 		return nil, err
 	}
-
-	// Step 4: Convert to Markdown
-	markdown, err := p.mdConverter.Convert(sanitized)
-	if err != nil {
-		return nil, err
-	}
-
-	// Step 5: Extract metadata
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
-	if err != nil {
-		return nil, err
-	}
-
-	description := ExtractDescription(doc)
-	headers := ExtractHeaders(sanitized)
-	links := ExtractLinks(sanitized, sourceURL)
 
 	// Step 6: Calculate statistics
 	plainText := StripMarkdown(markdown)
@@ -154,7 +212,7 @@ func (p *Pipeline) removeExcluded(html string) string {
 		return html
 	}
 
-	doc.Find(p.excludeSelector).Remove()
+	_ = p.removeExcludedFromSelection(doc.Selection)
 
 	result, err := doc.Find("body").Html()
 	if err != nil {
@@ -166,4 +224,34 @@ func (p *Pipeline) removeExcluded(html string) string {
 	}
 
 	return result
+}
+
+func (p *Pipeline) removeExcludedFromSelection(sel *goquery.Selection) *goquery.Selection {
+	if p.excludeSelector == "" || sel == nil {
+		return sel
+	}
+
+	findWithRoot(sel, p.excludeSelector).Remove()
+	return sel
+}
+
+func selectionHTML(sel *goquery.Selection) (string, error) {
+	if sel == nil {
+		return "", nil
+	}
+
+	var combined strings.Builder
+	found := false
+	sel.Each(func(_ int, node *goquery.Selection) {
+		if html, err := node.Html(); err == nil {
+			combined.WriteString(html)
+			found = true
+		}
+	})
+
+	if !found {
+		return sel.Html()
+	}
+
+	return combined.String(), nil
 }

@@ -31,12 +31,12 @@ func TestNewExtractContent(t *testing.T) {
 // TestExtractContent_Extract tests content extraction
 func TestExtractContent_Extract(t *testing.T) {
 	tests := []struct {
-		name           string
-		selector       string
-		html           string
-		sourceURL      string
-		wantErr        bool
-		shouldContain  string
+		name          string
+		selector      string
+		html          string
+		sourceURL     string
+		wantErr       bool
+		shouldContain string
 	}{
 		{
 			name:          "with matching selector",
@@ -98,6 +98,22 @@ func TestExtractContent_Extract(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestExtractContent_ExtractFromDocument tests doc-aware extraction.
+func TestExtractContent_ExtractFromDocument(t *testing.T) {
+	html := `<html><body><div class="main-content">Main</div><div class="sidebar">Side</div></body></html>`
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.NoError(t, err)
+
+	extractor := NewExtractContent(".main-content")
+	content, _, err := extractor.ExtractFromDocument(doc, "https://example.com")
+	require.NoError(t, err)
+	assert.Contains(t, content, "Main")
+
+	missingExtractor := NewExtractContent(".missing")
+	_, _, err = missingExtractor.ExtractFromDocument(doc, "https://example.com")
+	assert.ErrorIs(t, err, ErrSelectorNotFound)
 }
 
 // TestExtractTitle tests title extraction
@@ -230,8 +246,8 @@ func TestExtractHeaders(t *testing.T) {
 			},
 		},
 		{
-			name:     "empty headers are skipped",
-			html:     `<h2></h2><h2>Valid</h2>`,
+			name: "empty headers are skipped",
+			html: `<h2></h2><h2>Valid</h2>`,
 			expected: map[string][]string{
 				"h2": {"Valid"},
 			},
@@ -251,7 +267,11 @@ func TestExtractHeaders(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ExtractHeaders(tt.html)
+			doc, err := goquery.NewDocumentFromReader(strings.NewReader(tt.html))
+			require.NoError(t, err)
+			docResult := ExtractHeadersFromDoc(doc)
 			assert.Equal(t, tt.expected, result)
+			assert.Equal(t, tt.expected, docResult)
 		})
 	}
 }
@@ -324,13 +344,18 @@ func TestExtractLinks(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ExtractLinks(tt.html, tt.baseURL)
+			doc, err := goquery.NewDocumentFromReader(strings.NewReader(tt.html))
+			require.NoError(t, err)
+			docResult := ExtractLinksFromDoc(doc, tt.baseURL)
 
 			for _, exp := range tt.expected {
 				assert.Contains(t, result, exp)
+				assert.Contains(t, docResult, exp)
 			}
 
 			for _, notExp := range tt.notExpected {
 				assert.NotContains(t, result, notExp)
+				assert.NotContains(t, docResult, notExp)
 			}
 		})
 	}

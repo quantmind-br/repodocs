@@ -2,8 +2,10 @@ package converter
 
 import (
 	"net/url"
+	"strings"
 	"testing"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,50 +52,50 @@ func TestSanitizer_Sanitize(t *testing.T) {
 		wantErr     bool
 	}{
 		{
-			name: "remove script tags",
-			opts: SanitizerOptions{},
-			input: `<html><body><script>alert('xss')</script><p>Content</p></body></html>`,
+			name:        "remove script tags",
+			opts:        SanitizerOptions{},
+			input:       `<html><body><script>alert('xss')</script><p>Content</p></body></html>`,
 			contains:    []string{"Content"},
 			notContains: []string{"<script>", "alert"},
 		},
 		{
-			name: "remove style tags",
-			opts: SanitizerOptions{},
-			input: `<html><head><style>body{color:red;}</style></head><body><p>Content</p></body></html>`,
+			name:        "remove style tags",
+			opts:        SanitizerOptions{},
+			input:       `<html><head><style>body{color:red;}</style></head><body><p>Content</p></body></html>`,
 			contains:    []string{"Content"},
 			notContains: []string{"<style>", "color:red"},
 		},
 		{
-			name: "remove navigation elements",
-			opts: SanitizerOptions{RemoveNavigation: true},
-			input: `<html><body><nav class="navigation">Menu</nav><p>Content</p></body></html>`,
+			name:        "remove navigation elements",
+			opts:        SanitizerOptions{RemoveNavigation: true},
+			input:       `<html><body><nav class="navigation">Menu</nav><p>Content</p></body></html>`,
 			contains:    []string{"Content"},
 			notContains: []string{"<nav", "Menu"},
 		},
 		{
-			name: "remove hidden elements",
-			opts: SanitizerOptions{},
-			input: `<html><body><div style="display:none">Hidden</div><p>Visible</p></body></html>`,
+			name:        "remove hidden elements",
+			opts:        SanitizerOptions{},
+			input:       `<html><body><div style="display:none">Hidden</div><p>Visible</p></body></html>`,
 			contains:    []string{"Visible"},
 			notContains: []string{"Hidden", "display:none"},
 		},
 		{
-			name: "normalize URLs",
-			opts: SanitizerOptions{BaseURL: "https://example.com/path/"},
-			input: `<html><body><a href="/relative">Link</a></body></html>`,
-			contains:    []string{"https://example.com/relative"},
+			name:     "normalize URLs",
+			opts:     SanitizerOptions{BaseURL: "https://example.com/path/"},
+			input:    `<html><body><a href="/relative">Link</a></body></html>`,
+			contains: []string{"https://example.com/relative"},
 		},
 		{
-			name: "remove empty elements",
-			opts: SanitizerOptions{},
-			input: `<html><body><p></p><p>Content</p></body></html>`,
+			name:        "remove empty elements",
+			opts:        SanitizerOptions{},
+			input:       `<html><body><p></p><p>Content</p></body></html>`,
 			contains:    []string{"Content"},
 			notContains: []string{"<p></p>"},
 		},
 		{
-			name: "empty HTML",
-			opts: SanitizerOptions{},
-			input: "",
+			name:    "empty HTML",
+			opts:    SanitizerOptions{},
+			input:   "",
 			wantErr: false,
 		},
 	}
@@ -107,11 +109,19 @@ func TestSanitizer_Sanitize(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				require.NoError(t, err)
+				doc, docErr := goquery.NewDocumentFromReader(strings.NewReader(tt.input))
+				require.NoError(t, docErr)
+				sanitizedDoc, docErr := sanitizer.SanitizeDocument(doc)
+				require.NoError(t, docErr)
+				sanitizedHTML, docErr := sanitizedDoc.Html()
+				require.NoError(t, docErr)
 				for _, contain := range tt.contains {
 					assert.Contains(t, result, contain)
+					assert.Contains(t, sanitizedHTML, contain)
 				}
 				for _, notContain := range tt.notContains {
 					assert.NotContains(t, result, notContain)
+					assert.NotContains(t, sanitizedHTML, notContain)
 				}
 			}
 		})

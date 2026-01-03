@@ -91,41 +91,12 @@ func (s *Sanitizer) Sanitize(html string) (string, error) {
 		return "", err
 	}
 
-	// Remove unwanted tags
-	for _, tag := range TagsToRemove {
-		doc.Find(tag).Remove()
+	cleanDoc, err := s.SanitizeDocument(doc)
+	if err != nil {
+		return "", err
 	}
 
-	// Remove elements by class
-	if s.removeNavigation {
-		for _, class := range ClassesToRemove {
-			doc.Find("." + class).Remove()
-			doc.Find("[class*='" + class + "']").Remove()
-		}
-
-		// Remove elements by ID
-		for _, id := range IDsToRemove {
-			doc.Find("#" + id).Remove()
-		}
-
-		doc.Find("nav").Remove()
-	}
-
-	// Remove hidden elements
-	doc.Find("[style*='display:none']").Remove()
-	doc.Find("[style*='display: none']").Remove()
-	doc.Find("[hidden]").Remove()
-
-	// Normalize URLs if base URL is provided
-	if s.baseURL != "" {
-		s.normalizeURLs(doc)
-	}
-
-	// Remove empty paragraphs and divs
-	s.removeEmptyElements(doc)
-
-	// Get cleaned HTML
-	result, err := doc.Html()
+	result, err := cleanDoc.Html()
 	if err != nil {
 		return "", err
 	}
@@ -133,35 +104,94 @@ func (s *Sanitizer) Sanitize(html string) (string, error) {
 	return result, nil
 }
 
+// SanitizeDocument cleans a pre-parsed document in place.
+func (s *Sanitizer) SanitizeDocument(doc *goquery.Document) (*goquery.Document, error) {
+	if doc == nil {
+		return nil, nil
+	}
+
+	s.sanitizeSelection(doc.Selection)
+	return doc, nil
+}
+
+// SanitizeSelection cleans a selection in place.
+func (s *Sanitizer) SanitizeSelection(sel *goquery.Selection) (*goquery.Selection, error) {
+	if sel == nil {
+		return nil, nil
+	}
+
+	s.sanitizeSelection(sel)
+	return sel, nil
+}
+
+func (s *Sanitizer) sanitizeSelection(sel *goquery.Selection) {
+	// Remove unwanted tags
+	for _, tag := range TagsToRemove {
+		findWithRoot(sel, tag).Remove()
+	}
+
+	// Remove elements by class
+	if s.removeNavigation {
+		for _, class := range ClassesToRemove {
+			findWithRoot(sel, "."+class).Remove()
+			findWithRoot(sel, "[class*='"+class+"']").Remove()
+		}
+
+		// Remove elements by ID
+		for _, id := range IDsToRemove {
+			findWithRoot(sel, "#"+id).Remove()
+		}
+
+		findWithRoot(sel, "nav").Remove()
+	}
+
+	// Remove hidden elements
+	findWithRoot(sel, "[style*='display:none']").Remove()
+	findWithRoot(sel, "[style*='display: none']").Remove()
+	findWithRoot(sel, "[hidden]").Remove()
+
+	// Normalize URLs if base URL is provided
+	if s.baseURL != "" {
+		s.normalizeURLsFromSelection(sel)
+	}
+
+	// Remove empty paragraphs and divs
+	s.removeEmptyElementsFromSelection(sel)
+}
+
 // normalizeURLs converts relative URLs to absolute URLs
 func (s *Sanitizer) normalizeURLs(doc *goquery.Document) {
+	s.normalizeURLsFromSelection(doc.Selection)
+}
+
+func (s *Sanitizer) normalizeURLsFromSelection(sel *goquery.Selection) {
 	base, err := url.Parse(s.baseURL)
 	if err != nil {
 		return
 	}
 
 	// Normalize href attributes
-	doc.Find("a[href]").Each(func(_ int, sel *goquery.Selection) {
-		if href, exists := sel.Attr("href"); exists {
+	findWithRoot(sel, "a[href]").Each(func(_ int, node *goquery.Selection) {
+		if href, exists := node.Attr("href"); exists {
 			if absoluteURL := resolveURL(base, href); absoluteURL != "" {
-				sel.SetAttr("href", absoluteURL)
+				node.SetAttr("href", absoluteURL)
 			}
 		}
 	})
 
 	// Normalize src attributes
-	doc.Find("[src]").Each(func(_ int, sel *goquery.Selection) {
-		if src, exists := sel.Attr("src"); exists {
+	findWithRoot(sel, "[src]").Each(func(_ int, node *goquery.Selection) {
+		if src, exists := node.Attr("src"); exists {
 			if absoluteURL := resolveURL(base, src); absoluteURL != "" {
-				sel.SetAttr("src", absoluteURL)
+				node.SetAttr("src", absoluteURL)
 			}
 		}
 	})
 
 	// Normalize srcset attributes
-	doc.Find("[srcset]").Each(func(_ int, sel *goquery.Selection) {
-		if srcset, exists := sel.Attr("srcset"); exists {
-			sel.SetAttr("srcset", normalizeSrcset(base, srcset))
+	findWithRoot(sel, "[srcset]").Each(func(_ int, node *goquery.Selection) {
+		if srcset, exists := node.Attr("srcset"); exists {
+			node.SetAttr("srcset", normalizeSrcset(base, srcset))
 		}
 	})
 }
@@ -200,14 +230,18 @@ func normalizeSrcset(base *url.URL, srcset string) string {
 
 // removeEmptyElements removes empty block elements
 func (s *Sanitizer) removeEmptyElements(doc *goquery.Document) {
+	s.removeEmptyElementsFromSelection(doc.Selection)
+}
+
+func (s *Sanitizer) removeEmptyElementsFromSelection(sel *goquery.Selection) {
 	emptyTags := []string{"p", "div", "span", "section", "article"}
 	whitespaceRegex := regexp.MustCompile(`^\s*$`)
 
 	for _, tag := range emptyTags {
-		doc.Find(tag).Each(func(_ int, sel *goquery.Selection) {
-			text := strings.TrimSpace(sel.Text())
-			if whitespaceRegex.MatchString(text) && sel.Children().Length() == 0 {
-				sel.Remove()
+		findWithRoot(sel, tag).Each(func(_ int, node *goquery.Selection) {
+			text := strings.TrimSpace(node.Text())
+			if whitespaceRegex.MatchString(text) && node.Children().Length() == 0 {
+				node.Remove()
 			}
 		})
 	}
