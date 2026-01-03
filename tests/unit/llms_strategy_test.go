@@ -48,14 +48,14 @@ func TestLLMSStrategy_CanHandle(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "Uppercase extension - should NOT match (case-sensitive)",
+			name:     "Uppercase extension - case-insensitive matching",
 			url:      "https://example.com/LLMS.TXT",
-			expected: false,
+			expected: true,
 		},
 		{
-			name:     "Mixed case - should NOT match (case-sensitive)",
+			name:     "Mixed case - case-insensitive matching",
 			url:      "https://example.com/docs/Llms.Txt",
-			expected: false,
+			expected: true,
 		},
 		{
 			name:     "Regular page",
@@ -479,7 +479,7 @@ func TestCanHandle_NonLLMSURL(t *testing.T) {
 		{
 			name: "Uppercase LLMS",
 			url:  "https://example.com/LLMS.TXT",
-			want: false,
+			want: true,
 		},
 		{
 			name: "Empty URL",

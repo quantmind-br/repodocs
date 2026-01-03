@@ -12,10 +12,11 @@ type StrategyType string
 
 const (
 	StrategyLLMS    StrategyType = "llms"
+	StrategyPkgGo   StrategyType = "pkggo"
+	StrategyDocsRS  StrategyType = "docsrs"
 	StrategySitemap StrategyType = "sitemap"
 	StrategyWiki    StrategyType = "wiki"
 	StrategyGit     StrategyType = "git"
-	StrategyPkgGo   StrategyType = "pkggo"
 	StrategyCrawler StrategyType = "crawler"
 	StrategyUnknown StrategyType = "unknown"
 )
@@ -65,12 +66,16 @@ func DetectStrategy(rawURL string) StrategyType {
 		return StrategyLLMS
 	}
 
-	// Check for pkg.go.dev (before Git, since pkg.go.dev URLs contain github.com paths)
 	if strings.Contains(lower, "pkg.go.dev") {
 		return StrategyPkgGo
 	}
 
-	// Check for sitemap (using path without query/fragment)
+	if strings.Contains(lower, "docs.rs") {
+		if !strings.Contains(lowerPath, "/src/") && !strings.Contains(lowerPath, "/source/") {
+			return StrategyDocsRS
+		}
+	}
+
 	if strings.HasSuffix(lowerPath, "sitemap.xml") ||
 		strings.HasSuffix(lowerPath, "sitemap.xml.gz") ||
 		strings.Contains(lowerPath, "sitemap") && strings.HasSuffix(lowerPath, ".xml") {
@@ -107,14 +112,16 @@ func CreateStrategy(strategyType StrategyType, deps *strategies.Dependencies) st
 	switch strategyType {
 	case StrategyLLMS:
 		return strategies.NewLLMSStrategy(deps)
+	case StrategyPkgGo:
+		return strategies.NewPkgGoStrategy(deps)
+	case StrategyDocsRS:
+		return strategies.NewDocsRSStrategy(deps)
 	case StrategySitemap:
 		return strategies.NewSitemapStrategy(deps)
 	case StrategyWiki:
 		return strategies.NewWikiStrategy(deps)
 	case StrategyGit:
 		return strategies.NewGitStrategy(deps)
-	case StrategyPkgGo:
-		return strategies.NewPkgGoStrategy(deps)
 	case StrategyCrawler:
 		return strategies.NewCrawlerStrategy(deps)
 	default:
@@ -126,6 +133,7 @@ func GetAllStrategies(deps *strategies.Dependencies) []strategies.Strategy {
 	return []strategies.Strategy{
 		strategies.NewLLMSStrategy(deps),
 		strategies.NewPkgGoStrategy(deps),
+		strategies.NewDocsRSStrategy(deps),
 		strategies.NewSitemapStrategy(deps),
 		strategies.NewWikiStrategy(deps),
 		strategies.NewGitStrategy(deps),

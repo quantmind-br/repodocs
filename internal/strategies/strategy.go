@@ -2,6 +2,7 @@ package strategies
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -243,6 +244,11 @@ func (d *Dependencies) WriteDocument(ctx context.Context, doc *domain.Document) 
 			d.Logger.Warn().Err(err).Str("url", doc.URL).Msg("Failed to enhance metadata, writing without enhancement")
 		}
 	}
+
+	if d.Writer == nil {
+		return fmt.Errorf("writer is not configured")
+	}
+
 	return d.Writer.Write(ctx, doc)
 }
 

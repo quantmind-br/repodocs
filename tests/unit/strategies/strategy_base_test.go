@@ -56,22 +56,26 @@ func TestDependencies_Close(t *testing.T) {
 func TestDependencies_FlushMetadata(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create dependencies with collector
 	collector := output.NewMetadataCollector(output.CollectorOptions{
 		BaseDir:   tmpDir,
 		SourceURL: "https://example.com",
 		Enabled:   true,
 	})
 
+	testDoc := &domain.Document{
+		URL:     "https://example.com/test",
+		Title:   "Test",
+		Content: "Test content",
+	}
+	collector.Add(testDoc, tmpDir+"/test.md")
+
 	deps := &strategies.Dependencies{
 		Collector: collector,
 	}
 
-	// Flush metadata
 	err := deps.FlushMetadata()
 	assert.NoError(t, err)
 
-	// Check that metadata file was created
 	assert.FileExists(t, tmpDir+"/metadata.json")
 }
 
@@ -86,29 +90,31 @@ func TestDependencies_FlushMetadata_NoCollector(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestDependencies_SetStrategy tests setting strategy name
 func TestDependencies_SetStrategy(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create dependencies with collector
 	collector := output.NewMetadataCollector(output.CollectorOptions{
 		BaseDir:   tmpDir,
 		SourceURL: "https://example.com",
 		Enabled:   true,
 	})
 
+	testDoc := &domain.Document{
+		URL:     "https://example.com/test",
+		Title:   "Test",
+		Content: "Test content",
+	}
+	collector.Add(testDoc, tmpDir+"/test.md")
+
 	deps := &strategies.Dependencies{
 		Collector: collector,
 	}
 
-	// Set strategy
 	deps.SetStrategy("git")
 
-	// Flush and verify metadata
 	err := deps.FlushMetadata()
 	assert.NoError(t, err)
 
-	// Verify the strategy is in metadata (would need to read and parse metadata.json)
 	assert.FileExists(t, tmpDir+"/metadata.json")
 }
 
@@ -122,25 +128,28 @@ func TestDependencies_SetStrategy_NoCollector(t *testing.T) {
 	deps.SetStrategy("git")
 }
 
-// TestDependencies_SetSourceURL tests setting source URL
 func TestDependencies_SetSourceURL(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create dependencies with collector
 	collector := output.NewMetadataCollector(output.CollectorOptions{
 		BaseDir:   tmpDir,
 		SourceURL: "",
 		Enabled:   true,
 	})
 
+	testDoc := &domain.Document{
+		URL:     "https://example.com/test",
+		Title:   "Test",
+		Content: "Test content",
+	}
+	collector.Add(testDoc, tmpDir+"/test.md")
+
 	deps := &strategies.Dependencies{
 		Collector: collector,
 	}
 
-	// Set source URL
 	deps.SetSourceURL("https://github.com/test/repo")
 
-	// Flush and verify
 	err := deps.FlushMetadata()
 	assert.NoError(t, err)
 

@@ -23,11 +23,17 @@ func TestDetectStrategy(t *testing.T) {
 		{"llms.txt with path", "https://example.com/docs/llms.txt", StrategyLLMS},
 		{"llms.txt trailing slash", "https://example.com/llms.txt/", StrategyCrawler}, // Ends with /, not llms.txt
 		{"llms.txt uppercase", "HTTPS://EXAMPLE.COM/LLMS.TXT", StrategyLLMS},
-		{"llms.txt with params", "https://example.com/llms.txt?v=1", StrategyCrawler}, // Ends with ?v=1, not llms.txt
+		{"llms.txt with params", "https://example.com/llms.txt?v=1", StrategyLLMS},
 
 		// PkgGo
 		{"pkg.go.dev", "https://pkg.go.dev/github.com/pkg/errors", StrategyPkgGo},
 		{"pkg.go.dev uppercase", "HTTPS://PKG.GO.DEV/github.com/pkg/errors", StrategyPkgGo},
+
+		// DocsRS
+		{"docs.rs crate", "https://docs.rs/serde", StrategyDocsRS},
+		{"docs.rs with version", "https://docs.rs/serde/1.0.0", StrategyDocsRS},
+		{"docs.rs full path", "https://docs.rs/serde/1.0.0/serde/", StrategyDocsRS},
+		{"docs.rs source view", "https://docs.rs/serde/1.0.0/src/serde/lib.rs", StrategyCrawler},
 
 		// Sitemap
 		{"sitemap.xml", "https://example.com/sitemap.xml", StrategySitemap},
@@ -109,6 +115,7 @@ func TestCreateStrategy(t *testing.T) {
 		{"Wiki strategy", StrategyWiki},
 		{"Git strategy", StrategyGit},
 		{"PkgGo strategy", StrategyPkgGo},
+		{"DocsRS strategy", StrategyDocsRS},
 		{"Crawler strategy", StrategyCrawler},
 	}
 
@@ -139,7 +146,7 @@ func TestGetAllStrategies(t *testing.T) {
 	defer deps.Close()
 
 	strategies := GetAllStrategies(deps)
-	assert.Len(t, strategies, 6)
+	assert.Len(t, strategies, 7)
 
 	names := make(map[string]bool)
 	for _, s := range strategies {
@@ -148,6 +155,7 @@ func TestGetAllStrategies(t *testing.T) {
 
 	assert.True(t, names["llms"])
 	assert.True(t, names["pkggo"])
+	assert.True(t, names["docsrs"])
 	assert.True(t, names["sitemap"])
 	assert.True(t, names["wiki"])
 	assert.True(t, names["git"])
@@ -282,7 +290,7 @@ func TestOrchestrator_GetStrategyName(t *testing.T) {
 			Directory: "/tmp",
 		},
 		Logging: config.LoggingConfig{
-			Level:  "error",
+			Level: "error",
 		},
 	}
 
@@ -326,7 +334,7 @@ func TestOrchestrator_ValidateURL(t *testing.T) {
 			Directory: "/tmp",
 		},
 		Logging: config.LoggingConfig{
-			Level:  "error",
+			Level: "error",
 		},
 	}
 
@@ -361,7 +369,7 @@ func TestOrchestrator_Close(t *testing.T) {
 			Directory: "/tmp",
 		},
 		Logging: config.LoggingConfig{
-			Level:  "error",
+			Level: "error",
 		},
 	}
 

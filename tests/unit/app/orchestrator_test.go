@@ -591,8 +591,8 @@ func TestGetAllStrategies(t *testing.T) {
 
 	strategies := app.GetAllStrategies(deps)
 
-	// Should return all 6 strategy types
-	assert.Len(t, strategies, 6, "Expected 6 strategies")
+	// Should return all 7 strategy types
+	assert.Len(t, strategies, 7, "Expected 7 strategies")
 
 	// Verify all strategies are non-nil
 	for i, strategy := range strategies {
@@ -600,8 +600,8 @@ func TestGetAllStrategies(t *testing.T) {
 	}
 
 	// Verify strategy names
-	// Order must match DetectStrategy priority: llms > pkggo > sitemap > wiki > git > crawler
-	expectedNames := []string{"llms", "pkggo", "sitemap", "wiki", "git", "crawler"}
+	// Order must match DetectStrategy priority: llms > pkggo > docsrs > sitemap > wiki > git > crawler
+	expectedNames := []string{"llms", "pkggo", "docsrs", "sitemap", "wiki", "git", "crawler"}
 	actualNames := make([]string, len(strategies))
 	for i, strategy := range strategies {
 		actualNames[i] = strategy.Name()

@@ -8,7 +8,7 @@ RepoDocs is a modular, high-performance CLI tool and Go library designed to extr
     -   **Web Crawler**: Recursive crawling of standard websites.
     -   **Git Strategy**: Clones or archives Git repositories (GitHub, GitLab, Bitbucket).
     -   **Sitemap Strategy**: Processes URLs defined in `sitemap.xml`.
-    -   **Specialized Parsers**: Support for `llms.txt` and `pkg.go.dev`.
+    -   **Specialized Parsers**: Support for `llms.txt`, `pkg.go.dev`, and `docs.rs` (Rust crate documentation).
 -   **Stealth Fetching**: Utilizes `tls-client` and custom User-Agent spoofing to bypass bot detection.
 -   **Headless Rendering**: Optional JavaScript execution via Rod/Chrome for dynamic, single-page application (SPA) documentation.
 -   **Advanced Conversion Pipeline**: 
@@ -60,6 +60,16 @@ repodocs https://github.com/owner/repo --filter docs/guides
 ```
 
 **Note:** When both URL path and `--filter` flag are provided, the URL path takes precedence.
+
+### Rust Crate Documentation (docs.rs)
+Extract documentation from Rust crates hosted on docs.rs:
+```bash
+repodocs https://docs.rs/serde
+
+repodocs https://docs.rs/tokio/1.32.0
+
+repodocs https://docs.rs/serde/1.0.0 -o ./serde-docs -j 3 --limit 50
+```
 
 ### Advanced Usage
 Crawl with JavaScript rendering, higher concurrency, and AI metadata:
