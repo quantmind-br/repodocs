@@ -25,7 +25,7 @@ CONFIG_DIR=$(HOME)/.repodocs
 CONFIG_TEMPLATE=./configs/config.yaml.template
 
 .PHONY: all build clean test coverage lint fmt vet deps help install uninstall install-global uninstall-global install-config \
-	version-info version-bump release release-patch release-minor release-major release-tag release-push release-snapshot release-dry \
+	version-info version-bump release release-patch release-minor release-major release-tag release-push release-snapshot release-dry release-check release-interactive changelog \
 	test-all test-app test-cache test-config test-converter test-domain test-fetcher test-git test-llm test-output test-renderer test-strategies test-cmd \
 	coverage-all coverage-app coverage-cache coverage-config coverage-converter coverage-domain coverage-fetcher coverage-git coverage-llm coverage-output coverage-renderer coverage-strategies coverage-cmd coverage-view coverage-summary
 
@@ -474,6 +474,6 @@ release-dry: ## Test release build locally without publishing
 ## Help
 
 help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 .DEFAULT_GOAL := help
