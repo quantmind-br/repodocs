@@ -1,132 +1,133 @@
 # RepoDocs
 
-RepoDocs is a modular, high-performance CLI tool and Go library designed to extract documentation from various online sources and convert it into structured, LLM-friendly Markdown. Whether targeting a standard website, a Git repository, a sitemap, or specialized documentation hubs like `pkg.go.dev`, RepoDocs orchestrates the extraction, cleaning, and transformation process automatically.
+RepoDocs is a powerful Go-based CLI tool and library designed to extract documentation from diverse sources—including websites, Git repositories, Sitemaps, and Wikis—and convert them into clean, structured Markdown. It is built to facilitate the creation of high-quality datasets for LLM training, RAG (Retrieval-Augmented Generation) pipelines, or local documentation mirrors.
 
 ## Features
 
--   **Multi-Strategy Extraction**: Automatically detects and handles various source types:
-    -   **Web Crawler**: Recursive crawling of standard websites.
-    -   **Git Strategy**: Clones or archives Git repositories (GitHub, GitLab, Bitbucket).
-    -   **Sitemap Strategy**: Processes URLs defined in `sitemap.xml`.
-    -   **Specialized Parsers**: Support for `llms.txt`, `pkg.go.dev`, and `docs.rs` (Rust crate documentation).
--   **Stealth Fetching**: Utilizes `tls-client` and custom User-Agent spoofing to bypass bot detection.
--   **Headless Rendering**: Optional JavaScript execution via Rod/Chrome for dynamic, single-page application (SPA) documentation.
--   **Advanced Conversion Pipeline**: 
-    -   Identifies main content using Readability algorithms.
-    -   Sanitizes HTML by removing scripts, navigation, and comments.
-    -   Converts HTML to GitHub Flavored Markdown (GFM).
--   **AI Metadata Enrichment**: Integrates with OpenAI, Anthropic, and Google Gemini to generate AI-powered summaries, tags, and categories for every document.
--   **Persistent Caching**: Uses BadgerDB to cache raw content locally, respecting TTLs and reducing redundant network requests.
--   **Flexible Output**: Supports hierarchical folder structures or flat file organization with YAML frontmatter and JSON metadata.
+-   **Multi-Source Extraction**: Automatically detects and handles various source types:
+    -   **Web Crawler**: Recursive crawling of documentation sites.
+    -   **Git/GitHub**: Cloning repositories or fetching specific paths.
+    -   **Sitemaps**: Systematic discovery via `sitemap.xml`.
+    -   **llms.txt**: Support for the emerging `llms.txt` standard for LLM-friendly discovery.
+    -   **Package Docs**: Specialized handling for `pkg.go.dev`.
+-   **Advanced Processing**:
+    -   **HTML to Markdown**: Converts complex HTML into clean Markdown using a multi-stage pipeline.
+    -   **Content Extraction**: Uses "readability" logic and CSS selectors to isolate main content and remove noise (navbars, footers, scripts).
+    -   **JS Rendering**: Headless browser support (via `go-rod`) for Single Page Applications (SPAs) and JavaScript-heavy sites.
+-   **Stealth & Robustness**:
+    -   **Bot Avoidance**: User-Agent rotation and TLS fingerprinting to bypass basic bot detection.
+    -   **Caching**: Persistent caching using BadgerDB to minimize network load and respect rate limits.
+    -   **Retries**: Exponential backoff for transient network errors.
+-   **AI Integration**: Optional metadata enrichment using LLMs (OpenAI, Anthropic, Google) to generate summaries, tags, and categories.
+-   **Structured Output**: Generates Markdown files with YAML frontmatter and a consolidated `repodocs.json` index.
 
 ## Installation
 
 ### Prerequisites
--   **Go**: 1.21 or higher.
--   **Chrome/Chromium**: Required for the `--render-js` feature (JavaScript rendering).
 
-### Build from Source
+-   **Go**: 1.21 or later.
+-   **Chrome/Chromium**: Required if using the `--render-js` feature for JavaScript rendering.
+
+### From Source
+
 ```bash
-git clone https://github.com/youruser/repodocs.git
+git clone https://github.com/yourusername/repodocs.git
 cd repodocs
-go build -o repodocs
+go build -o repodocs ./cmd/repodocs
+```
+
+### Dependency Check
+Use the built-in "doctor" command to verify your environment:
+```bash
+./repodocs doctor
 ```
 
 ## Quick Start
 
-### Basic Documentation Extraction
-Extract documentation from a website with default settings:
+Extract documentation from a URL to the default `./docs` directory:
 ```bash
 repodocs https://docs.example.com
 ```
 
-### Git Repository Extraction
-Clone a repository and extract all documentation files:
+Extract a specific GitHub repository with a maximum depth of 2:
 ```bash
-repodocs https://github.com/spf13/cobra.git
+repodocs https://github.com/user/repo --max-depth 2
 ```
 
-#### Filtering to Specific Directories
-Extract documentation from only a specific subdirectory in a Git repository:
+Force JavaScript rendering for a React-based documentation site:
 ```bash
-# Using URL path (for repositories with /tree/ in the URL)
-repodocs https://github.com/owner/repo/tree/main/docs
-
-# Using --filter flag
-repodocs https://github.com/owner/repo --filter docs
-
-# Filter to nested directory
-repodocs https://github.com/owner/repo --filter docs/guides
+repodocs https://spa-docs.com --render-js
 ```
 
-**Note:** When both URL path and `--filter` flag are provided, the URL path takes precedence.
-
-### Rust Crate Documentation (docs.rs)
-Extract documentation from Rust crates hosted on docs.rs:
+Generate JSON metadata and limit to 10 pages:
 ```bash
-repodocs https://docs.rs/serde
-
-repodocs https://docs.rs/tokio/1.32.0
-
-repodocs https://docs.rs/serde/1.0.0 -o ./serde-docs -j 3 --limit 50
-```
-
-### Advanced Usage
-Crawl with JavaScript rendering, higher concurrency, and AI metadata:
-```bash
-repodocs https://react.dev --render-js -j 10 --json-meta
-```
-
-### Check System Health
-Use the `doctor` command to ensure your environment is set up correctly:
-```bash
-repodocs doctor
+repodocs https://example.com --json-meta --limit 10
 ```
 
 ## Architecture
 
-RepoDocs follows an interface-driven, modular architecture designed for extensibility:
+RepoDocs follows a decoupled, interface-driven architecture structured as a processing pipeline:
 
--   **Orchestrator**: The central engine that detects the input type and manages the lifecycle of the extraction process.
--   **Strategies**: Specialized handlers (Crawler, Git, Sitemap, etc.) that implement the logic for content discovery.
--   **Conversion Pipeline**: A multi-stage processor that handles encoding conversion, content extraction (via CSS selectors or Readability), sanitization, and Markdown generation.
--   **Dependency Container**: A unified structure providing strategies with access to the Fetcher, Renderer (Browser), Cache (BadgerDB), and LLM services.
--   **Metadata Enhancer**: An optional layer that interacts with LLM providers to enrich documents with contextual metadata.
+1.  **Detection**: The `Orchestrator` uses a `Strategy Factory` to identify the correct approach (Git, Crawler, Sitemap, etc.) based on the input URL.
+2.  **Execution**: The selected `Strategy` orchestrates fetching or cloning content.
+3.  **Processing**: The `Converter Pipeline` transforms raw content:
+    -   **Encoding**: Normalizes text to UTF-8.
+    -   **Sanitization**: Removes unwanted HTML tags and noise.
+    -   **Conversion**: Transforms cleaned HTML into Markdown.
+4.  **Enhancement**: The `MetadataEnhancer` (optional) uses LLMs to enrich the document with summaries and tags.
+5.  **Output**: The `Writer` persists the final Markdown and metadata to the local filesystem.
+
+### Core Components
+
+-   **Internal Domain**: Defines core models (`Document`, `Page`) and interfaces (`Fetcher`, `Renderer`, `Cache`).
+-   **Fetcher**: High-level HTTP client with stealth capabilities and caching.
+-   **Renderer**: Manages a pool of headless browser tabs for dynamic content.
+-   **Strategies**: Specialized logic for different documentation sources.
 
 ## Configuration
 
-RepoDocs can be configured via command-line flags or a configuration file located at `~/.repodocs/config.yaml`.
+RepoDocs can be configured via CLI flags or a configuration file (default: `~/.repodocs/config.yaml`).
 
-### Global Flags
+### Common Flags
+
 | Flag | Short | Description | Default |
 | :--- | :--- | :--- | :--- |
 | `--output` | `-o` | Output directory | `./docs` |
 | `--concurrency` | `-j` | Number of concurrent workers | `5` |
-| `--limit` | `-l` | Max pages to process (0=unlimited) | `0` |
-| `--max-depth` | `-d` | Max crawl depth | `4` |
-| `--filter` | | Path filter (web: base URL; git: subdirectory) | |
+| `--max-depth` | `-d` | Maximum crawl depth | `4` |
+| `--limit` | `-l` | Maximum number of pages to process | `0` (unlimited) |
 | `--render-js` | | Force JavaScript rendering | `false` |
 | `--no-cache` | | Disable the BadgerDB caching layer | `false` |
-| `--json-meta` | | Generate additional JSON metadata files | `false` |
 | `--exclude` | | Regex patterns to exclude specific paths | |
+| `--json-meta` | | Generate individual `.json` metadata files | `false` |
 
 ## Development
 
 ### Running Tests
-The project uses Go's standard testing tool. Strategies and services are designed with interfaces to facilitate mocking.
+Execute the test suite:
 ```bash
 go test ./...
 ```
 
-### Project Structure
--   `internal/app`: Orchestrator and strategy detection logic.
--   `internal/strategies`: Implementations for various extraction methods.
--   `internal/converter`: The HTML-to-Markdown transformation pipeline.
--   `internal/fetcher`: Stealth HTTP client implementation.
--   `internal/renderer`: Headless browser management.
--   `internal/cache`: BadgerDB persistent storage integration.
--   `internal/domain`: Core interfaces and data models.
+### Linting
+The project follows standard Go formatting. Run the linter:
+```bash
+go vet ./...
+```
+
+### Building
+Build the binary for your local architecture:
+```bash
+go build -o repodocs ./cmd/repodocs
+```
+
+## Contributing
+
+1.  Ensure all core services are defined via interfaces in the `internal/domain` package.
+2.  When adding new extraction logic, implement the `Strategy` interface in `internal/strategies`.
+3.  Add unit tests for new components using `go.uber.org/mock` for dependency mocking.
+4.  Ensure any changes to the HTML-to-Markdown pipeline are reflected in the `internal/converter` package.
 
 ## License
 
-This project is licensed under the terms of the LICENSE file included in the repository root.
+Refer to the `LICENSE` file for details.

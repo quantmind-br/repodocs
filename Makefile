@@ -10,7 +10,7 @@ BUILD_DIR=./build
 INSTALL_DIR=$(HOME)/.local/bin
 CONFIG_DIR=$(HOME)/.repodocs
 
-.PHONY: build test test-all coverage lint deps install uninstall release clean help
+.PHONY: build test test-all coverage lint deps install uninstall release release-dry clean help
 
 build: ## Build the binary
 	@mkdir -p $(BUILD_DIR)
@@ -50,6 +50,10 @@ uninstall: ## Remove from ~/.local/bin
 
 release: ## Create GitHub release (interactive)
 	@./scripts/release.sh
+
+release-dry: ## Test release build locally (creates ./dist/)
+	@which goreleaser > /dev/null || go install github.com/goreleaser/goreleaser/v2@latest
+	goreleaser release --snapshot --clean
 
 clean: ## Remove build artifacts
 	@rm -rf $(BUILD_DIR) ./coverage ./dist

@@ -33,12 +33,46 @@ archives:
   - id: default
     formats:
       - tar.gz
-      - zip
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - README.md
       - LICENSE*
       - configs/config.yaml.template
+
+nfpms:
+  - id: packages
+    package_name: repodocs
+    vendor: Quantmind
+    homepage: https://github.com/quantmind-br/repodocs-go
+    maintainer: Quantmind <contact@quantmind.com>
+    description: Documentation extraction CLI tool for LLMs
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    contents:
+      - src: configs/config.yaml.template
+        dst: /etc/repodocs/config.yaml.template
+        type: config
+
+brews:
+  - name: repodocs
+    repository:
+      owner: quantmind-br
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    homepage: https://github.com/quantmind-br/repodocs-go
+    description: Documentation extraction CLI tool for LLMs
+    license: MIT
+    skip_upload: auto
+    install: |
+      bin.install "repodocs"
 
 checksum:
   name_template: "checksums.txt"
@@ -86,8 +120,20 @@ release:
   footer: |
     ## Installation
     
-    ### Download Binary
-    Download the appropriate binary for your platform from the assets below.
+    ### Linux (Debian/Ubuntu)
+    ```bash
+    sudo dpkg -i repodocs_{{.Version}}_linux_amd64.deb
+    ```
+    
+    ### Linux (RPM)
+    ```bash
+    sudo rpm -i repodocs_{{.Version}}_linux_amd64.rpm
+    ```
+    
+    ### macOS (Homebrew)
+    ```bash
+    brew install quantmind-br/tap/repodocs
+    ```
     
     ### From Source
     ```bash
