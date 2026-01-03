@@ -1,0 +1,23 @@
+{
+  "root": "0",
+  "crate_version": "0.1.0",
+  "format_version": 31,
+  "includes_private": false,
+  "index": {
+    "0": {
+      "id": "0",
+      "crate_id": 0,
+      "name": "mycrate",
+      "visibility": "public",
+      "docs": "A minimal test crate",
+      "inner": {
+        "module": {
+          "is_crate": true,
+          "items": []
+        }
+      }
+    }
+  },
+  "paths": {},
+  "external_crates": {}
+}

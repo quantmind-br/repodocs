@@ -1,0 +1,22 @@
+{
+  "root": "0",
+  "crate_version": "1.0.0",
+  "format_version": 20,
+  "includes_private": false,
+  "index": {
+    "0": {
+      "id": "0",
+      "crate_id": 0,
+      "name": "oldcrate",
+      "visibility": "public",
+      "inner": {
+        "module": {
+          "is_crate": true,
+          "items": []
+        }
+      }
+    }
+  },
+  "paths": {},
+  "external_crates": {}
+}

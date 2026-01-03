@@ -2,7 +2,6 @@ package cache_test
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -35,7 +34,6 @@ func TestNewBadgerCache_WithOptions(t *testing.T) {
 		name    string
 		opts    cache.Options
 		wantErr bool
-		setup   func() string
 	}{
 		{
 			name: "InMemory",
@@ -47,13 +45,10 @@ func TestNewBadgerCache_WithOptions(t *testing.T) {
 		{
 			name: "WithDirectory",
 			opts: cache.Options{
-				Directory: "",
+				Directory: t.TempDir(),
 				InMemory:  false,
 			},
 			wantErr: false,
-			setup: func() string {
-				return ""
-			},
 		},
 		{
 			name: "WithLogger",
@@ -339,7 +334,9 @@ func TestClose_Success(t *testing.T) {
 }
 
 func TestNewBadgerCache_HomeDirFallback(t *testing.T) {
-	// Test with empty directory (should use home dir)
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+
 	opts := cache.Options{
 		Directory: "",
 		InMemory:  false,
@@ -349,10 +346,7 @@ func TestNewBadgerCache_HomeDirFallback(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	// Verify home directory exists
-	homeDir, err := os.UserHomeDir()
-	require.NoError(t, err)
-	expectedDir := homeDir + "/.repodocs/cache"
+	expectedDir := filepath.Join(tmpHome, ".repodocs", "cache")
 	assert.DirExists(t, expectedDir)
 }
 

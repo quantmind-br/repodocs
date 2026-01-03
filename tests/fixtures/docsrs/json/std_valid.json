@@ -1,0 +1,61 @@
+{
+  "root": "0",
+  "crate_version": "1.0.0",
+  "format_version": 30,
+  "includes_private": false,
+  "index": {
+    "0": {
+      "id": "0",
+      "crate_id": 0,
+      "name": "std",
+      "visibility": "public",
+      "docs": "The standard library",
+      "inner": {
+        "module": {
+          "is_crate": true,
+          "items": ["1", "2"]
+        }
+      }
+    },
+    "1": {
+      "id": "1",
+      "crate_id": 0,
+      "name": "String",
+      "visibility": "public",
+      "docs": "A string type",
+      "inner": {
+        "struct": {
+          "generics": {
+            "params": [
+              {"name": "Self", "kind": "type"}
+            ],
+            "where_predicates": []
+          },
+          "impls": []
+        }
+      }
+    },
+    "2": {
+      "id": "2",
+      "crate_id": 0,
+      "name": "to_string",
+      "visibility": "public",
+      "docs": "Convert to string",
+      "inner": {
+        "function": {
+          "sig": {
+            "inputs": [["self", {"borrowed_ref": {"lifetime": "'a", "is_mutable": false, "type": "String"}}]],
+            "output": "String",
+            "is_c_variadic": false
+          },
+          "generics": {
+            "params": [],
+            "where_predicates": []
+          }
+        }
+      }
+    }
+  },
+  "paths": {},
+  "external_crates": {}
+}
