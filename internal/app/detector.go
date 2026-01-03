@@ -11,14 +11,15 @@ import (
 type StrategyType string
 
 const (
-	StrategyLLMS    StrategyType = "llms"
-	StrategyPkgGo   StrategyType = "pkggo"
-	StrategyDocsRS  StrategyType = "docsrs"
-	StrategySitemap StrategyType = "sitemap"
-	StrategyWiki    StrategyType = "wiki"
-	StrategyGit     StrategyType = "git"
-	StrategyCrawler StrategyType = "crawler"
-	StrategyUnknown StrategyType = "unknown"
+	StrategyLLMS        StrategyType = "llms"
+	StrategyPkgGo       StrategyType = "pkggo"
+	StrategyDocsRS      StrategyType = "docsrs"
+	StrategySitemap     StrategyType = "sitemap"
+	StrategyWiki        StrategyType = "wiki"
+	StrategyGitHubPages StrategyType = "github_pages"
+	StrategyGit         StrategyType = "git"
+	StrategyCrawler     StrategyType = "crawler"
+	StrategyUnknown     StrategyType = "unknown"
 )
 
 // DetectStrategy determines the appropriate strategy based on URL patterns
