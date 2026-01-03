@@ -1066,7 +1066,8 @@ func TestOrchestrator_DependsClose(t *testing.T) {
 	tmpDir := t.TempDir()
 	cfg := config.Default()
 	cfg.Output.Directory = tmpDir
-	cfg.Cache.Enabled = true // Enable cache to ensure it needs closing
+	cfg.Cache.Directory = t.TempDir() // Use isolated temp dir to avoid lock conflicts
+	cfg.Cache.Enabled = true          // Enable cache to ensure it needs closing
 
 	opts := app.OrchestratorOptions{
 		Config: cfg,
