@@ -25,7 +25,7 @@ CONFIG_DIR=$(HOME)/.repodocs
 CONFIG_TEMPLATE=./configs/config.yaml.template
 
 .PHONY: all build clean test coverage lint fmt vet deps help install uninstall install-global uninstall-global install-config \
-	version-info version-bump release release-patch release-minor release-major release-tag release-push release-snapshot release-dry release-check release-interactive changelog \
+	release release-dry \
 	test-all test-app test-cache test-config test-converter test-domain test-fetcher test-git test-llm test-output test-renderer test-strategies test-cmd \
 	coverage-all coverage-app coverage-cache coverage-config coverage-converter coverage-domain coverage-fetcher coverage-git coverage-llm coverage-output coverage-renderer coverage-strategies coverage-cmd coverage-view coverage-summary
 
@@ -325,144 +325,8 @@ check-install: ## Check installation status
 
 ## Release
 
-# Get latest tag, default to v0.0.0 if none exists
-LATEST_TAG := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-# Parse version components (strip 'v' prefix)
-LATEST_VERSION := $(shell echo $(LATEST_TAG) | sed 's/^v//')
-MAJOR := $(shell echo $(LATEST_VERSION) | cut -d. -f1)
-MINOR := $(shell echo $(LATEST_VERSION) | cut -d. -f2)
-PATCH := $(shell echo $(LATEST_VERSION) | cut -d. -f3)
-# Calculate next versions
-NEXT_PATCH := v$(MAJOR).$(MINOR).$(shell echo $$(($(PATCH)+1)))
-NEXT_MINOR := v$(MAJOR).$(shell echo $$(($(MINOR)+1))).0
-NEXT_MAJOR := v$(shell echo $$(($(MAJOR)+1))).0.0
-
-version-info: ## Show current and next versions
-	@echo "Current version: $(LATEST_TAG)"
-	@echo "Next patch:      $(NEXT_PATCH)"
-	@echo "Next minor:      $(NEXT_MINOR)"
-	@echo "Next major:      $(NEXT_MAJOR)"
-	@echo ""
-	@echo "Usage:"
-	@echo "  make release              # Release with patch bump (default)"
-	@echo "  make release BUMP=minor   # Release with minor bump"
-	@echo "  make release BUMP=major   # Release with major bump"
-	@echo "  make release VERSION=vX.Y.Z  # Release specific version"
-	@echo ""
-	@echo "Two-step workflow:"
-	@echo "  make release-tag          # Create tag locally"
-	@echo "  make release-push         # Push tag to trigger release"
-
-version-bump: version-info ## Alias for version-info (shotgun-cli compatibility)
-
-release: ## Auto-release with patch bump (or VERSION=vX.Y.Z, BUMP=minor|major)
-	@if [ -n "$(VERSION)" ]; then \
-		RELEASE_VERSION="$(VERSION)"; \
-	elif [ "$(BUMP)" = "major" ]; then \
-		RELEASE_VERSION="$(NEXT_MAJOR)"; \
-	elif [ "$(BUMP)" = "minor" ]; then \
-		RELEASE_VERSION="$(NEXT_MINOR)"; \
-	else \
-		RELEASE_VERSION="$(NEXT_PATCH)"; \
-	fi; \
-	if ! echo "$$RELEASE_VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then \
-		echo "Error: VERSION must match semver format (e.g., v1.0.0)"; \
-		exit 1; \
-	fi; \
-	if [ -n "$$(git status --porcelain)" ]; then \
-		echo "Error: Working directory is not clean. Commit or stash changes first."; \
-		exit 1; \
-	fi; \
-	CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
-	if [ "$$CURRENT_BRANCH" != "main" ] && [ "$$CURRENT_BRANCH" != "master" ]; then \
-		echo "Warning: Not on main/master branch (current: $$CURRENT_BRANCH)"; \
-		read -p "Continue anyway? [y/N] " confirm; \
-		if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
-			exit 1; \
-		fi; \
-	fi; \
-	if git rev-parse "$$RELEASE_VERSION" >/dev/null 2>&1; then \
-		echo "Error: Tag $$RELEASE_VERSION already exists"; \
-		exit 1; \
-	fi; \
-	echo ""; \
-	echo "Release: $(LATEST_TAG) → $$RELEASE_VERSION"; \
-	echo ""; \
-	read -p "Confirm release $$RELEASE_VERSION? [y/N] " confirm; \
-	if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
-		echo "Aborted."; \
-		exit 1; \
-	fi; \
-	echo "Creating release $$RELEASE_VERSION..."; \
-	git tag -a "$$RELEASE_VERSION" -m "Release $$RELEASE_VERSION"; \
-	echo "Pushing tag $$RELEASE_VERSION to origin..."; \
-	git push origin "$$RELEASE_VERSION"; \
-	echo ""; \
-	echo "✓ Release $$RELEASE_VERSION created and pushed!"; \
-	echo "  GitHub Actions will now build and publish the release."; \
-	echo "  Monitor: https://github.com/quantmind-br/repodocs-go/actions"
-
-release-patch: ## Release with patch version bump (v1.0.0 → v1.0.1)
-	@$(MAKE) release BUMP=patch
-
-release-minor: ## Release with minor version bump (v1.0.0 → v1.1.0)
-	@$(MAKE) release BUMP=minor
-
-release-major: ## Release with major version bump (v1.0.0 → v2.0.0)
-	@$(MAKE) release BUMP=major
-
-release-tag: ## Create git tag without pushing (use VERSION=vX.Y.Z or BUMP=patch|minor|major)
-	@if [ -n "$(VERSION)" ]; then \
-		RELEASE_VERSION="$(VERSION)"; \
-	elif [ "$(BUMP)" = "major" ]; then \
-		RELEASE_VERSION="$(NEXT_MAJOR)"; \
-	elif [ "$(BUMP)" = "minor" ]; then \
-		RELEASE_VERSION="$(NEXT_MINOR)"; \
-	else \
-		RELEASE_VERSION="$(NEXT_PATCH)"; \
-	fi; \
-	if ! echo "$$RELEASE_VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then \
-		echo "Error: VERSION must match semver format (e.g., v1.0.0)"; \
-		exit 1; \
-	fi; \
-	if [ -n "$$(git status --porcelain)" ]; then \
-		echo "Error: Working directory is not clean. Commit or stash changes first."; \
-		exit 1; \
-	fi; \
-	if git rev-parse "$$RELEASE_VERSION" >/dev/null 2>&1; then \
-		echo "Error: Tag $$RELEASE_VERSION already exists"; \
-		exit 1; \
-	fi; \
-	echo "Creating tag $$RELEASE_VERSION..."; \
-	git tag -a "$$RELEASE_VERSION" -m "Release $$RELEASE_VERSION"; \
-	echo ""; \
-	echo "✓ Tag $$RELEASE_VERSION created locally"; \
-	echo "  To push and trigger release: make release-push"
-
-release-push: ## Push latest tag to remote and trigger GitHub release
-	@TAG=$$(git describe --tags --abbrev=0 2>/dev/null); \
-	if [ -z "$$TAG" ]; then \
-		echo "Error: No tags found. Create a tag first with: make release-tag"; \
-		exit 1; \
-	fi; \
-	echo "Pushing tag $$TAG to origin..."; \
-	git push origin "$$TAG"; \
-	echo ""; \
-	echo "✓ Tag $$TAG pushed!"; \
-	echo "  GitHub Actions will now build and publish the release."; \
-	echo "  Monitor: https://github.com/quantmind-br/repodocs-go/actions"
-
-release-snapshot: ## Build release artifacts locally without creating a tag (alias for release-dry)
-	@$(MAKE) release-dry
-
-release-check: ## Run pre-release checks (tests, lint, build)
-	@./scripts/pre-release-check.sh
-
-release-interactive: ## Interactive release wizard
+release: ## Interactive release wizard (shows versions, creates GitHub release)
 	@./scripts/release.sh
-
-changelog: ## Generate changelog since last tag
-	@./scripts/changelog.sh
 
 release-dry: ## Test release build locally without publishing
 	@echo "Running dry-run release..."
