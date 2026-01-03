@@ -3,15 +3,10 @@ package strategies
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net/url"
-	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/PuerkitoBio/goquery"
-	"github.com/quantmind-br/repodocs-go/internal/converter"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
@@ -26,55 +21,24 @@ type DocsRSURL struct {
 	IsSourceView bool
 }
 
-type DocsRSMetadata struct {
-	CrateName  string
-	Version    string
-	ModulePath string
-	ItemType   string
-	Title      string
-	Stability  string
-}
-
 type DocsRSStrategy struct {
-	deps      *Dependencies
-	fetcher   domain.Fetcher
-	converter *converter.Pipeline
-	writer    *output.Writer
-	logger    *utils.Logger
-	baseHost  string // defaults to "docs.rs", can be overridden for testing
+	deps     *Dependencies
+	fetcher  domain.Fetcher
+	writer   *output.Writer
+	logger   *utils.Logger
+	baseHost string
 }
-
-var (
-	docsRSExcludePaths = []string{
-		"/src/",
-		"/source/",
-		"/all.html",
-		"/-/rustdoc.static/",
-		"/-/static/",
-	}
-
-	docsRSExcludeExtensions = []string{
-		".js", ".css", ".svg", ".png", ".ico",
-		".woff", ".woff2", ".ttf",
-	}
-
-	docsRSExcludeFiles = []string{
-		"search-index.js", "sidebar-items.js", "crates.js",
-		"aliases.js", "source-script.js", "storage.js", "settings.js",
-	}
-)
 
 func NewDocsRSStrategy(deps *Dependencies) *DocsRSStrategy {
 	if deps == nil {
 		return &DocsRSStrategy{baseHost: "docs.rs"}
 	}
 	return &DocsRSStrategy{
-		deps:      deps,
-		fetcher:   deps.Fetcher,
-		converter: deps.Converter,
-		writer:    deps.Writer,
-		logger:    deps.Logger,
-		baseHost:  "docs.rs",
+		deps:     deps,
+		fetcher:  deps.Fetcher,
+		writer:   deps.Writer,
+		logger:   deps.Logger,
+		baseHost: "docs.rs",
 	}
 }
 
@@ -168,272 +132,11 @@ func parseDocsRSPathWithHost(rawURL, expectedHost string) (*DocsRSURL, error) {
 	return result, nil
 }
 
-func (s *DocsRSStrategy) shouldCrawl(targetURL string, baseInfo *DocsRSURL) bool {
-	u, err := url.Parse(targetURL)
-	if err != nil {
-		return false
-	}
-
-	if !strings.Contains(u.Host, s.baseHost) {
-		return false
-	}
-
-	path := u.Path
-
-	for _, excluded := range docsRSExcludePaths {
-		if strings.Contains(path, excluded) {
-			return false
-		}
-	}
-
-	for _, ext := range docsRSExcludeExtensions {
-		if strings.HasSuffix(strings.ToLower(path), ext) {
-			return false
-		}
-	}
-
-	baseName := filepath.Base(path)
-	for _, file := range docsRSExcludeFiles {
-		if baseName == file {
-			return false
-		}
-	}
-
-	targetInfo, err := s.parseURL(targetURL)
-	if err != nil {
-		return false
-	}
-
-	if targetInfo.IsSourceView {
-		return false
-	}
-
-	if targetInfo.CrateName != baseInfo.CrateName {
-		return false
-	}
-
-	if targetInfo.Version != baseInfo.Version &&
-		targetInfo.Version != "latest" &&
-		baseInfo.Version != "latest" {
-		return false
-	}
-
-	return true
-}
-
-func (s *DocsRSStrategy) discoverPages(ctx context.Context, startURL string, baseInfo *DocsRSURL, opts Options) ([]string, error) {
-	visited := &sync.Map{}
-	var pages []string
-	var mu sync.Mutex
-
-	queue := []struct {
-		url   string
-		depth int
-	}{{startURL, 0}}
-
-	visited.Store(startURL, true)
-	pages = append(pages, startURL)
-
-	for len(queue) > 0 {
-		select {
-		case <-ctx.Done():
-			return pages, ctx.Err()
-		default:
-		}
-
-		current := queue[0]
-		queue = queue[1:]
-
-		if opts.MaxDepth > 0 && current.depth >= opts.MaxDepth {
-			continue
-		}
-
-		mu.Lock()
-		if opts.Limit > 0 && len(pages) >= opts.Limit {
-			mu.Unlock()
-			break
-		}
-		mu.Unlock()
-
-		resp, err := s.fetcher.Get(ctx, current.url)
-		if err != nil {
-			s.logger.Debug().Err(err).Str("url", current.url).Msg("Failed to fetch for discovery")
-			continue
-		}
-
-		doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(resp.Body)))
-		if err != nil {
-			continue
-		}
-
-		doc.Find(".sidebar a[href], #main-content a[href]").Each(func(_ int, sel *goquery.Selection) {
-			href, exists := sel.Attr("href")
-			if !exists || href == "" {
-				return
-			}
-
-			if strings.HasPrefix(href, "#") ||
-				strings.HasPrefix(href, "javascript:") ||
-				strings.HasPrefix(href, "mailto:") {
-				return
-			}
-
-			absoluteURL, err := utils.ResolveURL(current.url, href)
-			if err != nil {
-				return
-			}
-
-			normalizedURL, _ := utils.NormalizeURLWithoutQuery(absoluteURL)
-
-			if !s.shouldCrawl(normalizedURL, baseInfo) {
-				return
-			}
-
-			if _, exists := visited.LoadOrStore(normalizedURL, true); exists {
-				return
-			}
-
-			mu.Lock()
-			pages = append(pages, normalizedURL)
-			mu.Unlock()
-
-			queue = append(queue, struct {
-				url   string
-				depth int
-			}{normalizedURL, current.depth + 1})
-		})
-	}
-
-	return pages, nil
-}
-
-func (s *DocsRSStrategy) extractMetadata(doc *goquery.Document, baseInfo *DocsRSURL) *DocsRSMetadata {
-	meta := &DocsRSMetadata{
-		CrateName:  baseInfo.CrateName,
-		Version:    baseInfo.Version,
-		ModulePath: baseInfo.ModulePath,
-	}
-
-	title := doc.Find(".main-heading h1").First().Text()
-	meta.Title = strings.TrimSpace(title)
-
-	bodyClass, _ := doc.Find("body").Attr("class")
-	switch {
-	case strings.Contains(bodyClass, "struct"):
-		meta.ItemType = "struct"
-	case strings.Contains(bodyClass, "enum"):
-		meta.ItemType = "enum"
-	case strings.Contains(bodyClass, "trait"):
-		meta.ItemType = "trait"
-	case strings.Contains(bodyClass, "fn"):
-		meta.ItemType = "function"
-	case strings.Contains(bodyClass, "mod"):
-		meta.ItemType = "module"
-	case strings.Contains(bodyClass, "macro"):
-		meta.ItemType = "macro"
-	case strings.Contains(bodyClass, "type"):
-		meta.ItemType = "type"
-	case strings.Contains(bodyClass, "constant"):
-		meta.ItemType = "constant"
-	default:
-		meta.ItemType = "page"
-	}
-
-	if doc.Find(".portability.nightly-only").Length() > 0 {
-		meta.Stability = "nightly"
-	} else if doc.Find(".stab.deprecated").Length() > 0 {
-		meta.Stability = "deprecated"
-	} else if doc.Find(".stab.unstable").Length() > 0 {
-		meta.Stability = "unstable"
-	} else {
-		meta.Stability = "stable"
-	}
-
-	return meta
-}
-
-func (s *DocsRSStrategy) applyMetadata(doc *domain.Document, meta *DocsRSMetadata) {
-	if meta.Title != "" {
-		doc.Title = meta.Title
-	}
-
-	doc.Description = fmt.Sprintf("crate:%s version:%s type:%s stability:%s",
-		meta.CrateName, meta.Version, meta.ItemType, meta.Stability)
-
-	if meta.ModulePath != "" {
-		doc.Description += fmt.Sprintf(" path:%s", meta.ModulePath)
-	}
-
-	doc.Tags = []string{
-		"docs.rs",
-		meta.CrateName,
-		meta.ItemType,
-		meta.Stability,
-	}
-}
-
-func (s *DocsRSStrategy) processPage(ctx context.Context, pageURL string, baseInfo *DocsRSURL, opts Options) error {
-	delay := time.Duration(500+rand.Intn(1000)) * time.Millisecond
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-time.After(delay):
-	}
-
-	if !opts.Force && s.writer.Exists(pageURL) {
-		return nil
-	}
-
-	resp, err := s.fetcher.Get(ctx, pageURL)
-	if err != nil {
-		s.logger.Warn().Err(err).Str("url", pageURL).Msg("Failed to fetch page")
-		return nil
-	}
-
-	htmlDoc, err := goquery.NewDocumentFromReader(strings.NewReader(string(resp.Body)))
-	if err != nil {
-		s.logger.Warn().Err(err).Str("url", pageURL).Msg("Failed to parse HTML")
-		return nil
-	}
-
-	meta := s.extractMetadata(htmlDoc, baseInfo)
-
-	doc, err := s.converter.Convert(ctx, string(resp.Body), pageURL)
-	if err != nil {
-		s.logger.Warn().Err(err).Str("url", pageURL).Msg("Failed to convert page")
-		return nil
-	}
-
-	s.applyMetadata(doc, meta)
-	doc.SourceStrategy = s.Name()
-	doc.CacheHit = resp.FromCache
-	doc.FetchedAt = time.Now()
-
-	if !opts.DryRun {
-		if err := s.deps.WriteDocument(ctx, doc); err != nil {
-			s.logger.Warn().Err(err).Str("url", pageURL).Msg("Failed to write document")
-			return nil
-		}
-	}
-
-	return nil
-}
-
-func (s *DocsRSStrategy) buildStartURL(info *DocsRSURL) string {
-	if info.IsCratePage {
-		return fmt.Sprintf("https://docs.rs/crate/%s/%s", info.CrateName, info.Version)
-	}
-	return fmt.Sprintf("https://docs.rs/%s/%s/%s/", info.CrateName, info.Version, info.CrateName)
-}
-
 func (s *DocsRSStrategy) Execute(ctx context.Context, rawURL string, opts Options) error {
-	s.logger.Info().Str("url", rawURL).Msg("Starting docs.rs extraction")
+	s.logger.Info().Str("url", rawURL).Msg("Starting docs.rs JSON extraction")
 
 	if s.fetcher == nil {
 		return fmt.Errorf("docsrs strategy fetcher is nil")
-	}
-	if s.converter == nil {
-		return fmt.Errorf("docsrs strategy converter is nil")
 	}
 	if s.writer == nil {
 		return fmt.Errorf("docsrs strategy writer is nil")
@@ -444,59 +147,210 @@ func (s *DocsRSStrategy) Execute(ctx context.Context, rawURL string, opts Option
 		return fmt.Errorf("invalid docs.rs URL: %w", err)
 	}
 
-	var startURL string
-	if s.baseHost == "docs.rs" {
-		startURL = s.buildStartURL(baseInfo)
-	} else {
-		startURL = rawURL
-	}
 	s.logger.Info().
 		Str("crate", baseInfo.CrateName).
 		Str("version", baseInfo.Version).
-		Str("start_url", startURL).
 		Msg("Parsed docs.rs URL")
 
-	pages, err := s.discoverPages(ctx, startURL, baseInfo, opts)
+	index, err := s.fetchRustdocJSON(ctx, baseInfo.CrateName, baseInfo.Version)
 	if err != nil {
-		return fmt.Errorf("discovery failed: %w", err)
+		return fmt.Errorf("failed to fetch rustdoc JSON: %w", err)
 	}
 
-	s.logger.Info().Int("count", len(pages)).Msg("Discovered pages")
-
-	if opts.Limit > 0 && len(pages) > opts.Limit {
-		pages = pages[:opts.Limit]
-		s.logger.Info().Int("limit", opts.Limit).Msg("Applied page limit")
+	if err := s.checkFormatVersion(index.FormatVersion); err != nil {
+		return err
 	}
 
-	bar := progressbar.NewOptions(len(pages),
-		progressbar.OptionSetDescription("Extracting docs.rs"),
+	renderer := NewRustdocRenderer(index, baseInfo.CrateName, baseInfo.Version)
+
+	items := s.collectItems(index, opts)
+	s.logger.Info().Int("count", len(items)).Msg("Collected items to process")
+
+	if opts.Limit > 0 && len(items) > opts.Limit {
+		items = items[:opts.Limit]
+		s.logger.Info().Int("limit", opts.Limit).Msg("Applied item limit")
+	}
+
+	bar := progressbar.NewOptions(len(items),
+		progressbar.OptionSetDescription("Extracting docs.rs (JSON)"),
 		progressbar.OptionShowCount(),
 		progressbar.OptionShowIts(),
 	)
 
-	errors := utils.ParallelForEach(ctx, pages, opts.Concurrency, func(ctx context.Context, pageURL string) error {
+	errors := utils.ParallelForEach(ctx, items, opts.Concurrency, func(ctx context.Context, item *RustdocItem) error {
 		defer bar.Add(1)
-		return s.processPage(ctx, pageURL, baseInfo, opts)
+		return s.processItem(ctx, item, renderer, baseInfo, opts)
 	})
 
 	if err := utils.FirstError(errors); err != nil {
 		return err
 	}
 
-	s.logger.Info().Int("pages", len(pages)).Msg("docs.rs extraction completed")
+	s.logger.Info().Int("items", len(items)).Msg("docs.rs JSON extraction completed")
 	return nil
 }
 
-func (s *DocsRSStrategy) ExtractMetadataForTest(doc *goquery.Document, baseInfo *DocsRSURL) *DocsRSMetadata {
-	return s.extractMetadata(doc, baseInfo)
+func (s *DocsRSStrategy) processItem(ctx context.Context, item *RustdocItem, renderer *RustdocRenderer, baseInfo *DocsRSURL, opts Options) error {
+	itemURL := s.buildItemURL(item, baseInfo)
+
+	if !opts.Force && s.writer.Exists(itemURL) {
+		return nil
+	}
+
+	markdown := renderer.RenderItem(item)
+	if markdown == "" {
+		return nil
+	}
+
+	doc := &domain.Document{
+		URL:            itemURL,
+		Title:          s.buildItemTitle(item),
+		Content:        markdown,
+		Description:    s.buildItemDescription(item, baseInfo),
+		SourceStrategy: s.Name(),
+		FetchedAt:      time.Now(),
+		Tags:           s.buildItemTags(item, baseInfo),
+	}
+
+	if !opts.DryRun {
+		if err := s.deps.WriteDocument(ctx, doc); err != nil {
+			s.logger.Warn().Err(err).Str("url", itemURL).Msg("Failed to write document")
+			return nil
+		}
+	}
+
+	return nil
 }
 
-func (s *DocsRSStrategy) ShouldCrawlForTest(targetURL string, baseInfo *DocsRSURL) bool {
-	return s.shouldCrawl(targetURL, baseInfo)
+func (s *DocsRSStrategy) buildItemURL(item *RustdocItem, baseInfo *DocsRSURL) string {
+	name := ""
+	if item.Name != nil {
+		name = *item.Name
+	}
+
+	itemType := ""
+	if mod := item.GetModule(); mod != nil {
+		if mod.IsCrate {
+			return fmt.Sprintf("https://docs.rs/%s/%s/%s/",
+				baseInfo.CrateName, baseInfo.Version, baseInfo.CrateName)
+		}
+		itemType = "mod"
+	} else if item.GetStruct() != nil {
+		itemType = "struct"
+	} else if item.GetEnum() != nil {
+		itemType = "enum"
+	} else if item.GetTrait() != nil {
+		itemType = "trait"
+	} else if item.GetFunction() != nil {
+		itemType = "fn"
+	} else if item.GetTypeAlias() != nil {
+		itemType = "type"
+	} else if item.GetConstant() != nil {
+		itemType = "constant"
+	} else if item.GetMacro() != nil {
+		itemType = "macro"
+	} else {
+		itemType = "item"
+	}
+
+	path := baseInfo.CrateName
+	if item.Span != nil && item.Span.Filename != "" {
+		spanPath := strings.TrimPrefix(item.Span.Filename, "src/")
+		spanPath = strings.TrimSuffix(spanPath, ".rs")
+		spanPath = strings.TrimSuffix(spanPath, "/mod")
+		if spanPath != "lib" && spanPath != "" {
+			path = baseInfo.CrateName + "/" + strings.ReplaceAll(spanPath, "/", "::")
+		}
+	}
+
+	return fmt.Sprintf("https://docs.rs/%s/%s/%s/%s.%s.html",
+		baseInfo.CrateName, baseInfo.Version, path, itemType, name)
 }
 
-func (s *DocsRSStrategy) BuildStartURLForTest(info *DocsRSURL) string {
-	return s.buildStartURL(info)
+func (s *DocsRSStrategy) buildItemTitle(item *RustdocItem) string {
+	name := ""
+	if item.Name != nil {
+		name = *item.Name
+	}
+
+	if mod := item.GetModule(); mod != nil {
+		if mod.IsCrate {
+			return fmt.Sprintf("Crate %s", name)
+		}
+		return fmt.Sprintf("Module %s", name)
+	}
+	if item.GetStruct() != nil {
+		return fmt.Sprintf("Struct %s", name)
+	}
+	if item.GetEnum() != nil {
+		return fmt.Sprintf("Enum %s", name)
+	}
+	if item.GetTrait() != nil {
+		return fmt.Sprintf("Trait %s", name)
+	}
+	if item.GetFunction() != nil {
+		return fmt.Sprintf("Function %s", name)
+	}
+	if item.GetTypeAlias() != nil {
+		return fmt.Sprintf("Type %s", name)
+	}
+	if item.GetMacro() != nil {
+		return fmt.Sprintf("Macro %s", name)
+	}
+	return name
+}
+
+func (s *DocsRSStrategy) buildItemDescription(item *RustdocItem, baseInfo *DocsRSURL) string {
+	itemType := s.getItemTypeName(item)
+	stability := "stable"
+	if item.Deprecation != nil {
+		stability = "deprecated"
+	}
+
+	return fmt.Sprintf("crate:%s version:%s type:%s stability:%s",
+		baseInfo.CrateName, baseInfo.Version, itemType, stability)
+}
+
+func (s *DocsRSStrategy) buildItemTags(item *RustdocItem, baseInfo *DocsRSURL) []string {
+	itemType := s.getItemTypeName(item)
+
+	tags := []string{
+		"docs.rs",
+		"rust",
+		baseInfo.CrateName,
+		itemType,
+	}
+
+	if item.Deprecation != nil {
+		tags = append(tags, "deprecated")
+	}
+
+	return tags
+}
+
+func (s *DocsRSStrategy) getItemTypeName(item *RustdocItem) string {
+	if item.GetModule() != nil {
+		return "module"
+	}
+	if item.GetStruct() != nil {
+		return "struct"
+	}
+	if item.GetEnum() != nil {
+		return "enum"
+	}
+	if item.GetTrait() != nil {
+		return "trait"
+	}
+	if item.GetFunction() != nil {
+		return "function"
+	}
+	if item.GetTypeAlias() != nil {
+		return "type"
+	}
+	if item.GetMacro() != nil {
+		return "macro"
+	}
+	return "item"
 }
 
 func ParseDocsRSPathForTest(rawURL string) (*DocsRSURL, error) {

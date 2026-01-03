@@ -1,17 +1,12 @@
 package strategies_test
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNewDocsRSStrategy(t *testing.T) {
@@ -81,170 +76,102 @@ func TestDocsRSStrategy_CanHandle(t *testing.T) {
 	}
 }
 
-func TestDocsRSStrategy_ExtractMetadata(t *testing.T) {
-	fixturesDir := filepath.Join("..", "..", "fixtures", "docsrs")
-
+func TestDocsRSStrategy_ParseURL(t *testing.T) {
 	tests := []struct {
-		name          string
-		fixtureFile   string
-		wantItemType  string
-		wantStability string
-		wantTitle     string
+		name         string
+		url          string
+		wantCrate    string
+		wantVersion  string
+		wantIsCrate  bool
+		wantIsSource bool
+		wantErr      bool
 	}{
 		{
-			name:          "crate root page",
-			fixtureFile:   "serde_crate_root.html",
-			wantItemType:  "module",
-			wantStability: "stable",
-			wantTitle:     "Crate serde",
+			name:        "crate root",
+			url:         "https://docs.rs/serde",
+			wantCrate:   "serde",
+			wantVersion: "latest",
 		},
 		{
-			name:          "module page",
-			fixtureFile:   "serde_module.html",
-			wantItemType:  "module",
-			wantStability: "stable",
-			wantTitle:     "Module serde::de",
+			name:        "crate with version",
+			url:         "https://docs.rs/serde/1.0.0",
+			wantCrate:   "serde",
+			wantVersion: "1.0.0",
 		},
 		{
-			name:          "struct page",
-			fixtureFile:   "serde_struct.html",
-			wantItemType:  "struct",
-			wantStability: "stable",
-			wantTitle:     "Struct serde::de::Deserializer",
+			name:        "crate info page",
+			url:         "https://docs.rs/crate/serde/1.0.0",
+			wantCrate:   "serde",
+			wantVersion: "1.0.0",
+			wantIsCrate: true,
 		},
 		{
-			name:          "trait page",
-			fixtureFile:   "tokio_async_trait.html",
-			wantItemType:  "trait",
-			wantStability: "stable",
-			wantTitle:     "Trait tokio::io::AsyncRead",
+			name:        "crate info page latest",
+			url:         "https://docs.rs/crate/tokio/latest",
+			wantCrate:   "tokio",
+			wantVersion: "latest",
+			wantIsCrate: true,
 		},
 		{
-			name:          "deprecated item",
-			fixtureFile:   "with_deprecated.html",
-			wantItemType:  "function",
-			wantStability: "deprecated",
-			wantTitle:     "Function example::old_function",
+			name:         "source view",
+			url:          "https://docs.rs/serde/1.0.0/src/serde/lib.rs.html",
+			wantCrate:    "serde",
+			wantVersion:  "1.0.0",
+			wantIsSource: true,
 		},
 		{
-			name:          "nightly only item",
-			fixtureFile:   "nightly_only.html",
-			wantItemType:  "trait",
-			wantStability: "nightly",
-			wantTitle:     "Trait example::NightlyFeature",
+			name:         "crate source view",
+			url:          "https://docs.rs/crate/serde/1.0.0/source/",
+			wantCrate:    "serde",
+			wantVersion:  "1.0.0",
+			wantIsCrate:  true,
+			wantIsSource: true,
 		},
 		{
-			name:          "minimal page",
-			fixtureFile:   "minimal.html",
-			wantItemType:  "module",
-			wantStability: "stable",
-			wantTitle:     "Crate minimal",
+			name:    "not docs.rs",
+			url:     "https://github.com/serde-rs/serde",
+			wantErr: true,
+		},
+		{
+			name:    "empty path",
+			url:     "https://docs.rs/",
+			wantErr: true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			fixturePath := filepath.Join(fixturesDir, tc.fixtureFile)
-			content, err := os.ReadFile(fixturePath)
-			require.NoError(t, err, "Failed to read fixture file: %s", tc.fixtureFile)
+			result, err := strategies.ParseDocsRSPathForTest(tc.url)
 
-			doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(content)))
-			require.NoError(t, err)
-
-			strategy := strategies.NewDocsRSStrategy(nil)
-			baseInfo := &strategies.DocsRSURL{
-				CrateName: "test",
-				Version:   "1.0.0",
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
 			}
 
-			meta := strategy.ExtractMetadataForTest(doc, baseInfo)
-
-			assert.Equal(t, tc.wantItemType, meta.ItemType, "ItemType mismatch")
-			assert.Equal(t, tc.wantStability, meta.Stability, "Stability mismatch")
-			assert.Contains(t, meta.Title, tc.wantTitle, "Title mismatch")
+			assert.NoError(t, err)
+			assert.Equal(t, tc.wantCrate, result.CrateName, "CrateName mismatch")
+			assert.Equal(t, tc.wantVersion, result.Version, "Version mismatch")
+			assert.Equal(t, tc.wantIsCrate, result.IsCratePage, "IsCratePage mismatch")
+			assert.Equal(t, tc.wantIsSource, result.IsSourceView, "IsSourceView mismatch")
 		})
 	}
 }
 
-func TestDocsRSStrategy_ShouldCrawl(t *testing.T) {
-	strategy := strategies.NewDocsRSStrategy(nil)
-	baseInfo := &strategies.DocsRSURL{
-		CrateName: "serde",
-		Version:   "1.0.0",
-	}
-
+func TestDocsRSJSONEndpoint(t *testing.T) {
 	tests := []struct {
-		name     string
-		url      string
-		expected bool
+		crate   string
+		version string
+		want    string
 	}{
-		{"same crate module", "https://docs.rs/serde/1.0.0/serde/de/", true},
-		{"same crate struct", "https://docs.rs/serde/1.0.0/serde/struct.Serialize.html", true},
-		{"same crate trait", "https://docs.rs/serde/1.0.0/serde/trait.Deserialize.html", true},
-		{"same crate nested", "https://docs.rs/serde/1.0.0/serde/de/value/index.html", true},
-		{"with latest version", "https://docs.rs/serde/latest/serde/de/", true},
-
-		{"different crate", "https://docs.rs/tokio/1.0.0/tokio/", false},
-		{"std library", "https://docs.rs/std/latest/std/", false},
-		{"core library", "https://docs.rs/core/latest/core/", false},
-		{"source view", "https://docs.rs/serde/1.0.0/src/serde/lib.rs.html", false},
-		{"js file", "https://docs.rs/serde/1.0.0/search-index.js", false},
-		{"css file", "https://docs.rs/serde/1.0.0/rustdoc.css", false},
-		{"svg file", "https://docs.rs/serde/1.0.0/rust-logo.svg", false},
-		{"different host", "https://github.com/serde-rs/serde", false},
-		{"all.html", "https://docs.rs/serde/1.0.0/serde/all.html", false},
-		{"static assets", "https://docs.rs/-/rustdoc.static/main.js", false},
-		{"different version", "https://docs.rs/serde/2.0.0/serde/de/", false},
-		{"sidebar-items.js", "https://docs.rs/serde/1.0.0/serde/sidebar-items.js", false},
+		{"serde", "1.0.0", "https://docs.rs/crate/serde/1.0.0/json"},
+		{"tokio", "latest", "https://docs.rs/crate/tokio/latest/json"},
+		{"ratatui", "0.30.0", "https://docs.rs/crate/ratatui/0.30.0/json"},
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			result := strategy.ShouldCrawlForTest(tc.url, baseInfo)
-			assert.Equal(t, tc.expected, result, "URL: %s", tc.url)
-		})
-	}
-}
-
-func TestDocsRSStrategy_BuildStartURL(t *testing.T) {
-	strategy := strategies.NewDocsRSStrategy(nil)
-
-	tests := []struct {
-		name     string
-		info     *strategies.DocsRSURL
-		expected string
-	}{
-		{
-			name: "standard crate",
-			info: &strategies.DocsRSURL{
-				CrateName: "serde",
-				Version:   "1.0.0",
-			},
-			expected: "https://docs.rs/serde/1.0.0/serde/",
-		},
-		{
-			name: "latest version",
-			info: &strategies.DocsRSURL{
-				CrateName: "tokio",
-				Version:   "latest",
-			},
-			expected: "https://docs.rs/tokio/latest/tokio/",
-		},
-		{
-			name: "crate info page",
-			info: &strategies.DocsRSURL{
-				CrateName:   "serde",
-				Version:     "1.0.0",
-				IsCratePage: true,
-			},
-			expected: "https://docs.rs/crate/serde/1.0.0",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			result := strategy.BuildStartURLForTest(tc.info)
-			assert.Equal(t, tc.expected, result)
+		t.Run(tc.crate+"_"+tc.version, func(t *testing.T) {
+			result := strategies.DocsRSJSONEndpoint(tc.crate, tc.version)
+			assert.Equal(t, tc.want, result)
 		})
 	}
 }

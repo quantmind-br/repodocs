@@ -1,0 +1,209 @@
+{
+  "root": "0",
+  "crate_version": "1.0.0",
+  "format_version": 57,
+  "includes_private": false,
+  "index": {
+    "0": {
+      "id": "0",
+      "crate_id": 0,
+      "name": "example",
+      "span": {"filename": "src/lib.rs", "begin": [1, 1], "end": [100, 1]},
+      "visibility": "public",
+      "docs": "# Example Crate\n\nThis is an example crate for testing.",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "inner": {
+        "module": {
+          "is_crate": true,
+          "items": ["1", "2", "3", "4"],
+          "is_stripped": false
+        }
+      }
+    },
+    "1": {
+      "id": "1",
+      "crate_id": 0,
+      "name": "hello",
+      "span": {"filename": "src/lib.rs", "begin": [10, 1], "end": [15, 1]},
+      "visibility": "public",
+      "docs": "Says hello.\n\n# Examples\n\n```rust\nexample::hello();\n```",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "inner": {
+        "function": {
+          "sig": {
+            "inputs": [],
+            "output": null,
+            "is_c_variadic": false
+          },
+          "generics": {"params": [], "where_predicates": []},
+          "header": {"is_const": false, "is_unsafe": false, "is_async": false, "abi": "Rust"},
+          "has_body": true
+        }
+      }
+    },
+    "2": {
+      "id": "2",
+      "crate_id": 0,
+      "name": "greet",
+      "span": {"filename": "src/lib.rs", "begin": [20, 1], "end": [25, 1]},
+      "visibility": "public",
+      "docs": "Greets a person by name.",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "inner": {
+        "function": {
+          "sig": {
+            "inputs": [["name", {"borrowed_ref": {"is_mutable": false, "type": {"primitive": "str"}}}]],
+            "output": {"resolved_path": {"path": "String", "id": "999"}},
+            "is_c_variadic": false
+          },
+          "generics": {"params": [], "where_predicates": []},
+          "header": {"is_const": false, "is_unsafe": false, "is_async": false, "abi": "Rust"},
+          "has_body": true
+        }
+      }
+    },
+    "3": {
+      "id": "3",
+      "crate_id": 0,
+      "name": "Config",
+      "span": {"filename": "src/lib.rs", "begin": [30, 1], "end": [40, 1]},
+      "visibility": "public",
+      "docs": "Configuration struct for the crate.",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "inner": {
+        "struct": {
+          "kind": {"plain": {"fields": ["10", "11"]}},
+          "generics": {"params": [], "where_predicates": []},
+          "impls": ["20"]
+        }
+      }
+    },
+    "4": {
+      "id": "4",
+      "crate_id": 0,
+      "name": "Status",
+      "span": {"filename": "src/lib.rs", "begin": [50, 1], "end": [60, 1]},
+      "visibility": "public",
+      "docs": "Status enum representing application state.",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "inner": {
+        "enum": {
+          "variants": ["30", "31", "32"],
+          "generics": {"params": [], "where_predicates": []},
+          "impls": [],
+          "variants_stripped": false
+        }
+      }
+    },
+    "20": {
+      "id": "20",
+      "crate_id": 0,
+      "name": null,
+      "span": {"filename": "src/lib.rs", "begin": [42, 1], "end": [48, 1]},
+      "visibility": "public",
+      "docs": null,
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "inner": {
+        "impl": {
+          "is_unsafe": false,
+          "generics": {"params": [], "where_predicates": []},
+          "provided_trait_methods": [],
+          "trait": null,
+          "for": {"resolved_path": {"path": "Config", "id": "3"}},
+          "items": ["21"],
+          "is_negative": false,
+          "is_synthetic": false,
+          "blanket_impl": null
+        }
+      }
+    },
+    "21": {
+      "id": "21",
+      "crate_id": 0,
+      "name": "new",
+      "span": {"filename": "src/lib.rs", "begin": [43, 1], "end": [47, 1]},
+      "visibility": "public",
+      "docs": "Creates a new Config with default values.",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "inner": {
+        "function": {
+          "sig": {
+            "inputs": [],
+            "output": {"resolved_path": {"path": "Self", "id": "3"}},
+            "is_c_variadic": false
+          },
+          "generics": {"params": [], "where_predicates": []},
+          "header": {"is_const": false, "is_unsafe": false, "is_async": false, "abi": "Rust"},
+          "has_body": true
+        }
+      }
+    },
+    "30": {
+      "id": "30",
+      "crate_id": 0,
+      "name": "Ready",
+      "span": {"filename": "src/lib.rs", "begin": [51, 1], "end": [51, 10]},
+      "visibility": "public",
+      "docs": "Ready state.",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "inner": {
+        "variant": {
+          "kind": "plain",
+          "discriminant": null
+        }
+      }
+    },
+    "31": {
+      "id": "31",
+      "crate_id": 0,
+      "name": "Running",
+      "span": {"filename": "src/lib.rs", "begin": [52, 1], "end": [52, 12]},
+      "visibility": "public",
+      "docs": "Running state.",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "inner": {
+        "variant": {
+          "kind": "plain",
+          "discriminant": null
+        }
+      }
+    },
+    "32": {
+      "id": "32",
+      "crate_id": 0,
+      "name": "Stopped",
+      "span": {"filename": "src/lib.rs", "begin": [53, 1], "end": [53, 12]},
+      "visibility": "public",
+      "docs": "Stopped state.",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "inner": {
+        "variant": {
+          "kind": "plain",
+          "discriminant": null
+        }
+      }
+    }
+  },
+  "paths": {},
+  "external_crates": {}
+}

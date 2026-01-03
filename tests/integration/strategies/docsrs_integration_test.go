@@ -3,12 +3,12 @@ package integration
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/converter"
 	"github.com/quantmind-br/repodocs-go/internal/fetcher"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
@@ -18,28 +18,36 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDocsRSStrategy_Execute_Success(t *testing.T) {
+func getServerHost(serverURL string) string {
+	u, _ := url.Parse(serverURL)
+	return u.Host
+}
+
+func TestDocsRSStrategy_Execute_WithJSON(t *testing.T) {
 	ctx := context.Background()
 	server := testutil.NewTestServer(t)
 
 	wd, err := os.Getwd()
 	require.NoError(t, err)
-	fixturePath := filepath.Join(wd, "../../../tests/fixtures/docsrs/serde_crate_root.html")
-	htmlContent, err := os.ReadFile(fixturePath)
+	fixturePath := filepath.Join(wd, "../../../tests/testdata/docsrs/minimal_crate.json")
+	jsonContent, err := os.ReadFile(fixturePath)
 	require.NoError(t, err)
 
-	server.HandleHTML(t, "/serde/1.0.0/serde/", string(htmlContent))
+	server.Handle(t, "/crate/example/1.0.0/json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonContent)
+	})
 
 	tempDir := t.TempDir()
-	deps := createTestDocsRSDependencies(t, server.URL, tempDir)
+	deps := createTestDocsRSJSONDependencies(t, server.URL, tempDir)
 	strategy := strategies.NewDocsRSStrategy(deps)
-	strategy.SetBaseHost("127.0.0.1")
+	strategy.SetBaseHost(getServerHost(server.URL))
 
 	opts := strategies.DefaultOptions()
-	opts.Limit = 1
-	opts.MaxDepth = 1
+	opts.Limit = 10
 
-	err = strategy.Execute(ctx, server.URL+"/serde/1.0.0/serde/", opts)
+	err = strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
 	require.NoError(t, err)
 
 	outputFiles, err := os.ReadDir(tempDir)
@@ -62,23 +70,26 @@ func TestDocsRSStrategy_Execute_DryRun(t *testing.T) {
 
 	wd, err := os.Getwd()
 	require.NoError(t, err)
-	fixturePath := filepath.Join(wd, "../../../tests/fixtures/docsrs/serde_crate_root.html")
-	htmlContent, err := os.ReadFile(fixturePath)
+	fixturePath := filepath.Join(wd, "../../../tests/testdata/docsrs/minimal_crate.json")
+	jsonContent, err := os.ReadFile(fixturePath)
 	require.NoError(t, err)
 
-	server.HandleHTML(t, "/serde/1.0.0/serde/", string(htmlContent))
+	server.Handle(t, "/crate/example/1.0.0/json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonContent)
+	})
 
 	tempDir := t.TempDir()
-	deps := createTestDocsRSDependencies(t, server.URL, tempDir)
+	deps := createTestDocsRSJSONDependencies(t, server.URL, tempDir)
 	strategy := strategies.NewDocsRSStrategy(deps)
-	strategy.SetBaseHost("127.0.0.1")
+	strategy.SetBaseHost(getServerHost(server.URL))
 
 	opts := strategies.DefaultOptions()
 	opts.DryRun = true
-	opts.Limit = 1
-	opts.MaxDepth = 1
+	opts.Limit = 10
 
-	err = strategy.Execute(ctx, server.URL+"/serde/1.0.0/serde/", opts)
+	err = strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
 	require.NoError(t, err)
 
 	outputFiles, err := os.ReadDir(tempDir)
@@ -86,25 +97,48 @@ func TestDocsRSStrategy_Execute_DryRun(t *testing.T) {
 	assert.Empty(t, outputFiles, "Files were created in dry run mode")
 }
 
-func TestDocsRSStrategy_Execute_ErrorHandling(t *testing.T) {
+func TestDocsRSStrategy_Execute_JSONFetchError(t *testing.T) {
 	ctx := context.Background()
 	server := testutil.NewTestServer(t)
 
-	server.Handle(t, "/serde/1.0.0/serde/", func(w http.ResponseWriter, r *http.Request) {
+	server.Handle(t, "/crate/example/1.0.0/json", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
 	tempDir := t.TempDir()
-	deps := createTestDocsRSDependencies(t, server.URL, tempDir)
+	deps := createTestDocsRSJSONDependencies(t, server.URL, tempDir)
 	strategy := strategies.NewDocsRSStrategy(deps)
-	strategy.SetBaseHost("127.0.0.1")
+	strategy.SetBaseHost(getServerHost(server.URL))
 
 	opts := strategies.DefaultOptions()
-	opts.Limit = 1
-	opts.MaxDepth = 1
+	opts.Limit = 10
 
-	err := strategy.Execute(ctx, server.URL+"/serde/1.0.0/serde/", opts)
-	require.NoError(t, err)
+	err := strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to fetch rustdoc JSON")
+}
+
+func TestDocsRSStrategy_Execute_InvalidJSON(t *testing.T) {
+	ctx := context.Background()
+	server := testutil.NewTestServer(t)
+
+	server.Handle(t, "/crate/example/1.0.0/json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("not valid json"))
+	})
+
+	tempDir := t.TempDir()
+	deps := createTestDocsRSJSONDependencies(t, server.URL, tempDir)
+	strategy := strategies.NewDocsRSStrategy(deps)
+	strategy.SetBaseHost(getServerHost(server.URL))
+
+	opts := strategies.DefaultOptions()
+	opts.Limit = 10
+
+	err := strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to fetch rustdoc JSON")
 }
 
 func TestDocsRSStrategy_Execute_ContextCancellation(t *testing.T) {
@@ -113,62 +147,69 @@ func TestDocsRSStrategy_Execute_ContextCancellation(t *testing.T) {
 
 	wd, err := os.Getwd()
 	require.NoError(t, err)
-	fixturePath := filepath.Join(wd, "../../../tests/fixtures/docsrs/serde_crate_root.html")
-	htmlContent, err := os.ReadFile(fixturePath)
+	fixturePath := filepath.Join(wd, "../../../tests/testdata/docsrs/minimal_crate.json")
+	jsonContent, err := os.ReadFile(fixturePath)
 	require.NoError(t, err)
 
-	server.HandleHTML(t, "/serde/1.0.0/serde/", string(htmlContent))
+	server.Handle(t, "/crate/example/1.0.0/json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonContent)
+	})
 
 	tempDir := t.TempDir()
-	deps := createTestDocsRSDependencies(t, server.URL, tempDir)
+	deps := createTestDocsRSJSONDependencies(t, server.URL, tempDir)
 	strategy := strategies.NewDocsRSStrategy(deps)
-	strategy.SetBaseHost("127.0.0.1")
+	strategy.SetBaseHost(getServerHost(server.URL))
 
 	cancel()
 
 	opts := strategies.DefaultOptions()
-	opts.Limit = 1
-	opts.MaxDepth = 1
+	opts.Limit = 10
 
-	err = strategy.Execute(ctx, server.URL+"/serde/1.0.0/serde/", opts)
+	err = strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
 	if err != nil {
 		assert.Contains(t, err.Error(), "context canceled")
 	}
 }
 
-func TestDocsRSStrategy_Execute_WithModules(t *testing.T) {
+func TestDocsRSStrategy_Execute_EmptyIndex(t *testing.T) {
 	ctx := context.Background()
 	server := testutil.NewTestServer(t)
 
-	wd, err := os.Getwd()
-	require.NoError(t, err)
+	emptyJSON := `{
+		"root": "0",
+		"crate_version": "1.0.0",
+		"format_version": 57,
+		"includes_private": false,
+		"index": {},
+		"paths": {},
+		"external_crates": {}
+	}`
 
-	crateRootPath := filepath.Join(wd, "../../../tests/fixtures/docsrs/serde_crate_root.html")
-	crateRootHTML, err := os.ReadFile(crateRootPath)
-	require.NoError(t, err)
-
-	modulePath := filepath.Join(wd, "../../../tests/fixtures/docsrs/serde_module.html")
-	moduleHTML, err := os.ReadFile(modulePath)
-	require.NoError(t, err)
-
-	server.HandleHTML(t, "/serde/1.0.0/serde/", string(crateRootHTML))
-	server.HandleHTML(t, "/serde/1.0.0/serde/de/index.html", string(moduleHTML))
-	server.HandleHTML(t, "/serde/1.0.0/serde/ser/index.html", string(moduleHTML))
+	server.Handle(t, "/crate/empty/1.0.0/json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(emptyJSON))
+	})
 
 	tempDir := t.TempDir()
-	deps := createTestDocsRSDependencies(t, server.URL, tempDir)
+	deps := createTestDocsRSJSONDependencies(t, server.URL, tempDir)
 	strategy := strategies.NewDocsRSStrategy(deps)
-	strategy.SetBaseHost("127.0.0.1")
+	strategy.SetBaseHost(getServerHost(server.URL))
 
 	opts := strategies.DefaultOptions()
-	opts.Limit = 5
-	opts.MaxDepth = 2
+	opts.Limit = 10
 
-	err = strategy.Execute(ctx, server.URL+"/serde/1.0.0/serde/", opts)
+	err := strategy.Execute(ctx, server.URL+"/crate/empty/1.0.0", opts)
 	require.NoError(t, err)
+
+	outputFiles, err := os.ReadDir(tempDir)
+	require.NoError(t, err)
+	assert.Empty(t, outputFiles, "No files should be created for empty index")
 }
 
-func createTestDocsRSDependencies(t *testing.T, baseURL string, outputDir string) *strategies.Dependencies {
+func createTestDocsRSJSONDependencies(t *testing.T, baseURL string, outputDir string) *strategies.Dependencies {
 	t.Helper()
 
 	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
@@ -185,14 +226,9 @@ func createTestDocsRSDependencies(t *testing.T, baseURL string, outputDir string
 	})
 	require.NoError(t, err)
 
-	converterPipeline := converter.NewPipeline(converter.PipelineOptions{
-		ContentSelector: "#main-content",
-	})
-
 	return &strategies.Dependencies{
-		Logger:    logger,
-		Writer:    writer,
-		Fetcher:   fetcherClient,
-		Converter: converterPipeline,
+		Logger:  logger,
+		Writer:  writer,
+		Fetcher: fetcherClient,
 	}
 }
