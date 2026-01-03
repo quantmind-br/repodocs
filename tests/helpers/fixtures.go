@@ -8,13 +8,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func findProjectRoot() string {
+	dir, _ := os.Getwd()
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		dir = parent
+	}
+}
+
 // LoadFixture loads a test fixture file and returns its contents.
 // The path is relative to the tests/fixtures directory.
 // Usage:
-//   data := helpers.LoadFixture(t, "git/sample-repo.tar.gz")
+//
+//	data := helpers.LoadFixture(t, "git/sample-repo.tar.gz")
 func LoadFixture(t *testing.T, path string) []byte {
 	t.Helper()
-	fixturePath := filepath.Join("tests", "fixtures", path)
+	root := findProjectRoot()
+	fixturePath := filepath.Join(root, "tests", "fixtures", path)
 	data, err := os.ReadFile(fixturePath)
 	require.NoError(t, err, "Failed to load fixture: %s", fixturePath)
 	return data
@@ -23,7 +39,8 @@ func LoadFixture(t *testing.T, path string) []byte {
 // LoadFixtureString loads a test fixture file and returns its contents as a string.
 // The path is relative to the tests/fixtures directory.
 // Usage:
-//   content := helpers.LoadFixtureString(t, "pkggo/sample_page.html")
+//
+//	content := helpers.LoadFixtureString(t, "pkggo/sample_page.html")
 func LoadFixtureString(t *testing.T, path string) string {
 	t.Helper()
 	return string(LoadFixture(t, path))
@@ -32,8 +49,9 @@ func LoadFixtureString(t *testing.T, path string) string {
 // TempDir creates a temporary directory for testing.
 // The directory will be automatically removed when the test completes.
 // Usage:
-//   dir := helpers.TempDir(t)
-//   defer os.RemoveAll(dir)
+//
+//	dir := helpers.TempDir(t)
+//	defer os.RemoveAll(dir)
 func TempDir(t *testing.T) string {
 	t.Helper()
 	tmpDir, err := os.MkdirTemp("", "repodocs-test-*")
@@ -47,8 +65,9 @@ func TempDir(t *testing.T) string {
 // TempFile creates a temporary file for testing with the given content.
 // The file will be automatically removed when the test completes.
 // Usage:
-//   file := helpers.TempFile(t, "test content", "test.txt")
-//   defer os.Remove(file.Name())
+//
+//	file := helpers.TempFile(t, "test content", "test.txt")
+//	defer os.Remove(file.Name())
 func TempFile(t *testing.T, content, pattern string) *os.File {
 	t.Helper()
 	tmpDir := TempDir(t)
@@ -71,11 +90,12 @@ func TempFile(t *testing.T, content, pattern string) *os.File {
 // CreateTestTarGz creates a test tar.gz file in memory with the given files.
 // Returns the bytes of the tar.gz file.
 // Usage:
-//   files := []testFile{
-//       {Name: "README.md", Content: "# Test"},
-//       {Name: "docs/guide.md", Content: "# Guide"},
-//   }
-//   archiveData := helpers.CreateTestTarGz(t, files)
+//
+//	files := []testFile{
+//	    {Name: "README.md", Content: "# Test"},
+//	    {Name: "docs/guide.md", Content: "# Guide"},
+//	}
+//	archiveData := helpers.CreateTestTarGz(t, files)
 func CreateTestTarGz(t *testing.T, files []struct {
 	Name    string
 	Content string
