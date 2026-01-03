@@ -134,19 +134,64 @@ func (p *AnthropicProvider) Complete(ctx context.Context, req *domain.LLMRequest
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
+	// Check for non-OK status codes first
+	if resp.StatusCode != http.StatusOK {
+		// Try to parse error response
+		var anthropicResp anthropicResponse
+		if parseErr := json.Unmarshal(respBody, &anthropicResp); parseErr == nil && anthropicResp.Error != nil {
+			// Successfully parsed error response
+			// Check if this is a rate limit error based on status code or error type
+			if resp.StatusCode == http.StatusTooManyRequests || anthropicResp.Error.Type == "rate_limit_error" {
+				return nil, &domain.LLMError{
+					Provider:   "anthropic",
+					StatusCode: resp.StatusCode,
+					Message:    anthropicResp.Error.Message,
+					Err:        domain.ErrLLMRateLimited,
+				}
+			}
+			// Check if this is an authentication error
+			if resp.StatusCode == http.StatusUnauthorized || anthropicResp.Error.Type == "authentication_error" {
+				return nil, &domain.LLMError{
+					Provider:   "anthropic",
+					StatusCode: resp.StatusCode,
+					Message:    anthropicResp.Error.Message,
+					Err:        domain.ErrLLMAuthFailed,
+				}
+			}
+			return nil, &domain.LLMError{
+				Provider:   "anthropic",
+				StatusCode: resp.StatusCode,
+				Message:    anthropicResp.Error.Message,
+				Err:        domain.ErrLLMRequestFailed,
+			}
+		}
+		// Failed to parse error response or no error field, use handleHTTPError
+		return nil, p.handleHTTPError(resp.StatusCode, respBody)
+	}
+
 	var anthropicResp anthropicResponse
 	if err := json.Unmarshal(respBody, &anthropicResp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
+	// Check if response contains an error field even with status 200
 	if anthropicResp.Error != nil {
-		// Check if this is a rate limit error based on status code or error type
-		if resp.StatusCode == http.StatusTooManyRequests || anthropicResp.Error.Type == "rate_limit_error" {
+		// Check if this is a rate limit error based on error type
+		if anthropicResp.Error.Type == "rate_limit_error" {
 			return nil, &domain.LLMError{
 				Provider:   "anthropic",
 				StatusCode: resp.StatusCode,
 				Message:    anthropicResp.Error.Message,
 				Err:        domain.ErrLLMRateLimited,
+			}
+		}
+		// Check if this is an authentication error
+		if anthropicResp.Error.Type == "authentication_error" {
+			return nil, &domain.LLMError{
+				Provider:   "anthropic",
+				StatusCode: resp.StatusCode,
+				Message:    anthropicResp.Error.Message,
+				Err:        domain.ErrLLMAuthFailed,
 			}
 		}
 		return nil, &domain.LLMError{
@@ -155,10 +200,6 @@ func (p *AnthropicProvider) Complete(ctx context.Context, req *domain.LLMRequest
 			Message:    anthropicResp.Error.Message,
 			Err:        domain.ErrLLMRequestFailed,
 		}
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, p.handleHTTPError(resp.StatusCode, respBody)
 	}
 
 	var sb strings.Builder

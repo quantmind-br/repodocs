@@ -134,6 +134,24 @@ func (p *OpenAIProvider) Complete(ctx context.Context, req *domain.LLMRequest) (
 	}
 
 	if openAIResp.Error != nil {
+		// Check if this is a rate limit error based on status code
+		if resp.StatusCode == http.StatusTooManyRequests {
+			return nil, &domain.LLMError{
+				Provider:   "openai",
+				StatusCode: resp.StatusCode,
+				Message:    openAIResp.Error.Message,
+				Err:        domain.ErrLLMRateLimited,
+			}
+		}
+		// Check if this is an authentication error
+		if resp.StatusCode == http.StatusUnauthorized {
+			return nil, &domain.LLMError{
+				Provider:   "openai",
+				StatusCode: resp.StatusCode,
+				Message:    openAIResp.Error.Message,
+				Err:        domain.ErrLLMAuthFailed,
+			}
+		}
 		return nil, &domain.LLMError{
 			Provider:   "openai",
 			StatusCode: resp.StatusCode,
