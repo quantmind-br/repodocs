@@ -435,3 +435,92 @@ func TestGoogleProvider_Complete_WithMaxTokens(t *testing.T) {
 	genConfig := receivedBody["generationConfig"].(map[string]interface{})
 	assert.Equal(t, float64(200), genConfig["maxOutputTokens"])
 }
+
+// TestGoogleProvider_Complete_HTTPErrorWithoutJSONError tests handleHTTPError path
+func TestGoogleProvider_Complete_HTTPErrorWithoutJSONError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		// Return valid JSON but without error field, triggering handleHTTPError
+		_, _ = w.Write([]byte(`{"candidates": []}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewGoogleProvider(llm.ProviderConfig{
+		APIKey:  "invalid-key",
+		BaseURL: server.URL,
+		Model:   "gemini-pro",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.Error(t, err)
+	var llmErr *domain.LLMError
+	require.ErrorAs(t, err, &llmErr)
+	assert.Equal(t, "google", llmErr.Provider)
+	assert.Equal(t, http.StatusUnauthorized, llmErr.StatusCode)
+	assert.ErrorIs(t, llmErr.Err, domain.ErrLLMAuthFailed)
+}
+
+// TestGoogleProvider_Complete_RateLimitViaHandleHTTPError tests rate limit via handleHTTPError
+func TestGoogleProvider_Complete_RateLimitViaHandleHTTPError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		// Return valid JSON but without error field
+		_, _ = w.Write([]byte(`{"candidates": []}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewGoogleProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "gemini-pro",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.Error(t, err)
+	var llmErr *domain.LLMError
+	require.ErrorAs(t, err, &llmErr)
+	assert.ErrorIs(t, llmErr.Err, domain.ErrLLMRateLimited)
+}
+
+// TestGoogleProvider_Complete_GenericHTTPError tests handleHTTPError with unknown status
+func TestGoogleProvider_Complete_GenericHTTPError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		// Return valid JSON but without error field
+		_, _ = w.Write([]byte(`{"candidates": []}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewGoogleProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "gemini-pro",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.Error(t, err)
+	var llmErr *domain.LLMError
+	require.ErrorAs(t, err, &llmErr)
+	assert.Equal(t, http.StatusInternalServerError, llmErr.StatusCode)
+}

@@ -373,3 +373,93 @@ func TestAnthropicProvider_Complete_TemperatureDefault(t *testing.T) {
 	require.NoError(t, err)
 	// Anthropic doesn't send temperature in the basic request, so just verify no error
 }
+
+// TestAnthropicProvider_Complete_HTTPErrorWithoutJSONError tests handleHTTPError path
+// This happens when the API returns an error status code but no JSON error object
+func TestAnthropicProvider_Complete_HTTPErrorWithoutJSONError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		// Return valid JSON but without error field, triggering handleHTTPError
+		_, _ = w.Write([]byte(`{"id": "", "type": "", "role": "", "model": "", "content": [], "stop_reason": ""}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewAnthropicProvider(llm.ProviderConfig{
+		APIKey:  "invalid-key",
+		BaseURL: server.URL,
+		Model:   "claude-3-sonnet",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.Error(t, err)
+	var llmErr *domain.LLMError
+	require.ErrorAs(t, err, &llmErr)
+	assert.Equal(t, "anthropic", llmErr.Provider)
+	assert.Equal(t, http.StatusUnauthorized, llmErr.StatusCode)
+	assert.ErrorIs(t, llmErr.Err, domain.ErrLLMAuthFailed)
+}
+
+// TestAnthropicProvider_Complete_RateLimitViaHandleHTTPError tests rate limit via handleHTTPError
+func TestAnthropicProvider_Complete_RateLimitViaHandleHTTPError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		// Return valid JSON but without error field
+		_, _ = w.Write([]byte(`{"id": "", "type": "", "role": "", "model": "", "content": [], "stop_reason": ""}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewAnthropicProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "claude-3-sonnet",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.Error(t, err)
+	var llmErr *domain.LLMError
+	require.ErrorAs(t, err, &llmErr)
+	assert.ErrorIs(t, llmErr.Err, domain.ErrLLMRateLimited)
+}
+
+// TestAnthropicProvider_Complete_GenericHTTPError tests handleHTTPError with unknown status
+func TestAnthropicProvider_Complete_GenericHTTPError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		// Return valid JSON but without error field
+		_, _ = w.Write([]byte(`{"id": "", "type": "", "role": "", "model": "", "content": [], "stop_reason": ""}`))
+	}))
+	defer server.Close()
+
+	provider, err := llm.NewAnthropicProvider(llm.ProviderConfig{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "claude-3-sonnet",
+	}, server.Client())
+	require.NoError(t, err)
+
+	_, err = provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleUser, Content: "Hi"},
+		},
+	})
+
+	require.Error(t, err)
+	var llmErr *domain.LLMError
+	require.ErrorAs(t, err, &llmErr)
+	assert.Equal(t, http.StatusInternalServerError, llmErr.StatusCode)
+}

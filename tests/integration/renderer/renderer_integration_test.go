@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync"
 	"testing"
 	"time"
@@ -178,12 +179,15 @@ func TestRendererIntegration_BasicRendering(t *testing.T) {
 		defer r.Close()
 
 		// Setup: Create cookies
+		// Note: Domain must match server URL or be empty for cookie to be sent
+		// Parse server URL to get the host
+		serverURL, _ := url.Parse(server.URL)
 		cookies := []*http.Cookie{
 			{
 				Name:     "testCookie",
 				Value:    "testValue",
 				Path:     "/",
-				Domain:   "example.com",
+				Domain:   serverURL.Hostname(),
 				Secure:   false,
 				HttpOnly: false,
 			},
