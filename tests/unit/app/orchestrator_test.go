@@ -511,11 +511,11 @@ func TestDetectStrategy(t *testing.T) {
 		{"Unknown URL", "ftp://example.com", app.StrategyUnknown},
 		{"File URL", "file:///path/to/file", app.StrategyUnknown},
 		{"Empty URL", "", app.StrategyUnknown},
-		// GitHub documentation sites should use crawler, not git
+		// GitHub documentation sites should use crawler/github_pages, not git
 		{"docs.github.com", "https://docs.github.com/en/get-started", app.StrategyCrawler},
 		{"docs.github.com with locale", "https://docs.github.com/pt/copilot/concepts/agents/about-copilot-cli", app.StrategyCrawler},
-		{"github.io pages", "https://user.github.io/project", app.StrategyCrawler},
-		{"pages.github.io", "https://pages.github.io/docs", app.StrategyCrawler},
+		{"github.io pages", "https://user.github.io/project", app.StrategyGitHubPages},
+		{"pages.github.io", "https://pages.github.io/docs", app.StrategyGitHubPages},
 		{"GitHub blob view", "https://github.com/user/repo/blob/main/README.md", app.StrategyCrawler},
 		{"GitHub tree view", "https://github.com/user/repo/tree/main/docs", app.StrategyGit},
 		{"GitLab blob view", "https://gitlab.com/user/repo/-/blob/main/README.md", app.StrategyCrawler},
@@ -591,8 +591,8 @@ func TestGetAllStrategies(t *testing.T) {
 
 	strategies := app.GetAllStrategies(deps)
 
-	// Should return all 7 strategy types
-	assert.Len(t, strategies, 7, "Expected 7 strategies")
+	// Should return all 8 strategy types
+	assert.Len(t, strategies, 8, "Expected 8 strategies")
 
 	// Verify all strategies are non-nil
 	for i, strategy := range strategies {
@@ -600,8 +600,8 @@ func TestGetAllStrategies(t *testing.T) {
 	}
 
 	// Verify strategy names
-	// Order must match DetectStrategy priority: llms > pkggo > docsrs > sitemap > wiki > git > crawler
-	expectedNames := []string{"llms", "pkggo", "docsrs", "sitemap", "wiki", "git", "crawler"}
+	// Order must match DetectStrategy priority: llms > pkggo > docsrs > sitemap > wiki > github_pages > git > crawler
+	expectedNames := []string{"llms", "pkggo", "docsrs", "sitemap", "wiki", "github_pages", "git", "crawler"}
 	actualNames := make([]string, len(strategies))
 	for i, strategy := range strategies {
 		actualNames[i] = strategy.Name()

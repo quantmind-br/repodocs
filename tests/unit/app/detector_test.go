@@ -54,11 +54,11 @@ func TestDetectStrategy_EdgeCases(t *testing.T) {
 		{"GitHub Wiki with special chars", "https://github.com/user/repo/wiki/API_Reference_v2.0", app.StrategyWiki},
 		{"GitHub Wiki with fragment", "https://github.com/user/repo/wiki/Home#section", app.StrategyWiki},
 
-		// Documentation sites (should be crawler, not git)
-		{"GitHub Pages subdomain", "https://project.github.io/docs", app.StrategyCrawler},
-		{"GitHub Pages with path", "https://username.github.io/repo/docs", app.StrategyCrawler},
+		// Documentation sites (should be crawler, not git) - except github.io which is github_pages
+		{"GitHub Pages subdomain", "https://project.github.io/docs", app.StrategyGitHubPages},
+		{"GitHub Pages with path", "https://username.github.io/repo/docs", app.StrategyGitHubPages},
 		{"docs.github.com with path", "https://docs.github.com/en/actions/learn-github-actions", app.StrategyCrawler},
-		{"pages.github.io", "https://pages.github.io/features", app.StrategyCrawler},
+		{"pages.github.io", "https://pages.github.io/features", app.StrategyGitHubPages},
 
 		// Blob/tree views (crawler vs git)
 		{"GitHub blob view", "https://github.com/user/repo/blob/develop/README.md", app.StrategyCrawler},
@@ -221,13 +221,13 @@ func TestGetAllStrategies_Ordering(t *testing.T) {
 
 	strategies := app.GetAllStrategies(deps)
 
-	// Should have exactly 7 strategies
-	assert.Len(t, strategies, 7, "Should have exactly 7 strategies")
+	// Should have exactly 8 strategies
+	assert.Len(t, strategies, 8, "Should have exactly 8 strategies")
 
 	// Check expected order (priority order for detection)
-	// Order must match DetectStrategy priority: llms > pkggo > docsrs > sitemap > wiki > git > crawler
+	// Order must match DetectStrategy priority: llms > pkggo > docsrs > sitemap > wiki > github_pages > git > crawler
 	// pkggo must come before git because pkg.go.dev URLs contain github.com in the path
-	expectedOrder := []string{"llms", "pkggo", "docsrs", "sitemap", "wiki", "git", "crawler"}
+	expectedOrder := []string{"llms", "pkggo", "docsrs", "sitemap", "wiki", "github_pages", "git", "crawler"}
 	actualNames := make([]string, len(strategies))
 
 	for i, strategy := range strategies {

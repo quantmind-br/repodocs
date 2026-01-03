@@ -82,8 +82,8 @@ func TestDetectStrategy_EdgeCases(t *testing.T) {
 		{"GitHub blob is crawler", "https://github.com/owner/repo/blob/main/README.md", StrategyCrawler},
 		{"GitLab blob is crawler", "https://gitlab.com/owner/repo/-/blob/main/README.md", StrategyCrawler},
 		{"docs.github.com is crawler", "https://docs.github.com", StrategyCrawler},
-		{"pages.github.io is crawler", "https://user.github.io", StrategyCrawler},
-		{"github.io is crawler", "https://user.github.io/repo", StrategyCrawler},
+		{"pages.github.io is github_pages", "https://user.github.io", StrategyGitHubPages},
+		{"github.io is github_pages", "https://user.github.io/repo", StrategyGitHubPages},
 	}
 
 	for _, tt := range tests {
@@ -146,7 +146,7 @@ func TestGetAllStrategies(t *testing.T) {
 	defer deps.Close()
 
 	strategies := GetAllStrategies(deps)
-	assert.Len(t, strategies, 7)
+	assert.Len(t, strategies, 8)
 
 	names := make(map[string]bool)
 	for _, s := range strategies {
@@ -158,6 +158,7 @@ func TestGetAllStrategies(t *testing.T) {
 	assert.True(t, names["docsrs"])
 	assert.True(t, names["sitemap"])
 	assert.True(t, names["wiki"])
+	assert.True(t, names["github_pages"])
 	assert.True(t, names["git"])
 	assert.True(t, names["crawler"])
 }

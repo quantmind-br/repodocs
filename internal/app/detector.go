@@ -88,6 +88,11 @@ func DetectStrategy(rawURL string) StrategyType {
 		return StrategyWiki
 	}
 
+	// Check for GitHub Pages (*.github.io) - after Wiki, before Git
+	if strategies.IsGitHubPagesURL(rawURL) {
+		return StrategyGitHubPages
+	}
+
 	// Check for Git repository
 	// Exclude known documentation/pages subdomains
 	isDocsSubdomain := strings.Contains(lower, "docs.github.com") ||
@@ -121,6 +126,8 @@ func CreateStrategy(strategyType StrategyType, deps *strategies.Dependencies) st
 		return strategies.NewSitemapStrategy(deps)
 	case StrategyWiki:
 		return strategies.NewWikiStrategy(deps)
+	case StrategyGitHubPages:
+		return strategies.NewGitHubPagesStrategy(deps)
 	case StrategyGit:
 		return strategies.NewGitStrategy(deps)
 	case StrategyCrawler:
@@ -137,6 +144,7 @@ func GetAllStrategies(deps *strategies.Dependencies) []strategies.Strategy {
 		strategies.NewDocsRSStrategy(deps),
 		strategies.NewSitemapStrategy(deps),
 		strategies.NewWikiStrategy(deps),
+		strategies.NewGitHubPagesStrategy(deps),
 		strategies.NewGitStrategy(deps),
 		strategies.NewCrawlerStrategy(deps),
 	}
