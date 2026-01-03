@@ -5,6 +5,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
+DIM='\033[2m'
 NC='\033[0m'
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -54,6 +55,13 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 echo ""
+echo -e "${CYAN}Commits since ${LATEST_TAG}:${NC}"
+echo ""
+
+CHANGELOG=$(git log "${LATEST_TAG}..HEAD" --pretty=format:"- %s" --no-merges 2>/dev/null || echo "- Initial release")
+echo -e "${DIM}${CHANGELOG}${NC}"
+
+echo ""
 echo -e "Release: ${YELLOW}${LATEST_TAG}${NC} → ${GREEN}${NEW_VERSION}${NC}"
 read -rp "Confirm? [y/N]: " confirm
 
@@ -62,9 +70,14 @@ if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
     exit 0
 fi
 
+TAG_MESSAGE="Release ${NEW_VERSION}
+
+Changes since ${LATEST_TAG}:
+${CHANGELOG}"
+
 echo ""
 echo -e "${CYAN}Creating tag...${NC}"
-git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION"
+git tag -a "$NEW_VERSION" -m "$TAG_MESSAGE"
 
 echo -e "${CYAN}Pushing to origin...${NC}"
 git push origin "$NEW_VERSION"
