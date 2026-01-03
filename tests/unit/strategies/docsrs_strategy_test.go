@@ -175,3 +175,292 @@ func TestDocsRSJSONEndpoint(t *testing.T) {
 		})
 	}
 }
+
+func TestDocsRSStrategy_BuildItemURL(t *testing.T) {
+	strategy := strategies.NewDocsRSStrategy(nil)
+	baseInfo := &strategies.DocsRSURL{
+		CrateName: "serde",
+		Version:   "1.0.0",
+	}
+
+	tests := []struct {
+		name     string
+		item     *strategies.RustdocItem
+		wantURL  string
+	}{
+		{
+			name: "struct item",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("Deserialize"),
+				Inner: map[string]interface{}{"struct": map[string]interface{}{}},
+			},
+			wantURL: "https://docs.rs/serde/1.0.0/serde/struct.Deserialize.html",
+		},
+		{
+			name: "enum item",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("Value"),
+				Inner: map[string]interface{}{"enum": map[string]interface{}{}},
+			},
+			wantURL: "https://docs.rs/serde/1.0.0/serde/enum.Value.html",
+		},
+		{
+			name: "trait item",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("Serialize"),
+				Inner: map[string]interface{}{"trait": map[string]interface{}{}},
+			},
+			wantURL: "https://docs.rs/serde/1.0.0/serde/trait.Serialize.html",
+		},
+		{
+			name: "function item",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("to_string"),
+				Inner: map[string]interface{}{"function": map[string]interface{}{}},
+			},
+			wantURL: "https://docs.rs/serde/1.0.0/serde/fn.to_string.html",
+		},
+		{
+			name: "module crate root",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("serde"),
+				Inner: map[string]interface{}{"module": map[string]interface{}{"is_crate": true}},
+			},
+			wantURL: "https://docs.rs/serde/1.0.0/serde/",
+		},
+		{
+			name: "module non-crate",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("de"),
+				Inner: map[string]interface{}{"module": map[string]interface{}{"is_crate": false}},
+			},
+			wantURL: "https://docs.rs/serde/1.0.0/serde/mod.de.html",
+		},
+		{
+			name: "type alias",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("Result"),
+				Inner: map[string]interface{}{"type_alias": map[string]interface{}{}},
+			},
+			wantURL: "https://docs.rs/serde/1.0.0/serde/type.Result.html",
+		},
+		{
+			name: "constant",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("VERSION"),
+				Inner: map[string]interface{}{"constant": map[string]interface{}{}},
+			},
+			wantURL: "https://docs.rs/serde/1.0.0/serde/constant.VERSION.html",
+		},
+		{
+			name: "macro item",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("derive_serialize"),
+				Inner: map[string]interface{}{"macro": map[string]interface{}{}},
+			},
+			wantURL: "https://docs.rs/serde/1.0.0/serde/macro.derive_serialize.html",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			url := strategy.BuildItemURLForTest(tc.item, baseInfo)
+			assert.Equal(t, tc.wantURL, url)
+		})
+	}
+}
+
+func TestDocsRSStrategy_BuildItemTitle(t *testing.T) {
+	strategy := strategies.NewDocsRSStrategy(nil)
+
+	tests := []struct {
+		name      string
+		item      *strategies.RustdocItem
+		wantTitle string
+	}{
+		{
+			name: "struct",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("MyStruct"),
+				Inner: map[string]interface{}{"struct": map[string]interface{}{}},
+			},
+			wantTitle: "Struct MyStruct",
+		},
+		{
+			name: "enum",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("MyEnum"),
+				Inner: map[string]interface{}{"enum": map[string]interface{}{}},
+			},
+			wantTitle: "Enum MyEnum",
+		},
+		{
+			name: "trait",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("MyTrait"),
+				Inner: map[string]interface{}{"trait": map[string]interface{}{}},
+			},
+			wantTitle: "Trait MyTrait",
+		},
+		{
+			name: "function",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("my_func"),
+				Inner: map[string]interface{}{"function": map[string]interface{}{}},
+			},
+			wantTitle: "Function my_func",
+		},
+		{
+			name: "module crate",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("serde"),
+				Inner: map[string]interface{}{"module": map[string]interface{}{"is_crate": true}},
+			},
+			wantTitle: "Crate serde",
+		},
+		{
+			name: "module non-crate",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("de"),
+				Inner: map[string]interface{}{"module": map[string]interface{}{"is_crate": false}},
+			},
+			wantTitle: "Module de",
+		},
+		{
+			name: "type alias",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("Result"),
+				Inner: map[string]interface{}{"type_alias": map[string]interface{}{}},
+			},
+			wantTitle: "Type Result",
+		},
+		{
+			name: "macro",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("my_macro"),
+				Inner: map[string]interface{}{"macro": map[string]interface{}{}},
+			},
+			wantTitle: "Macro my_macro",
+		},
+		{
+			name: "unknown type",
+			item: &strategies.RustdocItem{
+				Name:  ptrString("something"),
+				Inner: map[string]interface{}{"unknown": map[string]interface{}{}},
+			},
+			wantTitle: "something",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			title := strategy.BuildItemTitleForTest(tc.item)
+			assert.Equal(t, tc.wantTitle, title)
+		})
+	}
+}
+
+func TestDocsRSStrategy_GetItemTypeName(t *testing.T) {
+	strategy := strategies.NewDocsRSStrategy(nil)
+
+	tests := []struct {
+		name     string
+		item     *strategies.RustdocItem
+		wantType string
+	}{
+		{"module", &strategies.RustdocItem{Inner: map[string]interface{}{"module": map[string]interface{}{}}}, "module"},
+		{"struct", &strategies.RustdocItem{Inner: map[string]interface{}{"struct": map[string]interface{}{}}}, "struct"},
+		{"enum", &strategies.RustdocItem{Inner: map[string]interface{}{"enum": map[string]interface{}{}}}, "enum"},
+		{"trait", &strategies.RustdocItem{Inner: map[string]interface{}{"trait": map[string]interface{}{}}}, "trait"},
+		{"function", &strategies.RustdocItem{Inner: map[string]interface{}{"function": map[string]interface{}{}}}, "function"},
+		{"type_alias", &strategies.RustdocItem{Inner: map[string]interface{}{"type_alias": map[string]interface{}{}}}, "type"},
+		{"macro", &strategies.RustdocItem{Inner: map[string]interface{}{"macro": map[string]interface{}{}}}, "macro"},
+		{"unknown", &strategies.RustdocItem{Inner: map[string]interface{}{"unknown": map[string]interface{}{}}}, "item"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			typeName := strategy.GetItemTypeNameForTest(tc.item)
+			assert.Equal(t, tc.wantType, typeName)
+		})
+	}
+}
+
+func TestDocsRSStrategy_BuildItemDescription(t *testing.T) {
+	strategy := strategies.NewDocsRSStrategy(nil)
+	baseInfo := &strategies.DocsRSURL{
+		CrateName: "tokio",
+		Version:   "1.0.0",
+	}
+
+	tests := []struct {
+		name            string
+		item            *strategies.RustdocItem
+		wantContains    []string
+	}{
+		{
+			name: "stable struct",
+			item: &strategies.RustdocItem{
+				Inner: map[string]interface{}{"struct": map[string]interface{}{}},
+			},
+			wantContains: []string{"crate:tokio", "version:1.0.0", "type:struct", "stability:stable"},
+		},
+		{
+			name: "deprecated function",
+			item: &strategies.RustdocItem{
+				Inner:       map[string]interface{}{"function": map[string]interface{}{}},
+				Deprecation: &strategies.RustdocDeprecation{Since: "1.0.0", Note: "Use new_func instead"},
+			},
+			wantContains: []string{"crate:tokio", "version:1.0.0", "type:function", "stability:deprecated"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			desc := strategy.BuildItemDescriptionForTest(tc.item, baseInfo)
+			for _, want := range tc.wantContains {
+				assert.Contains(t, desc, want)
+			}
+		})
+	}
+}
+
+func TestDocsRSStrategy_BuildItemTags(t *testing.T) {
+	strategy := strategies.NewDocsRSStrategy(nil)
+	baseInfo := &strategies.DocsRSURL{
+		CrateName: "serde",
+		Version:   "1.0.0",
+	}
+
+	t.Run("stable item", func(t *testing.T) {
+		item := &strategies.RustdocItem{
+			Inner: map[string]interface{}{"struct": map[string]interface{}{}},
+		}
+		tags := strategy.BuildItemTagsForTest(item, baseInfo)
+
+		assert.Contains(t, tags, "docs.rs")
+		assert.Contains(t, tags, "rust")
+		assert.Contains(t, tags, "serde")
+		assert.Contains(t, tags, "struct")
+		assert.NotContains(t, tags, "deprecated")
+	})
+
+	t.Run("deprecated item", func(t *testing.T) {
+		item := &strategies.RustdocItem{
+			Inner:       map[string]interface{}{"function": map[string]interface{}{}},
+			Deprecation: &strategies.RustdocDeprecation{Since: "1.0.0", Note: "Deprecated"},
+		}
+		tags := strategy.BuildItemTagsForTest(item, baseInfo)
+
+		assert.Contains(t, tags, "docs.rs")
+		assert.Contains(t, tags, "rust")
+		assert.Contains(t, tags, "serde")
+		assert.Contains(t, tags, "function")
+		assert.Contains(t, tags, "deprecated")
+	})
+}
+
+// Helper function to create string pointer
+func ptrString(s string) *string {
+	return &s
+}

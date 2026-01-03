@@ -356,3 +356,28 @@ func (s *DocsRSStrategy) getItemTypeName(item *RustdocItem) string {
 func ParseDocsRSPathForTest(rawURL string) (*DocsRSURL, error) {
 	return parseDocsRSPath(rawURL)
 }
+
+// BuildItemURLForTest exposes buildItemURL for testing
+func (s *DocsRSStrategy) BuildItemURLForTest(item *RustdocItem, baseInfo *DocsRSURL) string {
+	return s.buildItemURL(item, baseInfo)
+}
+
+// BuildItemTitleForTest exposes buildItemTitle for testing
+func (s *DocsRSStrategy) BuildItemTitleForTest(item *RustdocItem) string {
+	return s.buildItemTitle(item)
+}
+
+// GetItemTypeNameForTest exposes getItemTypeName for testing
+func (s *DocsRSStrategy) GetItemTypeNameForTest(item *RustdocItem) string {
+	return s.getItemTypeName(item)
+}
+
+// BuildItemDescriptionForTest exposes buildItemDescription for testing
+func (s *DocsRSStrategy) BuildItemDescriptionForTest(item *RustdocItem, baseInfo *DocsRSURL) string {
+	return s.buildItemDescription(item, baseInfo)
+}
+
+// BuildItemTagsForTest exposes buildItemTags for testing
+func (s *DocsRSStrategy) BuildItemTagsForTest(item *RustdocItem, baseInfo *DocsRSURL) []string {
+	return s.buildItemTags(item, baseInfo)
+}
