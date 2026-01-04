@@ -15,7 +15,6 @@ import (
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/renderer"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
-	"github.com/schollz/progressbar/v3"
 )
 
 // GitHubPagesStrategy extracts documentation from GitHub Pages sites (*.github.io)
@@ -358,11 +357,7 @@ func (s *GitHubPagesStrategy) filterURLs(urls []string, baseURL string, opts Opt
 
 // processURLs processes all URLs using HTTP-first extraction with browser fallback
 func (s *GitHubPagesStrategy) processURLs(ctx context.Context, urls []string, opts Options) error {
-	bar := progressbar.NewOptions(len(urls),
-		progressbar.OptionSetDescription("Extracting"),
-		progressbar.OptionShowCount(),
-		progressbar.OptionShowIts(),
-	)
+	bar := utils.NewProgressBar(len(urls), utils.DescExtracting)
 
 	// Limit browser concurrency for stability
 	concurrency := opts.Concurrency
