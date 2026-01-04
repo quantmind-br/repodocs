@@ -30,3 +30,6 @@ e2e_output/
 
 # Auto Claude data directory
 .auto-claude/
+
+# Worktrees
+.worktrees/
