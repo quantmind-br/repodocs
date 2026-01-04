@@ -355,10 +355,10 @@ func TestCalculateBackoff(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		attempt      int
-		minExpected  time.Duration
-		maxExpected  time.Duration
+		name        string
+		attempt     int
+		minExpected time.Duration
+		maxExpected time.Duration
 	}{
 		{
 			name:        "attempt 0",
@@ -404,11 +404,11 @@ func TestShouldRetry(t *testing.T) {
 // TestRetrier_calculateBackoff tests internal backoff calculation
 func TestRetrier_calculateBackoff(t *testing.T) {
 	tests := []struct {
-		name         string
-		cfg          RetryConfig
-		attempt      int
-		minExpected  time.Duration
-		maxExpected  time.Duration
+		name        string
+		cfg         RetryConfig
+		attempt     int
+		minExpected time.Duration
+		maxExpected time.Duration
 	}{
 		{
 			name: "no jitter",

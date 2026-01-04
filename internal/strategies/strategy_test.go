@@ -37,22 +37,22 @@ func TestDefaultOptions(t *testing.T) {
 func TestNewDependencies(t *testing.T) {
 	t.Run("minimal dependencies", func(t *testing.T) {
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       "/tmp",
-			Flat:            false,
-			JSONMetadata:    false,
-			DryRun:          true,
-			Verbose:         false,
+			Timeout:        10 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      "/tmp",
+			Flat:           false,
+			JSONMetadata:   false,
+			DryRun:         true,
+			Verbose:        false,
 		})
 
 		require.NoError(t, err)
 		assert.NotNil(t, deps)
 		assert.NotNil(t, deps.Fetcher)
 		assert.Nil(t, deps.Renderer) // Not enabled
-		assert.Nil(t, deps.Cache)     // Not enabled
+		assert.Nil(t, deps.Cache)    // Not enabled
 		assert.NotNil(t, deps.Converter)
 		assert.NotNil(t, deps.Writer)
 		assert.NotNil(t, deps.Logger)
@@ -67,15 +67,15 @@ func TestNewDependencies(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     true,
-			CacheDir:        tmpDir,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       "/tmp",
-			Flat:            false,
-			JSONMetadata:    false,
-			DryRun:          true,
+			Timeout:        10 * time.Second,
+			EnableCache:    true,
+			CacheDir:       tmpDir,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      "/tmp",
+			Flat:           false,
+			JSONMetadata:   false,
+			DryRun:         true,
 		})
 
 		require.NoError(t, err)
@@ -88,14 +88,14 @@ func TestNewDependencies(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       tmpDir,
-			Flat:            false,
-			JSONMetadata:    true,
-			DryRun:          true,
+			Timeout:        10 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      tmpDir,
+			Flat:           false,
+			JSONMetadata:   true,
+			DryRun:         true,
 		})
 
 		require.NoError(t, err)
@@ -106,20 +106,20 @@ func TestNewDependencies(t *testing.T) {
 
 	t.Run("with LLM config but disabled", func(t *testing.T) {
 		llmConfig := &config.LLMConfig{
-			Provider:       "openai",
+			Provider:        "openai",
 			EnhanceMetadata: false, // Disabled
 		}
 
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       "/tmp",
-			Flat:            false,
-			JSONMetadata:    false,
-			DryRun:          true,
-			LLMConfig:       llmConfig,
+			Timeout:        10 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      "/tmp",
+			Flat:           false,
+			JSONMetadata:   false,
+			DryRun:         true,
+			LLMConfig:      llmConfig,
 		})
 
 		require.NoError(t, err)
@@ -135,15 +135,15 @@ func TestNewDependencies_ErrorCases(t *testing.T) {
 	t.Run("invalid cache directory", func(t *testing.T) {
 		// Use an invalid path that cannot be created
 		_, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     true,
-			CacheDir:        "/proc/nonexistent/path/that/cannot/be/created",
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       "/tmp",
-			Flat:            false,
-			JSONMetadata:    false,
-			DryRun:          true,
+			Timeout:        10 * time.Second,
+			EnableCache:    true,
+			CacheDir:       "/proc/nonexistent/path/that/cannot/be/created",
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      "/tmp",
+			Flat:           false,
+			JSONMetadata:   false,
+			DryRun:         true,
 		})
 
 		// Should either fail or create a nil cache
@@ -158,14 +158,14 @@ func TestNewDependencies_ErrorCases(t *testing.T) {
 func TestDependencies_Close(t *testing.T) {
 	t.Run("close without cache", func(t *testing.T) {
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       "/tmp",
-			Flat:            false,
-			JSONMetadata:    false,
-			DryRun:          true,
+			Timeout:        10 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      "/tmp",
+			Flat:           false,
+			JSONMetadata:   false,
+			DryRun:         true,
 		})
 
 		require.NoError(t, err)
@@ -179,15 +179,15 @@ func TestDependencies_Close(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     true,
-			CacheDir:        tmpDir,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       "/tmp",
-			Flat:            false,
-			JSONMetadata:    false,
-			DryRun:          true,
+			Timeout:        10 * time.Second,
+			EnableCache:    true,
+			CacheDir:       tmpDir,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      "/tmp",
+			Flat:           false,
+			JSONMetadata:   false,
+			DryRun:         true,
 		})
 
 		require.NoError(t, err)
@@ -206,16 +206,16 @@ func TestDependencies_Close(t *testing.T) {
 		}
 
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     true,
-			CacheDir:        tmpDir,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       tmpDir,
-			Flat:            false,
-			JSONMetadata:    true,
-			DryRun:          true,
-			LLMConfig:       llmConfig,
+			Timeout:        10 * time.Second,
+			EnableCache:    true,
+			CacheDir:       tmpDir,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      tmpDir,
+			Flat:           false,
+			JSONMetadata:   true,
+			DryRun:         true,
+			LLMConfig:      llmConfig,
 		})
 
 		require.NoError(t, err)
@@ -230,14 +230,14 @@ func TestDependencies_Close(t *testing.T) {
 func TestDependencies_FlushMetadata(t *testing.T) {
 	t.Run("without collector", func(t *testing.T) {
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       "/tmp",
-			Flat:            false,
-			JSONMetadata:    false,
-			DryRun:          true,
+			Timeout:        10 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      "/tmp",
+			Flat:           false,
+			JSONMetadata:   false,
+			DryRun:         true,
 		})
 
 		require.NoError(t, err)
@@ -252,14 +252,14 @@ func TestDependencies_FlushMetadata(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       tmpDir,
-			Flat:            false,
-			JSONMetadata:    true,
-			DryRun:          true,
+			Timeout:        10 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      tmpDir,
+			Flat:           false,
+			JSONMetadata:   true,
+			DryRun:         true,
 		})
 
 		require.NoError(t, err)
@@ -275,14 +275,14 @@ func TestDependencies_FlushMetadata(t *testing.T) {
 func TestDependencies_SetStrategy(t *testing.T) {
 	t.Run("without collector", func(t *testing.T) {
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       "/tmp",
-			Flat:            false,
-			JSONMetadata:    false,
-			DryRun:          true,
+			Timeout:        10 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      "/tmp",
+			Flat:           false,
+			JSONMetadata:   false,
+			DryRun:         true,
 		})
 
 		require.NoError(t, err)
@@ -296,14 +296,14 @@ func TestDependencies_SetStrategy(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       tmpDir,
-			Flat:            false,
-			JSONMetadata:    true,
-			DryRun:          true,
+			Timeout:        10 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      tmpDir,
+			Flat:           false,
+			JSONMetadata:   true,
+			DryRun:         true,
 		})
 
 		require.NoError(t, err)
@@ -318,14 +318,14 @@ func TestDependencies_SetStrategy(t *testing.T) {
 func TestDependencies_SetSourceURL(t *testing.T) {
 	t.Run("without collector", func(t *testing.T) {
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       "/tmp",
-			Flat:            false,
-			JSONMetadata:    false,
-			DryRun:          true,
+			Timeout:        10 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      "/tmp",
+			Flat:           false,
+			JSONMetadata:   false,
+			DryRun:         true,
 		})
 
 		require.NoError(t, err)
@@ -339,14 +339,14 @@ func TestDependencies_SetSourceURL(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       tmpDir,
-			Flat:            false,
-			JSONMetadata:    true,
-			DryRun:          true,
+			Timeout:        10 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      tmpDir,
+			Flat:           false,
+			JSONMetadata:   true,
+			DryRun:         true,
 		})
 
 		require.NoError(t, err)
@@ -363,15 +363,15 @@ func TestDependencies_WriteDocument(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       tmpDir,
-			Flat:            true,
-			JSONMetadata:    false,
-			DryRun:          false,
-			Force:           true,
+			Timeout:        10 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      tmpDir,
+			Flat:           true,
+			JSONMetadata:   false,
+			DryRun:         false,
+			Force:          true,
 		})
 
 		require.NoError(t, err)
@@ -392,15 +392,15 @@ func TestDependencies_WriteDocument(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         10 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       tmpDir,
-			Flat:            true,
-			JSONMetadata:    false,
-			DryRun:          true,
-			Force:           true,
+			Timeout:        10 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      tmpDir,
+			Flat:           true,
+			JSONMetadata:   false,
+			DryRun:         true,
+			Force:          true,
 		})
 
 		require.NoError(t, err)
@@ -431,7 +431,7 @@ func TestDependencies_WriteDocument(t *testing.T) {
 				Force:   true,
 				DryRun:  false,
 			}),
-			Logger: utils.NewLogger(utils.LoggerOptions{Level: "error"}),
+			Logger:           utils.NewLogger(utils.LoggerOptions{Level: "error"}),
 			MetadataEnhancer: llm.NewMetadataEnhancer(mockProvider),
 		}
 		defer deps.Close()

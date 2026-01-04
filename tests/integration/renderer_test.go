@@ -70,7 +70,7 @@ func TestRenderIntegration(t *testing.T) {
 
 	// Start a local HTTP server to serve the test HTML
 	server := &http.Server{
-		Addr:    "127.0.0.1:0",
+		Addr: "127.0.0.1:0",
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html")
 			fmt.Fprint(w, testHTML)

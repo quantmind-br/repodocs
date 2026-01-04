@@ -195,4 +195,3 @@ func BenchmarkParseCountReadability(b *testing.B) {
 		_, _ = pipeline.Convert(context.Background(), html, "https://example.com")
 	}
 }
-

@@ -455,23 +455,23 @@ func TestPkgGoStrategy_Execute_ContextCancellation(t *testing.T) {
 // TestPkgGoStrategy_Execute_PackageNameExtraction tests package name extraction
 func TestPkgGoStrategy_Execute_PackageNameExtraction(t *testing.T) {
 	tests := []struct {
-		name           string
-		html           string
-		expectedTitle  string
+		name          string
+		html          string
+		expectedTitle string
 	}{
 		{
-			name: "standard package name",
-			html: `<h1 class="UnitHeader-title">github.com/gorilla/mux</h1>`,
+			name:          "standard package name",
+			html:          `<h1 class="UnitHeader-title">github.com/gorilla/mux</h1>`,
 			expectedTitle: "github.com/gorilla/mux",
 		},
 		{
-			name: "package with whitespace",
-			html: `<h1 class="UnitHeader-title">  github.com/gorilla/mux  </h1>`,
+			name:          "package with whitespace",
+			html:          `<h1 class="UnitHeader-title">  github.com/gorilla/mux  </h1>`,
 			expectedTitle: "github.com/gorilla/mux",
 		},
 		{
-			name: "std lib package",
-			html: `<h1 class="UnitHeader-title">std</h1>`,
+			name:          "std lib package",
+			html:          `<h1 class="UnitHeader-title">std</h1>`,
 			expectedTitle: "std",
 		},
 	}

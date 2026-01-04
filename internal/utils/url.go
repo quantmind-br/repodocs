@@ -51,7 +51,7 @@ func NormalizeURL(rawURL string) (string, error) {
 
 	// Build the result manually to ensure trailing slash for root path
 	result := u.String()
-	
+
 	// Ensure root path has trailing slash
 	if u.Path == "/" && u.RawQuery == "" && !strings.HasSuffix(result, "/") {
 		result += "/"
@@ -174,7 +174,7 @@ func IsAbsoluteURL(rawURL string) bool {
 	if strings.HasPrefix(rawURL, "//") {
 		return true
 	}
-	
+
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return false

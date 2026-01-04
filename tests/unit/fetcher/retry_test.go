@@ -484,7 +484,7 @@ func TestRetryWithValue_Error(t *testing.T) {
 
 func TestShouldRetryStatus(t *testing.T) {
 	testCases := []struct {
-		statusCode int
+		statusCode  int
 		shouldRetry bool
 		desc        string
 	}{

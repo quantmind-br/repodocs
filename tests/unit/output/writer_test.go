@@ -17,9 +17,9 @@ import (
 // TestNewWriter tests creating a new Writer with various options
 func TestNewWriter(t *testing.T) {
 	tests := []struct {
-		name    string
-		opts    output.WriterOptions
-		verify  func(t *testing.T, w *output.Writer)
+		name   string
+		opts   output.WriterOptions
+		verify func(t *testing.T, w *output.Writer)
 	}{
 		{
 			name: "with all options",
@@ -104,10 +104,10 @@ func TestWriter_Write_WithRelativePath(t *testing.T) {
 	})
 
 	doc := &domain.Document{
-		URL:         "https://github.com/example/repo",
+		URL:          "https://github.com/example/repo",
 		RelativePath: "docs/guide.md",
-		Content:     "# Guide\n\nThis is a guide.",
-		Title:       "Guide",
+		Content:      "# Guide\n\nThis is a guide.",
+		Title:        "Guide",
 	}
 
 	err := writer.Write(context.Background(), doc)
@@ -527,9 +527,9 @@ func TestWriter_EnsureBaseDir(t *testing.T) {
 // TestWriter_Clean tests directory cleaning
 func TestWriter_Clean(t *testing.T) {
 	tests := []struct {
-		name    string
-		setup   func(t *testing.T, writer *output.Writer)
-		verify  func(t *testing.T, writer *output.Writer, err error)
+		name   string
+		setup  func(t *testing.T, writer *output.Writer)
+		verify func(t *testing.T, writer *output.Writer, err error)
 	}{
 		{
 			name: "remove directory with files",
@@ -582,9 +582,9 @@ func TestWriter_Clean(t *testing.T) {
 // TestWriter_Stats tests statistics gathering
 func TestWriter_Stats(t *testing.T) {
 	tests := []struct {
-		name           string
-		setup          func(t *testing.T, writer *output.Writer)
-		expectedCount  int
+		name            string
+		setup           func(t *testing.T, writer *output.Writer)
+		expectedCount   int
 		expectedMinSize int64
 	}{
 		{
@@ -598,7 +598,7 @@ func TestWriter_Stats(t *testing.T) {
 				err := writer.WriteMultiple(context.Background(), docs)
 				require.NoError(t, err)
 			},
-			expectedCount:  3,
+			expectedCount:   3,
 			expectedMinSize: 1,
 		},
 		{
@@ -621,13 +621,13 @@ func TestWriter_Stats(t *testing.T) {
 				err = os.WriteFile(jsonPath, []byte("{}"), 0644)
 				require.NoError(t, err)
 			},
-			expectedCount:  2, // Only .md files
+			expectedCount:   2, // Only .md files
 			expectedMinSize: 1,
 		},
 		{
-			name:           "empty directory",
-			setup:          func(t *testing.T, writer *output.Writer) {},
-			expectedCount:  0,
+			name:            "empty directory",
+			setup:           func(t *testing.T, writer *output.Writer) {},
+			expectedCount:   0,
 			expectedMinSize: 0,
 		},
 	}
@@ -654,9 +654,9 @@ func TestWriter_Stats(t *testing.T) {
 // TestWriter_FlushMetadata tests metadata flushing
 func TestWriter_FlushMetadata(t *testing.T) {
 	tests := []struct {
-		name      string
-		setup     func(t *testing.T) (*output.Writer, *domain.Document)
-		verify    func(t *testing.T, tmpDir string, err error)
+		name   string
+		setup  func(t *testing.T) (*output.Writer, *domain.Document)
+		verify func(t *testing.T, tmpDir string, err error)
 	}{
 		{
 			name: "flush with collector",

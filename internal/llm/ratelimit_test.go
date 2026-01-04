@@ -11,40 +11,40 @@ import (
 // TestNewTokenBucket tests creating a token bucket
 func TestNewTokenBucket(t *testing.T) {
 	tests := []struct {
-		name             string
+		name              string
 		requestsPerMinute int
-		burstSize        int
-		expectedCapacity float64
+		burstSize         int
+		expectedCapacity  float64
 	}{
 		{
-			name:             "standard values",
+			name:              "standard values",
 			requestsPerMinute: 60,
-			burstSize:        10,
-			expectedCapacity: 10,
+			burstSize:         10,
+			expectedCapacity:  10,
 		},
 		{
-			name:             "zero requests per minute defaults to 60",
+			name:              "zero requests per minute defaults to 60",
 			requestsPerMinute: 0,
-			burstSize:        5,
-			expectedCapacity: 5,
+			burstSize:         5,
+			expectedCapacity:  5,
 		},
 		{
-			name:             "negative requests per minute defaults to 60",
+			name:              "negative requests per minute defaults to 60",
 			requestsPerMinute: -10,
-			burstSize:        5,
-			expectedCapacity: 5,
+			burstSize:         5,
+			expectedCapacity:  5,
 		},
 		{
-			name:             "zero burst size defaults to 1",
+			name:              "zero burst size defaults to 1",
 			requestsPerMinute: 60,
-			burstSize:        0,
-			expectedCapacity: 1,
+			burstSize:         0,
+			expectedCapacity:  1,
 		},
 		{
-			name:             "negative burst size defaults to 1",
+			name:              "negative burst size defaults to 1",
 			requestsPerMinute: 60,
-			burstSize:        -5,
-			expectedCapacity: 1,
+			burstSize:         -5,
+			expectedCapacity:  1,
 		},
 	}
 

@@ -326,7 +326,7 @@ func TestDetectFrameworkVuePatterns(t *testing.T) {
 		pattern  string
 		expected string
 	}{
-		{`<div id="app" v-cloak></div>`, "Vue"},  // More specific than id="app"
+		{`<div id="app" v-cloak></div>`, "Vue"}, // More specific than id="app"
 		{`__VUE__`, "Vue"},
 		{`v-cloak`, "Vue"},
 		{`Vue.createApp`, "Vue"},

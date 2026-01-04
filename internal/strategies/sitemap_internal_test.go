@@ -69,14 +69,14 @@ func TestProcessSitemapIndex(t *testing.T) {
 
 		// Create real dependencies
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         5 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       t.TempDir(),
-			Flat:            true,
-			JSONMetadata:    false,
-			DryRun:          true, // Don't actually write files
+			Timeout:        5 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      t.TempDir(),
+			Flat:           true,
+			JSONMetadata:   false,
+			DryRun:         true, // Don't actually write files
 		})
 		require.NoError(t, err)
 		defer deps.Close()
@@ -150,14 +150,14 @@ func TestProcessSitemapIndex(t *testing.T) {
 
 		// Create real dependencies
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         5 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       t.TempDir(),
-			Flat:            true,
-			JSONMetadata:    false,
-			DryRun:          true,
+			Timeout:        5 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      t.TempDir(),
+			Flat:           true,
+			JSONMetadata:   false,
+			DryRun:         true,
 		})
 		require.NoError(t, err)
 		defer deps.Close()
@@ -210,14 +210,14 @@ func TestProcessSitemapIndex(t *testing.T) {
 
 		// Create real dependencies
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         5 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       t.TempDir(),
-			Flat:            true,
-			JSONMetadata:    false,
-			DryRun:          true,
+			Timeout:        5 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      t.TempDir(),
+			Flat:           true,
+			JSONMetadata:   false,
+			DryRun:         true,
 		})
 		require.NoError(t, err)
 		defer deps.Close()
@@ -275,14 +275,14 @@ func TestProcessSitemapIndex(t *testing.T) {
 
 		// Create real dependencies
 		deps, err := NewDependencies(DependencyOptions{
-			Timeout:         5 * time.Second,
-			EnableCache:     false,
-			EnableRenderer:  false,
-			Concurrency:     1,
-			OutputDir:       t.TempDir(),
-			Flat:            true,
-			JSONMetadata:    false,
-			DryRun:          true,
+			Timeout:        5 * time.Second,
+			EnableCache:    false,
+			EnableRenderer: false,
+			Concurrency:    1,
+			OutputDir:      t.TempDir(),
+			Flat:           true,
+			JSONMetadata:   false,
+			DryRun:         true,
 		})
 		require.NoError(t, err)
 		defer deps.Close()
@@ -439,14 +439,14 @@ func TestProcessSitemapIndex_Success(t *testing.T) {
 
 	// Create real dependencies
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       t.TempDir(),
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      t.TempDir(),
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -479,14 +479,14 @@ func TestProcessSitemapIndex_Empty(t *testing.T) {
 
 	// Create real dependencies
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       t.TempDir(),
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      t.TempDir(),
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -601,14 +601,14 @@ func TestProcessSitemapIndex_Nested(t *testing.T) {
 
 	// Create real dependencies
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     2,
-		OutputDir:       t.TempDir(),
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    2,
+		OutputDir:      t.TempDir(),
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()

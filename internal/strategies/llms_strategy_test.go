@@ -70,7 +70,7 @@ func TestLLMSStrategy_CanHandle(t *testing.T) {
 		{"https://example.com/llms.txt", true},
 		{"https://example.com/docs/llms.txt", true},
 		{"http://example.com/llms.txt", true},
-		{"https://example.com/llms.txt/", false}, // trailing slash makes it not match
+		{"https://example.com/llms.txt/", false},            // trailing slash makes it not match
 		{"https://example.com/llms.txt?query=param", false}, // query params break the match
 		{"https://example.com/docs", false},
 		{"https://example.com/lms.txt", false},
@@ -114,14 +114,14 @@ func TestLLMSStrategy_Execute_Success(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -164,14 +164,14 @@ func TestLLMSStrategy_Execute_WithFilter(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -219,14 +219,14 @@ func TestLLMSStrategy_Execute_WithLimit(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -268,14 +268,14 @@ This is a markdown guide.
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -314,14 +314,14 @@ func TestLLMSStrategy_Execute_ContextCancellation(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -352,14 +352,14 @@ func TestLLMSStrategy_Execute_EmptyLLMS(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -403,8 +403,8 @@ func TestParseLLMSLinks(t *testing.T) {
 			},
 		},
 		{
-			name: "empty content",
-			content: "",
+			name:     "empty content",
+			content:  "",
 			expected: []domain.LLMSLink{},
 		},
 		{
@@ -527,14 +527,14 @@ func TestLLMSStrategy_Execute_TitleFallback(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -575,14 +575,14 @@ func TestLLMSStrategy_Execute_FetchError(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()

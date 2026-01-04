@@ -250,7 +250,7 @@ func TestMetadataEnhancer_MissingFields(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
+		name     string
 		jsonResp string
 	}{
 		{

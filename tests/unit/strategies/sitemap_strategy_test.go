@@ -506,10 +506,10 @@ func TestSitemapStrategy_Execute_SitemapIndex(t *testing.T) {
 			w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 	<sitemap>
-		<loc>`+server.URL+`/sitemap1.xml</loc>
+		<loc>` + server.URL + `/sitemap1.xml</loc>
 	</sitemap>
 	<sitemap>
-		<loc>`+server.URL+`/sitemap2.xml</loc>
+		<loc>` + server.URL + `/sitemap2.xml</loc>
 	</sitemap>
 </sitemapindex>`))
 			return

@@ -141,10 +141,10 @@ func TestWikiStrategy_Execute_Success(t *testing.T) {
 
 	// Create some wiki pages
 	pages := map[string]string{
-		"Home.md":          "# Home\n\nWelcome to the wiki.",
+		"Home.md":            "# Home\n\nWelcome to the wiki.",
 		"Getting-Started.md": "# Getting Started\n\nHow to get started.",
-		"API.md":            "# API\n\nAPI documentation.",
-		"_Sidebar.md":       "[[Home]]\n[[Getting Started]]\n[[API]]",
+		"API.md":             "# API\n\nAPI documentation.",
+		"_Sidebar.md":        "[[Home]]\n[[Getting Started]]\n[[API]]",
 	}
 
 	for filename, content := range pages {
@@ -212,8 +212,8 @@ func TestWikiStrategy_ParseWikiStructure(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		pages := map[string]string{
-			"Home.md":    "# Home",
-			"Guide.md":   "# Guide",
+			"Home.md":     "# Home",
+			"Guide.md":    "# Guide",
 			"_Sidebar.md": "[[Home]]\n[[Guide]]",
 		}
 
@@ -413,10 +413,10 @@ func TestWikiStrategy_ProcessPages(t *testing.T) {
 
 		structure := &WikiStructure{
 			Pages: map[string]*WikiPage{
-				"Home.md":          {Filename: "Home.md", Title: "Home", Content: "# Home", IsSpecial: false},
-				"Guide.md":         {Filename: "Guide.md", Title: "Guide", Content: "# Guide", IsSpecial: false},
-				"API.md":           {Filename: "API.md", Title: "API", Content: "# API", IsSpecial: false},
-				"_Footer.md":       {Filename: "_Footer.md", Title: "Footer", Content: "Footer", IsSpecial: true},
+				"Home.md":    {Filename: "Home.md", Title: "Home", Content: "# Home", IsSpecial: false},
+				"Guide.md":   {Filename: "Guide.md", Title: "Guide", Content: "# Guide", IsSpecial: false},
+				"API.md":     {Filename: "API.md", Title: "API", Content: "# API", IsSpecial: false},
+				"_Footer.md": {Filename: "_Footer.md", Title: "Footer", Content: "Footer", IsSpecial: true},
 			},
 			Sections: []WikiSection{
 				{Name: "Documentation", Order: 1, Pages: []string{"Home.md", "Guide.md", "API.md"}},
@@ -595,7 +595,7 @@ Section link: [[Advanced#Configuration]]
 `
 
 	pages := map[string]*WikiPage{
-		"Home.md":         {Filename: "Home.md", Title: "Home"},
+		"Home.md":          {Filename: "Home.md", Title: "Home"},
 		"API-Reference.md": {Filename: "API-Reference.md", Title: "API Reference"},
 	}
 

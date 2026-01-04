@@ -15,8 +15,8 @@ import (
 // TestNewMetadataCollector tests creating a new metadata collector
 func TestNewMetadataCollector(t *testing.T) {
 	tests := []struct {
-		name string
-		opts CollectorOptions
+		name  string
+		opts  CollectorOptions
 		check func(t *testing.T, c *MetadataCollector)
 	}{
 		{
@@ -88,8 +88,8 @@ func TestMetadataCollector_Add(t *testing.T) {
 
 	t.Run("does not add when disabled", func(t *testing.T) {
 		c := NewMetadataCollector(CollectorOptions{
-			BaseDir:  "./output",
-			Enabled:  false,
+			BaseDir: "./output",
+			Enabled: false,
 		})
 
 		doc := &domain.Document{
@@ -105,8 +105,8 @@ func TestMetadataCollector_Add(t *testing.T) {
 
 	t.Run("handles nil document", func(t *testing.T) {
 		c := NewMetadataCollector(CollectorOptions{
-			BaseDir:  "./output",
-			Enabled:  true,
+			BaseDir: "./output",
+			Enabled: true,
 		})
 
 		c.Add(nil, "/output/example.com/page1.md")
@@ -117,8 +117,8 @@ func TestMetadataCollector_Add(t *testing.T) {
 	t.Run("computes relative path correctly", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		c := NewMetadataCollector(CollectorOptions{
-			BaseDir:  tmpDir,
-			Enabled:  true,
+			BaseDir: tmpDir,
+			Enabled: true,
 		})
 
 		doc := &domain.Document{
@@ -139,8 +139,8 @@ func TestMetadataCollector_Add(t *testing.T) {
 
 	t.Run("adds multiple documents", func(t *testing.T) {
 		c := NewMetadataCollector(CollectorOptions{
-			BaseDir:  "./output",
-			Enabled:  true,
+			BaseDir: "./output",
+			Enabled: true,
 		})
 
 		docs := []*domain.Document{
@@ -203,8 +203,8 @@ func TestMetadataCollector_Flush(t *testing.T) {
 
 	t.Run("flush when disabled is no-op", func(t *testing.T) {
 		c := NewMetadataCollector(CollectorOptions{
-			BaseDir:  "./output",
-			Enabled:  false,
+			BaseDir: "./output",
+			Enabled: false,
 		})
 
 		err := c.Flush()
@@ -214,8 +214,8 @@ func TestMetadataCollector_Flush(t *testing.T) {
 	t.Run("flush with no documents is no-op", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		c := NewMetadataCollector(CollectorOptions{
-			BaseDir:  tmpDir,
-			Enabled:  true,
+			BaseDir: tmpDir,
+			Enabled: true,
 		})
 
 		err := c.Flush()
@@ -237,15 +237,15 @@ func TestMetadataCollector_Flush(t *testing.T) {
 		})
 
 		doc := &domain.Document{
-			URL:          "https://example.com/page1",
-			Title:        "Test Page",
-			Content:      "Test content",
-			Summary:      "Test summary",
-			Category:     "guide",
-			Tags:         []string{"tag1", "tag2"},
-			WordCount:    100,
-			CharCount:    500,
-			FetchedAt:    time.Now(),
+			URL:            "https://example.com/page1",
+			Title:          "Test Page",
+			Content:        "Test content",
+			Summary:        "Test summary",
+			Category:       "guide",
+			Tags:           []string{"tag1", "tag2"},
+			WordCount:      100,
+			CharCount:      500,
+			FetchedAt:      time.Now(),
 			SourceStrategy: "crawler",
 		}
 
@@ -276,8 +276,8 @@ func TestMetadataCollector_Flush(t *testing.T) {
 	t.Run("multiple documents flushed correctly", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		c := NewMetadataCollector(CollectorOptions{
-			BaseDir:  tmpDir,
-			Enabled:  true,
+			BaseDir: tmpDir,
+			Enabled: true,
 		})
 
 		docs := []*domain.Document{
@@ -308,8 +308,8 @@ func TestMetadataCollector_Flush(t *testing.T) {
 func TestMetadataCollector_Count(t *testing.T) {
 	t.Run("returns zero when empty", func(t *testing.T) {
 		c := NewMetadataCollector(CollectorOptions{
-			BaseDir:  "./output",
-			Enabled:  true,
+			BaseDir: "./output",
+			Enabled: true,
 		})
 
 		assert.Equal(t, 0, c.Count())
@@ -317,8 +317,8 @@ func TestMetadataCollector_Count(t *testing.T) {
 
 	t.Run("returns count of added documents", func(t *testing.T) {
 		c := NewMetadataCollector(CollectorOptions{
-			BaseDir:  "./output",
-			Enabled:  true,
+			BaseDir: "./output",
+			Enabled: true,
 		})
 
 		for i := 0; i < 5; i++ {
@@ -362,8 +362,8 @@ func TestMetadataCollector_GetIndex(t *testing.T) {
 
 	t.Run("returns empty index when no documents", func(t *testing.T) {
 		c := NewMetadataCollector(CollectorOptions{
-			BaseDir:  "./output",
-			Enabled:  true,
+			BaseDir: "./output",
+			Enabled: true,
 		})
 
 		index := c.GetIndex()
@@ -378,7 +378,7 @@ func TestMetadataCollector_GetIndex(t *testing.T) {
 func TestMetadataCollector_IsEnabled(t *testing.T) {
 	t.Run("returns true when enabled", func(t *testing.T) {
 		c := NewMetadataCollector(CollectorOptions{
-			BaseDir:  "./output",
+			BaseDir: "./output",
 			Enabled: true,
 		})
 
@@ -387,7 +387,7 @@ func TestMetadataCollector_IsEnabled(t *testing.T) {
 
 	t.Run("returns false when disabled", func(t *testing.T) {
 		c := NewMetadataCollector(CollectorOptions{
-			BaseDir:  "./output",
+			BaseDir: "./output",
 			Enabled: false,
 		})
 
@@ -424,7 +424,7 @@ func TestMetadataCollector_SetSourceURL(t *testing.T) {
 // TestMetadataCollector_ConcurrentAccess tests concurrent access safety
 func TestMetadataCollector_ConcurrentAccess(t *testing.T) {
 	c := NewMetadataCollector(CollectorOptions{
-		BaseDir:  "./output",
+		BaseDir: "./output",
 		Enabled: true,
 	})
 
@@ -474,25 +474,25 @@ func TestMetadataCollector_Integration(t *testing.T) {
 
 		docs := []*domain.Document{
 			{
-				URL:     "https://docs.example.com/guide/intro",
-				Title:   "Introduction",
-				Content: "Welcome to the guide",
+				URL:      "https://docs.example.com/guide/intro",
+				Title:    "Introduction",
+				Content:  "Welcome to the guide",
 				Category: "guide",
-				Tags:    []string{"beginner"},
+				Tags:     []string{"beginner"},
 			},
 			{
-				URL:     "https://docs.example.com/guide/advanced",
-				Title:   "Advanced Topics",
-				Content: "Deep dive into features",
+				URL:      "https://docs.example.com/guide/advanced",
+				Title:    "Advanced Topics",
+				Content:  "Deep dive into features",
 				Category: "guide",
-				Tags:    []string{"advanced"},
+				Tags:     []string{"advanced"},
 			},
 			{
-				URL:     "https://docs.example.com/api/overview",
-				Title:   "API Overview",
-				Content: "API reference",
+				URL:      "https://docs.example.com/api/overview",
+				Title:    "API Overview",
+				Content:  "API reference",
 				Category: "api",
-				Tags:    []string{"reference"},
+				Tags:     []string{"reference"},
 			},
 		}
 

@@ -51,10 +51,10 @@ func TestEntry_IsExpired(t *testing.T) {
 // TestEntry_TTL tests remaining time-to-live
 func TestEntry_TTL(t *testing.T) {
 	tests := []struct {
-		name         string
-		entry        *Entry
-		minDuration  time.Duration
-		maxDuration  time.Duration
+		name        string
+		entry       *Entry
+		minDuration time.Duration
+		maxDuration time.Duration
 	}{
 		{
 			name: "positive TTL",
@@ -95,9 +95,9 @@ func TestDefaultOptions(t *testing.T) {
 // TestGenerateKey tests cache key generation
 func TestGenerateKey(t *testing.T) {
 	tests := []struct {
-		name     string
-		url      string
-		check    func(t *testing.T, key string)
+		name  string
+		url   string
+		check func(t *testing.T, key string)
 	}{
 		{
 			name: "generates consistent keys for same URL",
@@ -145,10 +145,10 @@ func TestGenerateKey(t *testing.T) {
 // TestGenerateKeyWithPrefix tests key generation with prefix
 func TestGenerateKeyWithPrefix(t *testing.T) {
 	tests := []struct {
-		name  string
+		name   string
 		prefix string
-		url   string
-		check func(t *testing.T, key string)
+		url    string
+		check  func(t *testing.T, key string)
 	}{
 		{
 			name:   "adds prefix to key",

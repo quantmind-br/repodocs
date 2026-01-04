@@ -131,7 +131,7 @@ func TestClient_Get(t *testing.T) {
 
 		client, err := NewClient(ClientOptions{
 			EnableCache: true,
-			Cache:      cache,
+			Cache:       cache,
 		})
 		require.NoError(t, err)
 		defer client.Close()

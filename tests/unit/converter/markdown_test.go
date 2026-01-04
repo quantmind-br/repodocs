@@ -22,39 +22,39 @@ func TestNewMarkdownConverter(t *testing.T) {
 // TestMarkdownConverter_Convert tests HTML to Markdown conversion
 func TestMarkdownConverter_Convert(t *testing.T) {
 	tests := []struct {
-		name           string
-		html           string
-		expectedInMD   []string
+		name            string
+		html            string
+		expectedInMD    []string
 		notExpectedInMD []string
 	}{
 		{
-			name:           "headings",
-			html:           `<h1>Title 1</h1><h2>Title 2</h2>`,
-			expectedInMD:   []string{"# Title 1", "## Title 2"},
+			name:            "headings",
+			html:            `<h1>Title 1</h1><h2>Title 2</h2>`,
+			expectedInMD:    []string{"# Title 1", "## Title 2"},
 			notExpectedInMD: []string{"<h1>", "<h2>"},
 		},
 		{
-			name:           "paragraphs",
-			html:           `<p>Paragraph 1</p><p>Paragraph 2</p>`,
-			expectedInMD:   []string{"Paragraph 1", "Paragraph 2"},
+			name:            "paragraphs",
+			html:            `<p>Paragraph 1</p><p>Paragraph 2</p>`,
+			expectedInMD:    []string{"Paragraph 1", "Paragraph 2"},
 			notExpectedInMD: []string{"<p>"},
 		},
 		{
-			name:           "bold and italic",
-			html:           `<p><strong>bold</strong> and <em>italic</em></p>`,
-			expectedInMD:   []string{"**bold**", "*italic*"},
+			name:            "bold and italic",
+			html:            `<p><strong>bold</strong> and <em>italic</em></p>`,
+			expectedInMD:    []string{"**bold**", "*italic*"},
 			notExpectedInMD: []string{"<strong>", "<em>"},
 		},
 		{
-			name:           "links",
-			html:           `<p><a href="https://example.com">link</a></p>`,
-			expectedInMD:   []string{"[link](https://example.com)"},
+			name:            "links",
+			html:            `<p><a href="https://example.com">link</a></p>`,
+			expectedInMD:    []string{"[link](https://example.com)"},
 			notExpectedInMD: []string{"<a href"},
 		},
 		{
-			name:           "lists",
-			html:           `<ul><li>Item 1</li><li>Item 2</li></ul>`,
-			expectedInMD:   []string{"- Item 1", "- Item 2"},
+			name:            "lists",
+			html:            `<ul><li>Item 1</li><li>Item 2</li></ul>`,
+			expectedInMD:    []string{"- Item 1", "- Item 2"},
 			notExpectedInMD: []string{"<ul>", "<li>"},
 		},
 	}

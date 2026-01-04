@@ -496,9 +496,9 @@ func TestRootCmd(t *testing.T) {
 
 func TestDoctorCmd(t *testing.T) {
 	tests := []struct {
-		name    string
-		setup   func()
-		checks  func(t *testing.T, output string)
+		name   string
+		setup  func()
+		checks func(t *testing.T, output string)
 	}{
 		{
 			name:  "all checks pass",

@@ -10,13 +10,13 @@ import (
 // TestParseWikiURL_GitHubWiki tests parsing GitHub wiki URLs
 func TestParseWikiURL_GitHubWiki(t *testing.T) {
 	tests := []struct {
-		name        string
-		url         string
-		wantOwner   string
-		wantRepo    string
-		wantClone   string
-		wantPage    string
-		wantErr     bool
+		name      string
+		url       string
+		wantOwner string
+		wantRepo  string
+		wantClone string
+		wantPage  string
+		wantErr   bool
 	}{
 		{
 			name:      "standard wiki URL",
@@ -147,7 +147,7 @@ func TestParseSidebarContent(t *testing.T) {
 `
 
 		pages := map[string]*WikiPage{
-			"Home.md":        {Filename: "Home.md", Title: "Home"},
+			"Home.md":         {Filename: "Home.md", Title: "Home"},
 			"Installation.md": {Filename: "Installation.md", Title: "Installation"},
 			"API-Overview.md": {Filename: "API-Overview.md", Title: "API Overview"},
 			"Endpoints.md":    {Filename: "Endpoints.md", Title: "Endpoints"},
@@ -170,9 +170,9 @@ func TestParseSidebarContent(t *testing.T) {
 `
 
 		pages := map[string]*WikiPage{
-			"Home.md":         {Filename: "Home.md", Title: "Home"},
+			"Home.md":            {Filename: "Home.md", Title: "Home"},
 			"Getting-Started.md": {Filename: "Getting-Started.md", Title: "Getting Started"},
-			"API-Reference.md": {Filename: "API-Reference.md", Title: "API Reference"},
+			"API-Reference.md":   {Filename: "API-Reference.md", Title: "API Reference"},
 		}
 
 		sections := ParseSidebarContent(content, pages)
@@ -198,9 +198,9 @@ func TestParseSidebarContent(t *testing.T) {
 `
 
 		pages := map[string]*WikiPage{
-			"Home.md":        {Filename: "Home.md", Title: "Home"},
+			"Home.md":         {Filename: "Home.md", Title: "Home"},
 			"installation.md": {Filename: "installation.md", Title: "Installation"},
-			"api-guide.md":   {Filename: "api-guide.md", Title: "API Guide"},
+			"api-guide.md":    {Filename: "api-guide.md", Title: "API Guide"},
 		}
 
 		sections := ParseSidebarContent(content, pages)
@@ -219,8 +219,8 @@ func TestParseSidebarContent(t *testing.T) {
 `
 
 		pages := map[string]*WikiPage{
-			"Home.md":  {Filename: "Home.md", Title: "Home"},
-			"page.md":  {Filename: "page.md", Title: "Page"},
+			"Home.md":    {Filename: "Home.md", Title: "Home"},
+			"page.md":    {Filename: "page.md", Title: "Page"},
 			"Another.md": {Filename: "Another.md", Title: "Another"},
 		}
 
@@ -233,9 +233,9 @@ func TestParseSidebarContent(t *testing.T) {
 // TestFindPageFilename tests finding page filename by various name formats
 func TestFindPageFilename(t *testing.T) {
 	pages := map[string]*WikiPage{
-		"Home.md":              {Filename: "Home.md"},
-		"Getting-Started.md":   {Filename: "Getting-Started.md"},
-		"API_Reference.md":     {Filename: "API_Reference.md"},
+		"Home.md":               {Filename: "Home.md"},
+		"Getting-Started.md":    {Filename: "Getting-Started.md"},
+		"API_Reference.md":      {Filename: "API_Reference.md"},
 		"installation-guide.md": {Filename: "installation-guide.md"},
 	}
 
@@ -264,10 +264,10 @@ func TestFindPageFilename(t *testing.T) {
 func TestCreateDefaultStructure(t *testing.T) {
 	t.Run("with Home page", func(t *testing.T) {
 		pages := map[string]*WikiPage{
-			"Home.md":          {Filename: "Home.md", Title: "Home", IsSpecial: false},
-			"API.md":           {Filename: "API.md", Title: "API", IsSpecial: false},
-			"Guide.md":         {Filename: "Guide.md", Title: "Guide", IsSpecial: false},
-			"_Footer.md":       {Filename: "_Footer.md", Title: "Footer", IsSpecial: true},
+			"Home.md":    {Filename: "Home.md", Title: "Home", IsSpecial: false},
+			"API.md":     {Filename: "API.md", Title: "API", IsSpecial: false},
+			"Guide.md":   {Filename: "Guide.md", Title: "Guide", IsSpecial: false},
+			"_Footer.md": {Filename: "_Footer.md", Title: "Footer", IsSpecial: true},
 		}
 
 		sections := CreateDefaultStructure(pages)
@@ -284,8 +284,8 @@ func TestCreateDefaultStructure(t *testing.T) {
 
 	t.Run("without Home page", func(t *testing.T) {
 		pages := map[string]*WikiPage{
-			"API.md":    {Filename: "API.md", Title: "API", IsSpecial: false},
-			"Guide.md":  {Filename: "Guide.md", Title: "Guide", IsSpecial: false},
+			"API.md":      {Filename: "API.md", Title: "API", IsSpecial: false},
+			"Guide.md":    {Filename: "Guide.md", Title: "Guide", IsSpecial: false},
 			"_Sidebar.md": {Filename: "_Sidebar.md", Title: "Sidebar", IsSpecial: true},
 		}
 

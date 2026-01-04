@@ -14,11 +14,11 @@ import (
 // TestConfig_Validate tests configuration validation
 func TestConfig_Validate(t *testing.T) {
 	tests := []struct {
-		name     string
-		cfg      *Config
-		modify   func(*Config)
-		check    func(*testing.T, *Config)
-		wantErr  bool
+		name    string
+		cfg     *Config
+		modify  func(*Config)
+		check   func(*testing.T, *Config)
+		wantErr bool
 	}{
 		{
 			name: "valid config",

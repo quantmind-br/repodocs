@@ -92,9 +92,9 @@ func TestRateLimitedProvider_Name(t *testing.T) {
 // TestRateLimitedProvider_Complete_Success tests successful completion
 func TestRateLimitedProvider_Complete_Success(t *testing.T) {
 	mockProvider := &mockLLMProvider{
-		name:      "test",
-		response:  &domain.LLMResponse{Content: "test response"},
-		err:       nil,
+		name:     "test",
+		response: &domain.LLMResponse{Content: "test response"},
+		err:      nil,
 	}
 
 	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
@@ -124,7 +124,7 @@ func TestRateLimitedProvider_Complete_RateLimit(t *testing.T) {
 
 	p := NewRateLimitedProvider(mockProvider, RateLimitedProviderConfig{
 		RequestsPerMinute: 6, // 1 per 100ms
-		BurstSize:         2,  // Allow 2 immediate
+		BurstSize:         2, // Allow 2 immediate
 	}, nil)
 
 	ctx := context.Background()

@@ -18,9 +18,9 @@ import (
 // TestNewMetadataCollector tests creating a new MetadataCollector
 func TestNewMetadataCollector(t *testing.T) {
 	tests := []struct {
-		name    string
-		opts    output.CollectorOptions
-		verify  func(t *testing.T, c *output.MetadataCollector)
+		name   string
+		opts   output.CollectorOptions
+		verify func(t *testing.T, c *output.MetadataCollector)
 	}{
 		{
 			name: "with all options",
@@ -89,11 +89,11 @@ func TestNewMetadataCollector(t *testing.T) {
 // TestMetadataCollector_Add tests adding documents to the collector
 func TestMetadataCollector_Add(t *testing.T) {
 	tests := []struct {
-		name       string
-		enabled    bool
-		numDocs    int
-		setup      func(t *testing.T) *output.MetadataCollector
-		verify     func(t *testing.T, c *output.MetadataCollector)
+		name    string
+		enabled bool
+		numDocs int
+		setup   func(t *testing.T) *output.MetadataCollector
+		verify  func(t *testing.T, c *output.MetadataCollector)
 	}{
 		{
 			name:    "add single document",
@@ -207,10 +207,10 @@ func TestMetadataCollector_Add_Concurrent(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < docsPerGoroutine; j++ {
 				doc := &domain.Document{
-					URL:         fmt.Sprintf("https://example.com/doc%d-%d", goroutineID, j),
-					Title:       fmt.Sprintf("Document %d-%d", goroutineID, j),
-					Content:     fmt.Sprintf("# Doc %d-%d", goroutineID, j),
-					FetchedAt:   time.Now(),
+					URL:       fmt.Sprintf("https://example.com/doc%d-%d", goroutineID, j),
+					Title:     fmt.Sprintf("Document %d-%d", goroutineID, j),
+					Content:   fmt.Sprintf("# Doc %d-%d", goroutineID, j),
+					FetchedAt: time.Now(),
 				}
 				filePath := fmt.Sprintf("docs/doc%d-%d.md", goroutineID, j)
 				collector.Add(doc, filePath)
@@ -226,11 +226,11 @@ func TestMetadataCollector_Add_Concurrent(t *testing.T) {
 // TestMetadataCollector_Flush tests flushing metadata to file
 func TestMetadataCollector_Flush(t *testing.T) {
 	tests := []struct {
-		name       string
-		enabled    bool
-		numDocs    int
-		setupFile  bool
-		verify     func(t *testing.T, tmpDir string, err error)
+		name      string
+		enabled   bool
+		numDocs   int
+		setupFile bool
+		verify    func(t *testing.T, tmpDir string, err error)
 	}{
 		{
 			name:    "flush with documents",

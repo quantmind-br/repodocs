@@ -18,8 +18,8 @@ func TestNewPool(t *testing.T) {
 		workers  int
 		worker   utils.Worker[int]
 		expected struct {
-			workers   int
-			taskQueue int
+			workers    int
+			taskQueue  int
 			resultChan int
 		}
 	}{
@@ -30,8 +30,8 @@ func TestNewPool(t *testing.T) {
 				return data * 2, nil
 			},
 			expected: struct {
-				workers   int
-				taskQueue int
+				workers    int
+				taskQueue  int
 				resultChan int
 			}{1, 2, 2}, // workers * 2
 		},
@@ -42,8 +42,8 @@ func TestNewPool(t *testing.T) {
 				return data * 2, nil
 			},
 			expected: struct {
-				workers   int
-				taskQueue int
+				workers    int
+				taskQueue  int
 				resultChan int
 			}{5, 10, 10}, // workers * 2
 		},
@@ -54,8 +54,8 @@ func TestNewPool(t *testing.T) {
 				return data * 2, nil
 			},
 			expected: struct {
-				workers   int
-				taskQueue int
+				workers    int
+				taskQueue  int
 				resultChan int
 			}{0, 0, 0},
 		},
@@ -585,9 +585,9 @@ func TestParallelForEach(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:    "with errors",
-			items:   []int{1, 2, 3},
-			workers: 2,
+			name:        "with errors",
+			items:       []int{1, 2, 3},
+			workers:     2,
 			expectError: true,
 		},
 	}

@@ -358,11 +358,11 @@ func TestConfig_Validate_NegativeValues(t *testing.T) {
 
 func TestConfig_Validate_BoundaryValues(t *testing.T) {
 	tests := []struct {
-		name                  string
-		value                 time.Duration
-		expectedTimeout       time.Duration
-		expectedCacheTTL      time.Duration
-		expectedJSTimeout     time.Duration
+		name              string
+		value             time.Duration
+		expectedTimeout   time.Duration
+		expectedCacheTTL  time.Duration
+		expectedJSTimeout time.Duration
 	}{
 		{"zero timeout", 0, config.DefaultTimeout, config.DefaultCacheTTL, config.DefaultJSTimeout},
 		{"one nanosecond", 1 * time.Nanosecond, config.DefaultTimeout, config.DefaultCacheTTL, config.DefaultJSTimeout},
@@ -431,8 +431,8 @@ func TestConfig_Validate_PartialInvalidConfig(t *testing.T) {
 			Flat:      true,
 		},
 		Concurrency: config.ConcurrencyConfig{
-			Workers:  0, // Invalid
-			MaxDepth: 5, // Valid
+			Workers:  0,                // Invalid
+			MaxDepth: 5,                // Valid
 			Timeout:  30 * time.Second, // Valid
 		},
 		Cache: config.CacheConfig{
@@ -523,39 +523,39 @@ func TestConfig_Validate_MaxDepthTable(t *testing.T) {
 
 func TestConfig_Validate_TimeoutsTable(t *testing.T) {
 	tests := []struct {
-		name           string
-		timeout        time.Duration
-		cacheTTL       time.Duration
-		jsTimeout      time.Duration
-		expectTimeout  time.Duration
-		expectCacheTTL time.Duration
+		name            string
+		timeout         time.Duration
+		cacheTTL        time.Duration
+		jsTimeout       time.Duration
+		expectTimeout   time.Duration
+		expectCacheTTL  time.Duration
 		expectJSTimeout time.Duration
 	}{
 		{
-			name:           "all below minimum",
-			timeout:        500 * time.Millisecond,
-			cacheTTL:       30 * time.Second,
-			jsTimeout:      500 * time.Millisecond,
-			expectTimeout:  config.DefaultTimeout,
-			expectCacheTTL: config.DefaultCacheTTL,
+			name:            "all below minimum",
+			timeout:         500 * time.Millisecond,
+			cacheTTL:        30 * time.Second,
+			jsTimeout:       500 * time.Millisecond,
+			expectTimeout:   config.DefaultTimeout,
+			expectCacheTTL:  config.DefaultCacheTTL,
 			expectJSTimeout: config.DefaultJSTimeout,
 		},
 		{
-			name:           "all at minimum",
-			timeout:        1 * time.Second,
-			cacheTTL:       1 * time.Minute,
-			jsTimeout:      1 * time.Second,
-			expectTimeout:  1 * time.Second,
-			expectCacheTTL: 1 * time.Minute,
+			name:            "all at minimum",
+			timeout:         1 * time.Second,
+			cacheTTL:        1 * time.Minute,
+			jsTimeout:       1 * time.Second,
+			expectTimeout:   1 * time.Second,
+			expectCacheTTL:  1 * time.Minute,
 			expectJSTimeout: 1 * time.Second,
 		},
 		{
-			name:           "all above minimum",
-			timeout:        120 * time.Second,
-			cacheTTL:       48 * time.Hour,
-			jsTimeout:      90 * time.Second,
-			expectTimeout:  120 * time.Second,
-			expectCacheTTL: 48 * time.Hour,
+			name:            "all above minimum",
+			timeout:         120 * time.Second,
+			cacheTTL:        48 * time.Hour,
+			jsTimeout:       90 * time.Second,
+			expectTimeout:   120 * time.Second,
+			expectCacheTTL:  48 * time.Hour,
 			expectJSTimeout: 90 * time.Second,
 		},
 	}

@@ -184,9 +184,9 @@ func TestDocsRSStrategy_BuildItemURL(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		item     *strategies.RustdocItem
-		wantURL  string
+		name    string
+		item    *strategies.RustdocItem
+		wantURL string
 	}{
 		{
 			name: "struct item",
@@ -394,9 +394,9 @@ func TestDocsRSStrategy_BuildItemDescription(t *testing.T) {
 	}
 
 	tests := []struct {
-		name            string
-		item            *strategies.RustdocItem
-		wantContains    []string
+		name         string
+		item         *strategies.RustdocItem
+		wantContains []string
 	}{
 		{
 			name: "stable struct",

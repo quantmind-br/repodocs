@@ -662,23 +662,23 @@ func TestExtractTitle_FromH1(t *testing.T) {
 // TestExtractTitle_FromTitle tests title extraction from title tag
 func TestExtractTitle_FromTitle(t *testing.T) {
 	tests := []struct {
-		name     string
-		html     string
+		name      string
+		html      string
 		wantTitle string
 	}{
 		{
-			name:     "simple title tag",
-			html:     `<html><head><title>Simple Title</title></head><body></body></html>`,
+			name:      "simple title tag",
+			html:      `<html><head><title>Simple Title</title></head><body></body></html>`,
 			wantTitle: "Simple Title",
 		},
 		{
-			name:     "title with special characters",
-			html:     `<html><head><title>Title &amp; Special &lt;chars&gt;</title></head><body></body></html>`,
+			name:      "title with special characters",
+			html:      `<html><head><title>Title &amp; Special &lt;chars&gt;</title></head><body></body></html>`,
 			wantTitle: "Title & Special <chars>",
 		},
 		{
-			name:     "title with line breaks preserved",
-			html:     `<html><head><title>Line 1<br>Line 2</title></head><body></body></html>`,
+			name:      "title with line breaks preserved",
+			html:      `<html><head><title>Line 1<br>Line 2</title></head><body></body></html>`,
 			wantTitle: "Line 1<br>Line 2",
 		},
 	}
@@ -697,24 +697,24 @@ func TestExtractTitle_FromTitle(t *testing.T) {
 // TestExtractTitle_Empty tests title extraction when no title exists
 func TestExtractTitle_Empty(t *testing.T) {
 	tests := []struct {
-		name     string
-		html     string
+		name string
+		html string
 	}{
 		{
-			name:     "no title, h1, or og:title",
-			html:     `<html><body><p>Content without title</p></body></html>`,
+			name: "no title, h1, or og:title",
+			html: `<html><body><p>Content without title</p></body></html>`,
 		},
 		{
-			name:     "empty title tag",
-			html:     `<html><head><title></title></head><body></body></html>`,
+			name: "empty title tag",
+			html: `<html><head><title></title></head><body></body></html>`,
 		},
 		{
-			name:     "empty h1 tag",
-			html:     `<html><body><h1></h1></body></html>`,
+			name: "empty h1 tag",
+			html: `<html><body><h1></h1></body></html>`,
 		},
 		{
-			name:     "whitespace-only title",
-			html:     `<html><head><title>   </title></head><body></body></html>`,
+			name: "whitespace-only title",
+			html: `<html><head><title>   </title></head><body></body></html>`,
 		},
 	}
 
@@ -829,8 +829,8 @@ func TestExtractBody_ReadabilityFallback(t *testing.T) {
 			wantContent: "nested",
 		},
 		{
-			name: "no body returns original html",
-			html: `<!DOCTYPE html><html><head><title>No Body Tag</title></head></html>`,
+			name:      "no body returns original html",
+			html:      `<!DOCTYPE html><html><head><title>No Body Tag</title></head></html>`,
 			wantTitle: "No Body Tag",
 		},
 	}
@@ -874,24 +874,24 @@ func TestExtractBody_GoqueryParseFallback(t *testing.T) {
 // TestExtractDescription_Empty tests description extraction when no description exists
 func TestExtractDescription_Empty(t *testing.T) {
 	tests := []struct {
-		name     string
-		html     string
+		name string
+		html string
 	}{
 		{
-			name:     "no meta tags at all",
-			html:     `<html><head></head><body></body></html>`,
+			name: "no meta tags at all",
+			html: `<html><head></head><body></body></html>`,
 		},
 		{
-			name:     "empty description meta",
-			html:     `<html><head><meta name="description" content=""></head></html>`,
+			name: "empty description meta",
+			html: `<html><head><meta name="description" content=""></head></html>`,
 		},
 		{
-			name:     "whitespace description",
-			html:     `<html><head><meta name="description" content="   "></head></html>`,
+			name: "whitespace description",
+			html: `<html><head><meta name="description" content="   "></head></html>`,
 		},
 		{
-			name:     "og:description with empty content",
-			html:     `<html><head><meta property="og:description" content=""></head></html>`,
+			name: "og:description with empty content",
+			html: `<html><head><meta property="og:description" content=""></head></html>`,
 		},
 	}
 

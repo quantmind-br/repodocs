@@ -251,12 +251,12 @@ func TestProviderErrorHandling_Integration(t *testing.T) {
 	}
 
 	tests := []struct {
-		name               string
-		provider           string
-		statusCode         int
-		errorResponse      string
-		expectRetryable    bool
-		expectedErrType    error
+		name            string
+		provider        string
+		statusCode      int
+		errorResponse   string
+		expectRetryable bool
+		expectedErrType error
 	}{
 		{
 			name:            "anthropic_rate_limit",

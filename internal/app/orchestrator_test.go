@@ -310,7 +310,7 @@ func TestNewOrchestrator_CacheDirExpansion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &config.Config{
 				Cache: config.CacheConfig{
-					Enabled:  false,
+					Enabled:   false,
 					Directory: tt.cacheDir,
 				},
 				Concurrency: config.ConcurrencyConfig{
@@ -401,15 +401,15 @@ func TestNewOrchestrator_LoggingLevels(t *testing.T) {
 // TestNewOrchestrator_RendererOptions tests renderer-related options
 func TestNewOrchestrator_RendererOptions(t *testing.T) {
 	tests := []struct {
-		name    string
+		name     string
 		renderJS bool
 	}{
 		{
-			name:    "JS rendering enabled",
+			name:     "JS rendering enabled",
 			renderJS: true,
 		},
 		{
-			name:    "JS rendering disabled",
+			name:     "JS rendering disabled",
 			renderJS: false,
 		},
 	}

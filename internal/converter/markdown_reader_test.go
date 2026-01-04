@@ -17,10 +17,10 @@ func TestMarkdownReader_ParseFrontmatter(t *testing.T) {
 	reader := NewMarkdownReader()
 
 	tests := []struct {
-		name           string
-		content        string
-		expectTitle    string
-		expectDesc     string
+		name               string
+		content            string
+		expectTitle        string
+		expectDesc         string
 		expectBodyContains string
 	}{
 		{
@@ -34,8 +34,8 @@ tags: [tag1, tag2]
 # Body Content
 
 This is the body.`,
-			expectTitle:    "Test Title",
-			expectDesc:     "Test Description",
+			expectTitle:        "Test Title",
+			expectDesc:         "Test Description",
 			expectBodyContains: "Body Content",
 		},
 		{
@@ -43,8 +43,8 @@ This is the body.`,
 			content: `# Direct Title
 
 Direct content.`,
-			expectTitle: "Direct Title",
-			expectDesc: "",
+			expectTitle:        "Direct Title",
+			expectDesc:         "",
 			expectBodyContains: "Direct content.",
 		},
 		{
@@ -52,7 +52,7 @@ Direct content.`,
 			content: `---
 title: Test
 # Content`,
-			expectTitle: "Content",
+			expectTitle:        "Content",
 			expectBodyContains: "Content",
 		},
 		{
@@ -64,11 +64,11 @@ summary: This is a summary
 
 # Content`,
 			expectTitle: "Test",
-			expectDesc: "This is a summary",
+			expectDesc:  "This is a summary",
 		},
 		{
-			name: "empty content",
-			content: "",
+			name:        "empty content",
+			content:     "",
 			expectTitle: "",
 		},
 	}
@@ -287,15 +287,15 @@ func TestMarkdownReader_ExtractLinks(t *testing.T) {
 		expected []string
 	}{
 		{
-			name:    "absolute links",
-			body:    "[Link](https://example.com/page)",
-			baseURL: "https://base.com",
+			name:     "absolute links",
+			body:     "[Link](https://example.com/page)",
+			baseURL:  "https://base.com",
 			expected: []string{"https://example.com/page"},
 		},
 		{
-			name:    "relative links",
-			body:    "[Link](/page)",
-			baseURL: "https://example.com",
+			name:     "relative links",
+			body:     "[Link](/page)",
+			baseURL:  "https://example.com",
 			expected: []string{"https://example.com/page"},
 		},
 		{
@@ -317,9 +317,9 @@ func TestMarkdownReader_ExtractLinks(t *testing.T) {
 			expected: []string{},
 		},
 		{
-			name:    "multiple links",
-			body:    "[One](/page1) [Two](/page2)",
-			baseURL: "https://example.com",
+			name:     "multiple links",
+			body:     "[One](/page1) [Two](/page2)",
+			baseURL:  "https://example.com",
 			expected: []string{"https://example.com/page1", "https://example.com/page2"},
 		},
 		{
@@ -361,9 +361,9 @@ func TestMarkdownReader_CalculateHash(t *testing.T) {
 	reader := NewMarkdownReader()
 
 	tests := []struct {
-		name     string
-		content  string
-		sameAs   string
+		name    string
+		content string
+		sameAs  string
 	}{
 		{
 			name:    "same content produces same hash",

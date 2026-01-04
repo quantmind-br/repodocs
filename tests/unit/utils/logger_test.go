@@ -74,9 +74,9 @@ func TestNewLogger_VerboseOverridesLevel(t *testing.T) {
 
 func TestNewLogger_AllLevels(t *testing.T) {
 	tests := []struct {
-		name     string
-		level    string
-		logLevel string
+		name      string
+		level     string
+		logLevel  string
 		shouldLog bool
 	}{
 		{"debug level logs debug", "debug", "debug", true},

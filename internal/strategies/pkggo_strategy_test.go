@@ -126,14 +126,14 @@ func TestPkgGoStrategy_Execute_SinglePage(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -187,14 +187,14 @@ func TestPkgGoStrategy_Execute_SplitMode(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -234,14 +234,14 @@ func TestPkgGoStrategy_Execute_ContextCancellation(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -284,14 +284,14 @@ func TestPkgGoStrategy_Execute_WithoutDocumentationContent(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -337,14 +337,14 @@ func TestPkgGoStrategy_Execute_WithEmptySection(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -371,14 +371,14 @@ func TestPkgGoStrategy_Execute_FetchError(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -425,14 +425,14 @@ func TestPkgGoStrategy_Execute_SplitWithSectionSkip(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -472,14 +472,14 @@ func TestPkgGoStrategy_Execute_MissingPackageTitle(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	deps, err := NewDependencies(DependencyOptions{
-		Timeout:         5 * time.Second,
-		EnableCache:     false,
-		EnableRenderer:  false,
-		Concurrency:     1,
-		OutputDir:       tmpDir,
-		Flat:            true,
-		JSONMetadata:    false,
-		DryRun:          true,
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		DryRun:         true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()

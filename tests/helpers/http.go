@@ -9,9 +9,10 @@ import (
 // NewMockServer creates a new HTTP test server for testing HTTP clients.
 // The server will be automatically closed when the test completes.
 // Usage:
-//   server := helpers.NewMockServer(t)
-//   defer server.Close()
-//   server.Handler = yourHandler
+//
+//	server := helpers.NewMockServer(t)
+//	defer server.Close()
+//	server.Handler = yourHandler
 func NewMockServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	server := httptest.NewServer(nil)
@@ -21,8 +22,9 @@ func NewMockServer(t *testing.T) *httptest.Server {
 
 // MockResponse creates a simple HTTP handler that returns a fixed response.
 // Usage:
-//   server := helpers.NewMockServer(t)
-//   server.Handler = helpers.MockResponse(200, "test response")
+//
+//	server := helpers.NewMockServer(t)
+//	server.Handler = helpers.MockResponse(200, "test response")
 func MockResponse(status int, body string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
@@ -32,8 +34,9 @@ func MockResponse(status int, body string) http.HandlerFunc {
 
 // MockJSONResponse creates a simple HTTP handler that returns a JSON response.
 // Usage:
-//   server := helpers.NewMockServer(t)
-//   server.Handler = helpers.MockJSONResponse(http.StatusOK, map[string]string{"key": "value"})
+//
+//	server := helpers.NewMockServer(t)
+//	server.Handler = helpers.MockJSONResponse(http.StatusOK, map[string]string{"key": "value"})
 func MockJSONResponse(status int, data interface{}) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -45,9 +48,10 @@ func MockJSONResponse(status int, data interface{}) http.HandlerFunc {
 
 // MockRedirect creates a simple HTTP handler that redirects to a target URL.
 // Usage:
-//   server := helpers.NewMockServer(t)
-//   target := server.URL + "/redirect-target"
-//   server.Handler = helpers.MockRedirect(http.StatusMovedPermanently, target)
+//
+//	server := helpers.NewMockServer(t)
+//	target := server.URL + "/redirect-target"
+//	server.Handler = helpers.MockRedirect(http.StatusMovedPermanently, target)
 func MockRedirect(status int, target string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, target, status)
@@ -56,8 +60,9 @@ func MockRedirect(status int, target string) http.HandlerFunc {
 
 // MockNotFound creates a simple HTTP handler that returns 404 Not Found.
 // Usage:
-//   server := helpers.NewMockServer(t)
-//   server.Handler = helpers.MockNotFound()
+//
+//	server := helpers.NewMockServer(t)
+//	server.Handler = helpers.MockNotFound()
 func MockNotFound() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
@@ -66,8 +71,9 @@ func MockNotFound() http.HandlerFunc {
 
 // MockError creates a simple HTTP handler that returns a server error.
 // Usage:
-//   server := helpers.NewMockServer(t)
-//   server.Handler = helpers.MockError(http.StatusInternalServerError, "internal server error")
+//
+//	server := helpers.NewMockServer(t)
+//	server.Handler = helpers.MockError(http.StatusInternalServerError, "internal server error")
 func MockError(status int, message string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, message, status)

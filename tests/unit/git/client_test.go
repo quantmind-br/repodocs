@@ -316,8 +316,8 @@ func TestPlainCloneContext_ParameterPassing(t *testing.T) {
 
 	t.Run("passes isBare parameter correctly", func(t *testing.T) {
 		tests := []struct {
-			name     string
-			isBare   bool
+			name   string
+			isBare bool
 		}{
 			{"bare repository", true},
 			{"non-bare repository", false},

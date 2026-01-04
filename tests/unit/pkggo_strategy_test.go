@@ -505,15 +505,15 @@ func TestPkgGoStrategy_Execute_EmptyPackageName(t *testing.T) {
 // Test the section extraction logic used by extractSections
 func TestPkgGoStrategy_ExtractSections_HTMLParsing(t *testing.T) {
 	tests := []struct {
-		name           string
-		html           string
-		expectedTitle  string
-		hasOverview    bool
-		hasIndex       bool
-		hasConstants   bool
-		hasVariables   bool
-		hasFunctions   bool
-		hasTypes       bool
+		name          string
+		html          string
+		expectedTitle string
+		hasOverview   bool
+		hasIndex      bool
+		hasConstants  bool
+		hasVariables  bool
+		hasFunctions  bool
+		hasTypes      bool
 	}{
 		{
 			name: "Full documentation page",

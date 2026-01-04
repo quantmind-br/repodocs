@@ -15,8 +15,8 @@ import (
 // TestNewWriter tests creating a new writer
 func TestNewWriter(t *testing.T) {
 	tests := []struct {
-		name string
-		opts WriterOptions
+		name  string
+		opts  WriterOptions
 		check func(t *testing.T, w *Writer)
 	}{
 		{
@@ -189,10 +189,10 @@ func TestWriter_Write(t *testing.T) {
 		w := NewWriter(WriterOptions{BaseDir: tmpDir})
 
 		doc := &domain.Document{
-			URL:         "https://github.com/owner/repo",
+			URL:          "https://github.com/owner/repo",
 			RelativePath: "README.md",
-			Title:       "README",
-			Content:     "Readme content",
+			Title:        "README",
+			Content:      "Readme content",
 		}
 
 		ctx := context.Background()

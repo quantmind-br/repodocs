@@ -44,8 +44,8 @@ func TestParseLLMSLinks(t *testing.T) {
 			expected: 2,
 		},
 		{
-			name: "empty content",
-			content: ``,
+			name:     "empty content",
+			content:  ``,
 			expected: 0,
 		},
 		{
@@ -208,7 +208,7 @@ func TestFilterLLMSLinks(t *testing.T) {
 			expected:  2,
 		},
 		{
-			name: "empty links list",
+			name:      "empty links list",
 			links:     []map[string]string{},
 			filterURL: "https://example.com/docs",
 			expected:  0,

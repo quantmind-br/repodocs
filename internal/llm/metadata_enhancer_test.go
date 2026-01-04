@@ -218,11 +218,11 @@ func TestMetadataEnhancer_applyMetadata(t *testing.T) {
 // TestMetadataEnhancer_tryEnhance tests tryEnhance with different prompts
 func TestMetadataEnhancer_tryEnhance(t *testing.T) {
 	tests := []struct {
-		name      string
-		isRetry   bool
-		response  string
-		wantErr   bool
-		validate  func(t *testing.T, metadata *enhancedMetadata)
+		name     string
+		isRetry  bool
+		response string
+		wantErr  bool
+		validate func(t *testing.T, metadata *enhancedMetadata)
 	}{
 		{
 			name:     "initial attempt",
@@ -278,23 +278,23 @@ func TestMetadataEnhancer_tryEnhance(t *testing.T) {
 // TestTruncateForError tests truncation for error messages
 func TestTruncateForError(t *testing.T) {
 	tests := []struct {
-		name  string
-		input string
+		name   string
+		input  string
 		maxLen int
 	}{
 		{
-			name:  "short string",
-			input: "short",
+			name:   "short string",
+			input:  "short",
 			maxLen: 5,
 		},
 		{
-			name:  "exactly max length",
-			input: "abcde",
+			name:   "exactly max length",
+			input:  "abcde",
 			maxLen: 5,
 		},
 		{
-			name:  "exceeds max length",
-			input: "abcdefghijk",
+			name:   "exceeds max length",
+			input:  "abcdefghijk",
 			maxLen: 5,
 		},
 	}

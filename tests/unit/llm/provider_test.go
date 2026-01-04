@@ -201,18 +201,18 @@ func TestNewProvider_CustomTimeout(t *testing.T) {
 
 func TestNewProvider_AnthropicDefaults(t *testing.T) {
 	tests := []struct {
-		name       string
-		maxTokens  int
+		name          string
+		maxTokens     int
 		expectDefault bool
 	}{
 		{
-			name:       "zero_max_tokens_uses_default",
-			maxTokens:  0,
+			name:          "zero_max_tokens_uses_default",
+			maxTokens:     0,
 			expectDefault: true,
 		},
 		{
-			name:       "custom_max_tokens",
-			maxTokens:  8192,
+			name:          "custom_max_tokens",
+			maxTokens:     8192,
 			expectDefault: false,
 		},
 	}

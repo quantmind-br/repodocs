@@ -87,10 +87,10 @@ func TestRandomDelay_WithinRange(t *testing.T) {
 
 	t.Run("boundary conditions", func(t *testing.T) {
 		testCases := []struct {
-			min       time.Duration
-			max       time.Duration
-			shouldEq  bool
-			desc      string
+			min      time.Duration
+			max      time.Duration
+			shouldEq bool
+			desc     string
 		}{
 			{0, 0, true, "zero duration"},
 			{1, 2, false, "adjacent values"},

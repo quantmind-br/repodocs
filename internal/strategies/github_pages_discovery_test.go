@@ -55,11 +55,11 @@ func TestParseLLMsTxt(t *testing.T) {
 	baseURL := "https://example.github.io"
 
 	tests := []struct {
-		name        string
-		content     string
-		wantCount   int
-		wantError   bool
-		firstURL    string
+		name      string
+		content   string
+		wantCount int
+		wantError bool
+		firstURL  string
 	}{
 		{
 			name: "valid llms.txt with markdown links",
@@ -519,10 +519,10 @@ func TestFilterAndDeduplicateURLs(t *testing.T) {
 		excludes []string
 	}{
 		{
-			name:    "filters external host",
-			urls:    []string{"https://example.github.io/", "https://other.github.io/"},
-			baseURL: "https://example.github.io",
-			wantLen: 1,
+			name:     "filters external host",
+			urls:     []string{"https://example.github.io/", "https://other.github.io/"},
+			baseURL:  "https://example.github.io",
+			wantLen:  1,
 			contains: []string{"https://example.github.io"},
 			excludes: []string{"https://other.github.io"},
 		},
@@ -594,7 +594,7 @@ func TestFilterAndDeduplicateURLs(t *testing.T) {
 // TestShouldSkipGitHubPagesURL tests URL skipping logic
 func TestShouldSkipGitHubPagesURL(t *testing.T) {
 	tests := []struct {
-		url     string
+		url      string
 		wantSkip bool
 	}{
 		// Assets to skip

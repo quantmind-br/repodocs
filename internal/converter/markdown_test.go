@@ -134,11 +134,11 @@ func TestCleanMarkdown(t *testing.T) {
 // TestGenerateFrontmatter tests frontmatter generation
 func TestGenerateFrontmatter(t *testing.T) {
 	doc := &domain.Document{
-		URL:         "https://example.com/doc",
-		Title:       "Test Document",
-		WordCount:   100,
-		CharCount:   500,
-		FetchedAt:   time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
+		URL:       "https://example.com/doc",
+		Title:     "Test Document",
+		WordCount: 100,
+		CharCount: 500,
+		FetchedAt: time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
 	}
 
 	frontmatter, err := GenerateFrontmatter(doc)
@@ -331,33 +331,33 @@ func TestStripMarkdown(t *testing.T) {
 // TestRemoveCodeBlocks tests code block removal
 func TestRemoveCodeBlocks(t *testing.T) {
 	tests := []struct {
-		name     string
-		markdown string
-		contains string
+		name        string
+		markdown    string
+		contains    string
 		notContains []string
 	}{
 		{
-			name:     "fenced code block",
-			markdown: "```javascript\nconst x = 1;\n```\ntext after",
-			contains: "text after",
+			name:        "fenced code block",
+			markdown:    "```javascript\nconst x = 1;\n```\ntext after",
+			contains:    "text after",
 			notContains: []string{"```", "const x = 1;"},
 		},
 		{
-			name:     "multiple fenced blocks",
-			markdown: "```\nblock1\n```\ntext\n```\nblock2\n```",
-			contains: "text",
+			name:        "multiple fenced blocks",
+			markdown:    "```\nblock1\n```\ntext\n```\nblock2\n```",
+			contains:    "text",
 			notContains: []string{"block1", "block2"},
 		},
 		{
-			name:     "indented code block",
-			markdown: "    code line\nnormal text",
-			contains: "normal text",
+			name:        "indented code block",
+			markdown:    "    code line\nnormal text",
+			contains:    "normal text",
 			notContains: []string{"code line"},
 		},
 		{
-			name:     "tab indented",
-			markdown: "\tcode line\nnormal text",
-			contains: "normal text",
+			name:        "tab indented",
+			markdown:    "\tcode line\nnormal text",
+			contains:    "normal text",
 			notContains: []string{"code line"},
 		},
 		{
@@ -397,11 +397,11 @@ func BenchmarkStripMarkdown(b *testing.B) {
 			content: "# Heading\n\nThis is a **simple** markdown document with [links](https://example.com).",
 		},
 		{
-			name: "medium",
+			name:    "medium",
 			content: generateMediumMarkdown(),
 		},
 		{
-			name: "large",
+			name:    "large",
 			content: generateLargeMarkdown(),
 		},
 	}

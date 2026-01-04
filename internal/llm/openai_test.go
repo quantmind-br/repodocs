@@ -186,8 +186,8 @@ func TestOpenAIProvider_Complete_RateLimit(t *testing.T) {
 func TestOpenAIProvider_Complete_EmptyChoices(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := openAIResponse{
-			ID:      "test-id",
-			Model:   "gpt-4",
+			ID:    "test-id",
+			Model: "gpt-4",
 			Choices: []struct {
 				Index   int `json:"index"`
 				Message struct {

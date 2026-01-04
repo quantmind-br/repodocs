@@ -77,4 +77,3 @@ func TestClientInterface(t *testing.T) {
 	_, ok := client.(*RealClient)
 	assert.True(t, ok)
 }
-
