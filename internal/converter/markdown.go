@@ -10,6 +10,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Pre-compiled regex patterns for markdown stripping
+var (
+	linkRegex              = regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`)
+	imageRegex             = regexp.MustCompile(`!\[([^\]]*)\]\([^)]+\)`)
+	boldAsterisksRegex     = regexp.MustCompile(`\*\*([^*]+)\*\*`)
+	italicAsterisksRegex   = regexp.MustCompile(`\*([^*]+)\*`)
+	boldUnderscoresRegex   = regexp.MustCompile(`__([^_]+)__`)
+	italicUnderscoresRegex = regexp.MustCompile(`_([^_]+)_`)
+	headersRegex           = regexp.MustCompile(`(?m)^#{1,6}\s+`)
+	stripHorizontalRuleRegex = regexp.MustCompile(`(?m)^[\-*_]{3,}$`)
+	blockquoteRegex        = regexp.MustCompile(`(?m)^>\s+`)
+	unorderedListRegex     = regexp.MustCompile(`(?m)^[\s]*[\-*+]\s+`)
+	orderedListRegex       = regexp.MustCompile(`(?m)^[\s]*\d+\.\s+`)
+	fencedCodeBlockRegex   = regexp.MustCompile(`(?s)\`\`\`[^\`]*\`\`\``)
+	indentedCodeBlockRegex = regexp.MustCompile(`(?m)^(    |\t).*$`)
+)
+
 // MarkdownConverter converts HTML to Markdown
 type MarkdownConverter struct {
 	domain string
@@ -104,31 +121,29 @@ func StripMarkdown(markdown string) string {
 	markdown = removeCodeBlocks(markdown)
 
 	// Remove links but keep text: [text](url) -> text
-	linkRegex := regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`)
 	markdown = linkRegex.ReplaceAllString(markdown, "$1")
 
 	// Remove images: ![alt](url) -> alt
-	imageRegex := regexp.MustCompile(`!\[([^\]]*)\]\([^)]+\)`)
 	markdown = imageRegex.ReplaceAllString(markdown, "$1")
 
 	// Remove emphasis: **bold** -> bold, *italic* -> italic
-	markdown = regexp.MustCompile(`\*\*([^*]+)\*\*`).ReplaceAllString(markdown, "$1")
-	markdown = regexp.MustCompile(`\*([^*]+)\*`).ReplaceAllString(markdown, "$1")
-	markdown = regexp.MustCompile(`__([^_]+)__`).ReplaceAllString(markdown, "$1")
-	markdown = regexp.MustCompile(`_([^_]+)_`).ReplaceAllString(markdown, "$1")
+	markdown = boldAsterisksRegex.ReplaceAllString(markdown, "$1")
+	markdown = italicAsterisksRegex.ReplaceAllString(markdown, "$1")
+	markdown = boldUnderscoresRegex.ReplaceAllString(markdown, "$1")
+	markdown = italicUnderscoresRegex.ReplaceAllString(markdown, "$1")
 
 	// Remove headers: # Header -> Header
-	markdown = regexp.MustCompile(`(?m)^#{1,6}\s+`).ReplaceAllString(markdown, "")
+	markdown = headersRegex.ReplaceAllString(markdown, "")
 
 	// Remove horizontal rules
-	markdown = regexp.MustCompile(`(?m)^[\-*_]{3,}$`).ReplaceAllString(markdown, "")
+	markdown = stripHorizontalRuleRegex.ReplaceAllString(markdown, "")
 
 	// Remove blockquotes
-	markdown = regexp.MustCompile(`(?m)^>\s+`).ReplaceAllString(markdown, "")
+	markdown = blockquoteRegex.ReplaceAllString(markdown, "")
 
 	// Remove list markers
-	markdown = regexp.MustCompile(`(?m)^[\s]*[\-*+]\s+`).ReplaceAllString(markdown, "")
-	markdown = regexp.MustCompile(`(?m)^[\s]*\d+\.\s+`).ReplaceAllString(markdown, "")
+	markdown = unorderedListRegex.ReplaceAllString(markdown, "")
+	markdown = orderedListRegex.ReplaceAllString(markdown, "")
 
 	return strings.TrimSpace(markdown)
 }
@@ -136,12 +151,10 @@ func StripMarkdown(markdown string) string {
 // removeCodeBlocks removes fenced code blocks
 func removeCodeBlocks(markdown string) string {
 	// Remove fenced code blocks
-	fenced := regexp.MustCompile("(?s)```[^`]*```")
-	markdown = fenced.ReplaceAllString(markdown, "")
+	markdown = fencedCodeBlockRegex.ReplaceAllString(markdown, "")
 
 	// Remove indented code blocks (lines starting with 4 spaces or tab)
-	indented := regexp.MustCompile(`(?m)^(    |\t).*$`)
-	markdown = indented.ReplaceAllString(markdown, "")
+	markdown = indentedCodeBlockRegex.ReplaceAllString(markdown, "")
 
 	return markdown
 }
