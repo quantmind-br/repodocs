@@ -186,9 +186,9 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 		} else {
 			html := string(r.Body)
 
-			// Check if JS rendering is needed
 			if opts.RenderJS || renderer.NeedsJSRendering(html) {
-				if s.renderer != nil {
+				if r, err := s.deps.GetRenderer(); err == nil {
+					s.renderer = r
 					rendered, err := s.renderer.Render(ctx, currentURL, domain.RenderOptions{
 						Timeout:     60 * time.Second,
 						WaitStable:  2 * time.Second,

@@ -133,7 +133,8 @@ func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options)
 			html := string(pageResp.Body)
 
 			if opts.RenderJS || renderer.NeedsJSRendering(html) {
-				if s.renderer != nil {
+				if r, err := s.deps.GetRenderer(); err == nil {
+					s.renderer = r
 					rendered, err := s.renderer.Render(ctx, sitemapURL.Loc, domain.RenderOptions{
 						Timeout:     60 * time.Second,
 						WaitStable:  2 * time.Second,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/cache"
@@ -75,6 +76,11 @@ type Dependencies struct {
 	MetadataEnhancer *llm.MetadataEnhancer
 	Collector        *output.MetadataCollector
 	HTTPClient       *http.Client // Optional custom HTTP client (e.g., for testing)
+
+	// Lazy renderer initialization
+	rendererOnce sync.Once
+	rendererOpts renderer.RendererOptions
+	rendererErr  error
 }
 
 // NewDependencies creates new dependencies for strategies
@@ -103,17 +109,20 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 		fetcherClient.SetCache(cacheImpl)
 	}
 
-	// Create renderer if needed
+	// Prepare renderer options for lazy initialization
+	rendererOpts := renderer.DefaultRendererOptions()
+	if opts.RendererTimeout > 0 {
+		rendererOpts.Timeout = opts.RendererTimeout
+	}
+	if opts.Concurrency > 0 {
+		rendererOpts.MaxTabs = opts.Concurrency
+	}
+
+	// Create renderer eagerly only if explicitly requested
 	var rendererImpl domain.Renderer
 	if opts.EnableRenderer {
-		rendererOpts := renderer.DefaultRendererOptions()
-		rendererOpts.Timeout = opts.RendererTimeout
-		rendererOpts.MaxTabs = opts.Concurrency
 		r, err := renderer.NewRenderer(rendererOpts)
-		if err != nil {
-			// Renderer is optional, continue without it
-			rendererImpl = nil
-		} else {
+		if err == nil {
 			rendererImpl = r
 		}
 	}
@@ -198,6 +207,7 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 		LLMProvider:      llmProvider,
 		MetadataEnhancer: metadataEnhancer,
 		Collector:        collector,
+		rendererOpts:     rendererOpts,
 	}, nil
 }
 
@@ -235,6 +245,32 @@ func (d *Dependencies) SetSourceURL(url string) {
 	if d.Collector != nil {
 		d.Collector.SetSourceURL(url)
 	}
+}
+
+func (d *Dependencies) GetRenderer() (domain.Renderer, error) {
+	if d.Renderer != nil {
+		return d.Renderer, nil
+	}
+
+	d.rendererOnce.Do(func() {
+		opts := d.rendererOpts
+		if opts.Timeout == 0 {
+			opts = renderer.DefaultRendererOptions()
+		}
+		r, err := renderer.NewRenderer(opts)
+		if err != nil {
+			d.rendererErr = err
+			d.Logger.Debug().Err(err).Msg("Failed to initialize browser renderer on demand")
+			return
+		}
+		d.Renderer = r
+		d.Logger.Info().Msg("Browser renderer initialized on demand")
+	})
+
+	if d.rendererErr != nil {
+		return nil, d.rendererErr
+	}
+	return d.Renderer, nil
 }
 
 // WriteDocument enhances metadata (if configured) and writes the document

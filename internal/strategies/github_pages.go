@@ -121,10 +121,11 @@ func (s *GitHubPagesStrategy) discoverURLs(ctx context.Context, baseURL string, 
 
 	s.logger.Debug().Err(err).Msg("HTTP discovery failed, falling back to browser crawl")
 
-	// Tier 2: Browser-based discovery (requires renderer)
-	if s.renderer == nil {
-		return nil, "", fmt.Errorf("no URLs found via HTTP probes and browser renderer is not available")
+	renderer, rendererErr := s.deps.GetRenderer()
+	if rendererErr != nil {
+		return nil, "", fmt.Errorf("no URLs found via HTTP probes and browser renderer failed: %w", rendererErr)
 	}
+	s.renderer = renderer
 
 	urls, err = s.discoverViaBrowser(ctx, baseURL, opts)
 	if err != nil {
@@ -459,17 +460,18 @@ func (s *GitHubPagesStrategy) fetchOrRenderPage(ctx context.Context, pageURL str
 		}
 	}
 
-	// Fall back to browser rendering
-	if s.renderer == nil {
-		return "", false, fmt.Errorf("browser renderer not available")
+	r, err := s.deps.GetRenderer()
+	if err != nil {
+		return "", false, fmt.Errorf("browser renderer not available: %w", err)
 	}
+	s.renderer = r
 
-	html, err := s.renderPage(ctx, pageURL)
+	rendered, err := s.renderPage(ctx, pageURL)
 	if err != nil {
 		return "", false, err
 	}
 
-	return html, true, nil
+	return rendered, true, nil
 }
 
 // looksLikeSPAShell checks if HTML looks like an empty SPA shell
