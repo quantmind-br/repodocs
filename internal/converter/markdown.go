@@ -121,31 +121,29 @@ func StripMarkdown(markdown string) string {
 	markdown = removeCodeBlocks(markdown)
 
 	// Remove links but keep text: [text](url) -> text
-	linkRegex := regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`)
 	markdown = linkRegex.ReplaceAllString(markdown, "$1")
 
 	// Remove images: ![alt](url) -> alt
-	imageRegex := regexp.MustCompile(`!\[([^\]]*)\]\([^)]+\)`)
 	markdown = imageRegex.ReplaceAllString(markdown, "$1")
 
 	// Remove emphasis: **bold** -> bold, *italic* -> italic
-	markdown = regexp.MustCompile(`\*\*([^*]+)\*\*`).ReplaceAllString(markdown, "$1")
-	markdown = regexp.MustCompile(`\*([^*]+)\*`).ReplaceAllString(markdown, "$1")
-	markdown = regexp.MustCompile(`__([^_]+)__`).ReplaceAllString(markdown, "$1")
-	markdown = regexp.MustCompile(`_([^_]+)_`).ReplaceAllString(markdown, "$1")
+	markdown = boldAsterisksRegex.ReplaceAllString(markdown, "$1")
+	markdown = italicAsterisksRegex.ReplaceAllString(markdown, "$1")
+	markdown = boldUnderscoresRegex.ReplaceAllString(markdown, "$1")
+	markdown = italicUnderscoresRegex.ReplaceAllString(markdown, "$1")
 
 	// Remove headers: # Header -> Header
-	markdown = regexp.MustCompile(`(?m)^#{1,6}\s+`).ReplaceAllString(markdown, "")
+	markdown = headersRegex.ReplaceAllString(markdown, "")
 
 	// Remove horizontal rules
-	markdown = regexp.MustCompile(`(?m)^[\-*_]{3,}$`).ReplaceAllString(markdown, "")
+	markdown = horizontalRuleRegex.ReplaceAllString(markdown, "")
 
 	// Remove blockquotes
-	markdown = regexp.MustCompile(`(?m)^>\s+`).ReplaceAllString(markdown, "")
+	markdown = blockquoteRegex.ReplaceAllString(markdown, "")
 
 	// Remove list markers
-	markdown = regexp.MustCompile(`(?m)^[\s]*[\-*+]\s+`).ReplaceAllString(markdown, "")
-	markdown = regexp.MustCompile(`(?m)^[\s]*\d+\.\s+`).ReplaceAllString(markdown, "")
+	markdown = unorderedListRegex.ReplaceAllString(markdown, "")
+	markdown = orderedListRegex.ReplaceAllString(markdown, "")
 
 	return strings.TrimSpace(markdown)
 }
