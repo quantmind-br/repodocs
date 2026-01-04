@@ -11,7 +11,6 @@ import (
 	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
-	"github.com/schollz/progressbar/v3"
 )
 
 // LLMSStrategy extracts documentation from llms.txt files
@@ -103,11 +102,7 @@ func (s *LLMSStrategy) Execute(ctx context.Context, url string, opts Options) er
 	}
 
 	// Create progress bar
-	bar := progressbar.NewOptions(len(links),
-		progressbar.OptionSetDescription("Downloading"),
-		progressbar.OptionShowCount(),
-		progressbar.OptionShowIts(),
-	)
+	bar := utils.NewProgressBar(len(links), utils.DescDownloading)
 
 	// Process links concurrently
 	errors := utils.ParallelForEach(ctx, links, opts.Concurrency, func(ctx context.Context, link domain.LLMSLink) error {
