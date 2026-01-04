@@ -19,7 +19,7 @@ var (
 	boldUnderscoresRegex   = regexp.MustCompile(`__([^_]+)__`)
 	italicUnderscoresRegex = regexp.MustCompile(`_([^_]+)_`)
 	headersRegex           = regexp.MustCompile(`(?m)^#{1,6}\s+`)
-	horizontalRuleRegex    = regexp.MustCompile(`(?m)^[\-*_]{3,}$`)
+	stripHorizontalRuleRegex = regexp.MustCompile(`(?m)^[\-*_]{3,}$`)
 	blockquoteRegex        = regexp.MustCompile(`(?m)^>\s+`)
 	unorderedListRegex     = regexp.MustCompile(`(?m)^[\s]*[\-*+]\s+`)
 	orderedListRegex       = regexp.MustCompile(`(?m)^[\s]*\d+\.\s+`)
@@ -136,7 +136,7 @@ func StripMarkdown(markdown string) string {
 	markdown = headersRegex.ReplaceAllString(markdown, "")
 
 	// Remove horizontal rules
-	markdown = horizontalRuleRegex.ReplaceAllString(markdown, "")
+	markdown = stripHorizontalRuleRegex.ReplaceAllString(markdown, "")
 
 	// Remove blockquotes
 	markdown = blockquoteRegex.ReplaceAllString(markdown, "")
