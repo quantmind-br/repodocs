@@ -65,12 +65,11 @@ brews:
     repository:
       owner: quantmind-br
       name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     directory: Formula
     homepage: https://github.com/quantmind-br/repodocs-go
     description: Documentation extraction CLI tool for LLMs
     license: MIT
-    skip_upload: auto
+    skip_upload: true
     install: |
       bin.install "repodocs"
 
