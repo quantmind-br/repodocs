@@ -10,7 +10,6 @@ import (
 	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
-	"github.com/schollz/progressbar/v3"
 )
 
 type DocsRSURL struct {
@@ -171,11 +170,7 @@ func (s *DocsRSStrategy) Execute(ctx context.Context, rawURL string, opts Option
 		s.logger.Info().Int("limit", opts.Limit).Msg("Applied item limit")
 	}
 
-	bar := progressbar.NewOptions(len(items),
-		progressbar.OptionSetDescription("Extracting docs.rs (JSON)"),
-		progressbar.OptionShowCount(),
-		progressbar.OptionShowIts(),
-	)
+	bar := utils.NewProgressBar(len(items), utils.DescExtracting)
 
 	errors := utils.ParallelForEach(ctx, items, opts.Concurrency, func(ctx context.Context, item *RustdocItem) error {
 		defer bar.Add(1)
