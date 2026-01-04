@@ -22,7 +22,6 @@ import (
 	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
-	"github.com/schollz/progressbar/v3"
 )
 
 // DocumentExtensions are file extensions to process (markdown only)
@@ -602,10 +601,7 @@ func (s *GitStrategy) findDocumentationFiles(dir string, filterPath string) ([]s
 // processFiles processes all documentation files in parallel
 func (s *GitStrategy) processFiles(ctx context.Context, files []string, tmpDir, repoURL, branch string, opts Options) error {
 	// Create progress bar
-	bar := progressbar.NewOptions(len(files),
-		progressbar.OptionSetDescription("Processing"),
-		progressbar.OptionShowCount(),
-	)
+	bar := utils.NewProgressBar(len(files), utils.DescProcessing)
 
 	// Process files in parallel using existing infrastructure
 	errors := utils.ParallelForEach(ctx, files, opts.Concurrency, func(ctx context.Context, file string) error {
