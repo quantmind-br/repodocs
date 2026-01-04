@@ -14,7 +14,6 @@ import (
 	internalgit "github.com/quantmind-br/repodocs-go/internal/git"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
-	"github.com/schollz/progressbar/v3"
 )
 
 // WikiStrategy extracts documentation from GitHub wiki repositories
@@ -232,10 +231,7 @@ func (s *WikiStrategy) processPages(
 	}
 
 	// Create progress bar
-	bar := progressbar.NewOptions(len(processablePages),
-		progressbar.OptionSetDescription("Processing wiki pages"),
-		progressbar.OptionShowCount(),
-	)
+	bar := utils.NewProgressBar(len(processablePages), utils.DescProcessing)
 
 	// Build base wiki URL for references
 	baseWikiURL := fmt.Sprintf("https://github.com/%s/%s/wiki", wikiInfo.Owner, wikiInfo.Repo)
