@@ -13,7 +13,6 @@ import (
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/renderer"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
-	"github.com/schollz/progressbar/v3"
 )
 
 // CrawlerStrategy crawls websites to extract documentation
@@ -96,15 +95,8 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 		RandomDelay: 2 * time.Second,
 	})
 
-	// Create progress bar (unknown total)
-	// Note: Setting -1 with spinner creates race condition with -race flag
-	// Using a simpler counter-based progress bar
-	bar := progressbar.NewOptions(-1,
-		progressbar.OptionSetDescription("Crawling"),
-		progressbar.OptionShowCount(),
-		progressbar.OptionSpinnerType(14),
-		progressbar.OptionSetRenderBlankState(true),
-	)
+	// Create progress bar (unknown total - uses spinner mode)
+	bar := utils.NewProgressBar(-1, utils.DescCrawling)
 	var barMu sync.Mutex
 
 	// Handle links
