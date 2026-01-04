@@ -151,12 +151,10 @@ func StripMarkdown(markdown string) string {
 // removeCodeBlocks removes fenced code blocks
 func removeCodeBlocks(markdown string) string {
 	// Remove fenced code blocks
-	fenced := regexp.MustCompile("(?s)```[^`]*```")
-	markdown = fenced.ReplaceAllString(markdown, "")
+	markdown = fencedCodeBlockRegex.ReplaceAllString(markdown, "")
 
 	// Remove indented code blocks (lines starting with 4 spaces or tab)
-	indented := regexp.MustCompile(`(?m)^(    |\t).*$`)
-	markdown = indented.ReplaceAllString(markdown, "")
+	markdown = indentedCodeBlockRegex.ReplaceAllString(markdown, "")
 
 	return markdown
 }
