@@ -1,6 +1,8 @@
 package converter
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -381,4 +383,130 @@ func TestRemoveCodeBlocks(t *testing.T) {
 			}
 		})
 	}
+}
+
+// BenchmarkStripMarkdown benchmarks the StripMarkdown function with various input sizes
+func BenchmarkStripMarkdown(b *testing.B) {
+	// Test different document sizes
+	benchmarks := []struct {
+		name    string
+		content string
+	}{
+		{
+			name:    "small",
+			content: "# Heading\n\nThis is a **simple** markdown document with [links](https://example.com).",
+		},
+		{
+			name: "medium",
+			content: generateMediumMarkdown(),
+		},
+		{
+			name: "large",
+			content: generateLargeMarkdown(),
+		},
+	}
+
+	for _, bm := range benchmarks {
+		b.Run(bm.name, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				StripMarkdown(bm.content)
+			}
+		})
+	}
+}
+
+// BenchmarkStripMarkdownParallel benchmarks with parallel execution
+func BenchmarkStripMarkdownParallel(b *testing.B) {
+	content := generateLargeMarkdown()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			StripMarkdown(content)
+		}
+	})
+}
+
+// generateMediumMarkdown generates a medium-sized markdown document for benchmarking
+func generateMediumMarkdown() string {
+	var sb strings.Builder
+	sb.WriteString("# Medium Markdown Document\n\n")
+	sb.WriteString("## Introduction\n\n")
+	sb.WriteString("This is a **medium-sized** document with various markdown elements.\n\n")
+	sb.WriteString("## Features\n\n")
+	sb.WriteString("- **Bold text** with *italic* text\n")
+	sb.WriteString("- [Links](https://example.com) and ![images](image.png)\n")
+	sb.WriteString("- Code blocks:\n\n")
+	sb.WriteString("```go\n")
+	sb.WriteString("func main() {\n")
+	sb.WriteString("    fmt.Println(\"Hello, world!\")\n")
+	sb.WriteString("}\n")
+	sb.WriteString("```\n\n")
+	sb.WriteString("## Lists\n\n")
+	for i := 1; i <= 10; i++ {
+		sb.WriteString(fmt.Sprintf("%d. Item number %d with **bold** and *italic* text\n", i, i))
+	}
+	sb.WriteString("\n## Blockquotes\n\n")
+	sb.WriteString("> This is a blockquote\n")
+	sb.WriteString("> With multiple lines\n\n")
+	sb.WriteString("## Horizontal Rule\n\n")
+	sb.WriteString("---\n\n")
+	sb.WriteString("## Conclusion\n\n")
+	sb.WriteString("This document contains various markdown elements for testing the StripMarkdown function.\n")
+	return sb.String()
+}
+
+// generateLargeMarkdown generates a large markdown document for benchmarking
+func generateLargeMarkdown() string {
+	var sb strings.Builder
+	sb.WriteString("# Large Markdown Document\n\n")
+	sb.WriteString("## Introduction\n\n")
+	sb.WriteString("This is a **large-sized** document designed to test the performance of the StripMarkdown function.\n\n")
+	sb.WriteString("It contains multiple sections with various markdown formatting elements.\n\n")
+
+	// Add multiple sections
+	for i := 1; i <= 5; i++ {
+		sb.WriteString(fmt.Sprintf("## Section %d\n\n", i))
+		sb.WriteString(fmt.Sprintf("This is section %d with various formatting.\n\n", i))
+
+		// Add lists
+		sb.WriteString("### Features\n\n")
+		for j := 1; j <= 20; j++ {
+			sb.WriteString(fmt.Sprintf("- Item %d with **bold** and *italic* and [link %d](https://example.com/%d)\n", j, j, j))
+		}
+		sb.WriteString("\n")
+
+		// Add numbered lists
+		sb.WriteString("### Steps\n\n")
+		for j := 1; j <= 15; j++ {
+			sb.WriteString(fmt.Sprintf("%d. Step %d with __bold__ and _italic_ text\n", j, j))
+		}
+		sb.WriteString("\n")
+
+		// Add code blocks
+		sb.WriteString("### Code Example\n\n")
+		sb.WriteString("```javascript\n")
+		sb.WriteString(fmt.Sprintf("function example%d() {\n", i))
+		sb.WriteString("    const x = 1;\n")
+		sb.WriteString("    const y = 2;\n")
+		sb.WriteString("    return x + y;\n")
+		sb.WriteString("}\n")
+		sb.WriteString("```\n\n")
+
+		// Add blockquotes
+		sb.WriteString("### Quote\n\n")
+		sb.WriteString(fmt.Sprintf("> Quote for section %d\n", i))
+		sb.WriteString("> With multiple lines\n\n")
+
+		// Add horizontal rule
+		sb.WriteString("---\n\n")
+	}
+
+	sb.WriteString("## Conclusion\n\n")
+	sb.WriteString("This large document contains:\n")
+	sb.WriteString("- Multiple sections\n")
+	sb.WriteString("- Various markdown formatting\n")
+	sb.WriteString("- Links, images, bold, italic\n")
+	sb.WriteString("- Lists and code blocks\n")
+	sb.WriteString("- Blockquotes and horizontal rules\n")
+	return sb.String()
 }
