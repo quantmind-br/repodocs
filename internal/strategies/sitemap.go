@@ -105,7 +105,7 @@ func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options)
 	s.logger.Info().Int("count", len(urls)).Msg("Processing URLs from sitemap")
 
 	// Create progress bar
-	bar := utils.NewProgressBar(len(urls), utils.DescDownloading)
+	bar := utils.NewProgressBar(len(urls), utils.DescExtracting)
 
 	// Process URLs concurrently
 	errors := utils.ParallelForEach(ctx, urls, opts.Concurrency, func(ctx context.Context, sitemapURL domain.SitemapURL) error {

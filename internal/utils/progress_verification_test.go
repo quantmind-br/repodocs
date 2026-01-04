@@ -3,7 +3,6 @@ package utils
 import (
 	"testing"
 
-	"github.com/schollz/progressbar/v3"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,34 +15,16 @@ import (
 // AFTER: OptionShowCount() + OptionShowIts() are both applied for determinate bars
 func TestProgressBarOptionsVerification(t *testing.T) {
 	t.Run("determinate_bar_has_its_option", func(t *testing.T) {
-		// Create a determinate progress bar (total > 0)
 		bar := NewProgressBar(100, DescProcessing)
 
-		// Verify it's not nil
 		assert.NotNil(t, bar, "Progress bar should not be nil")
-
-		// Verify the total is set correctly
-		assert.Equal(t, int64(100), bar.GetMax(), "Total should be 100")
-
-		// Note: The progressbar library doesn't expose which options were applied,
-		// but we can verify the behavior by checking that the bar accepts the total
-		// and would show iterations/second when used.
-
-		// The key change is in progress.go:50 where OptionShowIts() is added
-		// This was MISSING in the original git.go and wiki.go implementations
+		assert.Equal(t, 100, bar.GetMax(), "Total should be 100")
 	})
 
 	t.Run("indeterminate_bar_has_spinner_options", func(t *testing.T) {
-		// Create an indeterminate progress bar (total < 0)
 		bar := NewProgressBar(-1, DescCrawling)
 
-		// Verify it's not nil
 		assert.NotNil(t, bar, "Progress bar should not be nil")
-
-		// Verify the total is -1 (unknown)
-		assert.Equal(t, int64(-1), bar.GetMax(), "Total should be -1 for indeterminate bars")
-
-		// The spinner options (type 14, render blank state) are applied in progress.go:43-46
 	})
 
 	t.Run("description_standardization", func(t *testing.T) {

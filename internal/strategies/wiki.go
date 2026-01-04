@@ -231,7 +231,7 @@ func (s *WikiStrategy) processPages(
 	}
 
 	// Create progress bar
-	bar := utils.NewProgressBar(len(processablePages), utils.DescProcessing)
+	bar := utils.NewProgressBar(len(processablePages), utils.DescExtracting)
 
 	// Build base wiki URL for references
 	baseWikiURL := fmt.Sprintf("https://github.com/%s/%s/wiki", wikiInfo.Owner, wikiInfo.Repo)

@@ -12,19 +12,19 @@ import (
 
 // Pre-compiled regex patterns for markdown stripping
 var (
-	linkRegex              = regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`)
-	imageRegex             = regexp.MustCompile(`!\[([^\]]*)\]\([^)]+\)`)
-	boldAsterisksRegex     = regexp.MustCompile(`\*\*([^*]+)\*\*`)
-	italicAsterisksRegex   = regexp.MustCompile(`\*([^*]+)\*`)
-	boldUnderscoresRegex   = regexp.MustCompile(`__([^_]+)__`)
-	italicUnderscoresRegex = regexp.MustCompile(`_([^_]+)_`)
-	headersRegex           = regexp.MustCompile(`(?m)^#{1,6}\s+`)
+	linkRegex                = regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`)
+	imageRegex               = regexp.MustCompile(`!\[([^\]]*)\]\([^)]+\)`)
+	boldAsterisksRegex       = regexp.MustCompile(`\*\*([^*]+)\*\*`)
+	italicAsterisksRegex     = regexp.MustCompile(`\*([^*]+)\*`)
+	boldUnderscoresRegex     = regexp.MustCompile(`__([^_]+)__`)
+	italicUnderscoresRegex   = regexp.MustCompile(`_([^_]+)_`)
+	headersRegex             = regexp.MustCompile(`(?m)^#{1,6}\s+`)
 	stripHorizontalRuleRegex = regexp.MustCompile(`(?m)^[\-*_]{3,}$`)
-	blockquoteRegex        = regexp.MustCompile(`(?m)^>\s+`)
-	unorderedListRegex     = regexp.MustCompile(`(?m)^[\s]*[\-*+]\s+`)
-	orderedListRegex       = regexp.MustCompile(`(?m)^[\s]*\d+\.\s+`)
-	fencedCodeBlockRegex   = regexp.MustCompile(`(?s)\`\`\`[^\`]*\`\`\``)
-	indentedCodeBlockRegex = regexp.MustCompile(`(?m)^(    |\t).*$`)
+	blockquoteRegex          = regexp.MustCompile(`(?m)^>\s+`)
+	unorderedListRegex       = regexp.MustCompile(`(?m)^[\s]*[\-*+]\s+`)
+	orderedListRegex         = regexp.MustCompile(`(?m)^[\s]*\d+\.\s+`)
+	fencedCodeBlockRegex     = regexp.MustCompile("(?s)```[^`]*```")
+	indentedCodeBlockRegex   = regexp.MustCompile("(?m)^(    |\t).*$")
 )
 
 // MarkdownConverter converts HTML to Markdown

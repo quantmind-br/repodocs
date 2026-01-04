@@ -96,7 +96,7 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 	})
 
 	// Create progress bar (unknown total - uses spinner mode)
-	bar := utils.NewProgressBar(-1, utils.DescCrawling)
+	bar := utils.NewProgressBar(-1, utils.DescExtracting)
 	var barMu sync.Mutex
 
 	// Handle links

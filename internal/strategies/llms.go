@@ -102,7 +102,7 @@ func (s *LLMSStrategy) Execute(ctx context.Context, url string, opts Options) er
 	}
 
 	// Create progress bar
-	bar := utils.NewProgressBar(len(links), utils.DescDownloading)
+	bar := utils.NewProgressBar(len(links), utils.DescExtracting)
 
 	// Process links concurrently
 	errors := utils.ParallelForEach(ctx, links, opts.Concurrency, func(ctx context.Context, link domain.LLMSLink) error {
