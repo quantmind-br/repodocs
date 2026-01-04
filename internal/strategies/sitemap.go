@@ -14,7 +14,6 @@ import (
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/renderer"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
-	"github.com/schollz/progressbar/v3"
 )
 
 // SitemapStrategy extracts documentation from sitemap XML files
@@ -106,11 +105,7 @@ func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options)
 	s.logger.Info().Int("count", len(urls)).Msg("Processing URLs from sitemap")
 
 	// Create progress bar
-	bar := progressbar.NewOptions(len(urls),
-		progressbar.OptionSetDescription("Downloading"),
-		progressbar.OptionShowCount(),
-		progressbar.OptionShowIts(),
-	)
+	bar := utils.NewProgressBar(len(urls), utils.DescDownloading)
 
 	// Process URLs concurrently
 	errors := utils.ParallelForEach(ctx, urls, opts.Concurrency, func(ctx context.Context, sitemapURL domain.SitemapURL) error {
