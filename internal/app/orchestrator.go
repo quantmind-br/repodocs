@@ -7,6 +7,7 @@ import (
 
 	"github.com/quantmind-br/repodocs-go/internal/config"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs-go/internal/manifest"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 )
@@ -22,14 +23,15 @@ type Orchestrator struct {
 // OrchestratorOptions contains options for creating an orchestrator
 type OrchestratorOptions struct {
 	domain.CommonOptions
-	Config          *config.Config
-	Split           bool
-	IncludeAssets   bool
-	ContentSelector string
-	ExcludeSelector string
-	ExcludePatterns []string
-	FilterURL       string
-	StrategyFactory func(StrategyType, *strategies.Dependencies) strategies.Strategy
+	Config           *config.Config
+	Split            bool
+	IncludeAssets    bool
+	ContentSelector  string
+	ExcludeSelector  string
+	ExcludePatterns  []string
+	FilterURL        string
+	StrategyFactory  func(StrategyType, *strategies.Dependencies) strategies.Strategy
+	StrategyOverride string
 }
 
 // NewOrchestrator creates a new orchestrator with the given configuration
@@ -121,14 +123,25 @@ func (o *Orchestrator) Run(ctx context.Context, url string, opts OrchestratorOpt
 		Int("concurrency", o.config.Concurrency.Workers).
 		Msg("Starting documentation extraction")
 
-	// Detect strategy
-	strategyType := DetectStrategy(url)
-	o.logger.Debug().
-		Str("strategy", string(strategyType)).
-		Msg("Detected strategy type")
+	var strategyType StrategyType
+	if opts.StrategyOverride != "" {
+		strategyType = StrategyType(opts.StrategyOverride)
+		o.logger.Debug().
+			Str("strategy", string(strategyType)).
+			Msg("Using strategy override from manifest")
 
-	if strategyType == StrategyUnknown {
-		return fmt.Errorf("unable to determine strategy for URL: %s", url)
+		if !IsValidStrategy(strategyType) {
+			return fmt.Errorf("unknown strategy override: %s", opts.StrategyOverride)
+		}
+	} else {
+		strategyType = DetectStrategy(url)
+		o.logger.Debug().
+			Str("strategy", string(strategyType)).
+			Msg("Detected strategy type")
+
+		if strategyType == StrategyUnknown {
+			return fmt.Errorf("unable to determine strategy for URL: %s", url)
+		}
 	}
 
 	// Create strategy using strategy factory (allows injection for testing)
@@ -204,4 +217,138 @@ func (o *Orchestrator) ValidateURL(url string) error {
 		return fmt.Errorf("unsupported URL format: %s", url)
 	}
 	return nil
+}
+
+// ManifestResult represents the result of processing one manifest source
+type ManifestResult struct {
+	Source   manifest.Source
+	Error    error
+	Duration time.Duration
+}
+
+// RunManifest executes all sources defined in the manifest
+func (o *Orchestrator) RunManifest(
+	ctx context.Context,
+	manifestCfg *manifest.Config,
+	baseOpts OrchestratorOptions,
+) error {
+	startTime := time.Now()
+	totalSources := len(manifestCfg.Sources)
+
+	o.logger.Info().
+		Int("sources", totalSources).
+		Bool("continue_on_error", manifestCfg.Options.ContinueOnError).
+		Str("output", manifestCfg.Options.Output).
+		Msg("Starting manifest execution")
+
+	var results []ManifestResult
+	var firstError error
+
+	for i, source := range manifestCfg.Sources {
+		if ctx.Err() != nil {
+			o.logger.Warn().Msg("Manifest execution cancelled")
+			return ctx.Err()
+		}
+
+		sourceStart := time.Now()
+
+		o.logger.Info().
+			Int("source", i+1).
+			Int("total", totalSources).
+			Str("url", source.URL).
+			Str("strategy", source.Strategy).
+			Msg("Processing source")
+
+		opts := o.buildSourceOptions(source, baseOpts)
+
+		err := o.Run(ctx, source.URL, opts)
+		sourceDuration := time.Since(sourceStart)
+
+		result := ManifestResult{
+			Source:   source,
+			Error:    err,
+			Duration: sourceDuration,
+		}
+		results = append(results, result)
+
+		if err != nil {
+			o.logger.Error().
+				Err(err).
+				Str("url", source.URL).
+				Dur("duration", sourceDuration).
+				Msg("Source extraction failed")
+
+			if firstError == nil {
+				firstError = err
+			}
+
+			if !manifestCfg.Options.ContinueOnError {
+				o.logger.Warn().Msg("Stopping execution (continue_on_error=false)")
+				return fmt.Errorf("source %s failed: %w", source.URL, err)
+			}
+		} else {
+			o.logger.Info().
+				Str("url", source.URL).
+				Dur("duration", sourceDuration).
+				Msg("Source extraction completed")
+		}
+	}
+
+	duration := time.Since(startTime)
+	successCount := 0
+	for _, r := range results {
+		if r.Error == nil {
+			successCount++
+		}
+	}
+
+	o.logger.Info().
+		Dur("total_duration", duration).
+		Int("total", totalSources).
+		Int("success", successCount).
+		Int("failed", totalSources-successCount).
+		Msg("Manifest execution completed")
+
+	if firstError != nil {
+		return fmt.Errorf("manifest completed with %d/%d failures: %w",
+			totalSources-successCount, totalSources, firstError)
+	}
+
+	return nil
+}
+
+func (o *Orchestrator) buildSourceOptions(source manifest.Source, baseOpts OrchestratorOptions) OrchestratorOptions {
+	opts := baseOpts
+
+	if source.Strategy != "" {
+		opts.StrategyOverride = source.Strategy
+	}
+
+	if source.ContentSelector != "" {
+		opts.ContentSelector = source.ContentSelector
+	}
+	if source.ExcludeSelector != "" {
+		opts.ExcludeSelector = source.ExcludeSelector
+	}
+
+	if len(source.Exclude) > 0 {
+		opts.ExcludePatterns = append(opts.ExcludePatterns, source.Exclude...)
+	}
+
+	if source.RenderJS != nil {
+		opts.RenderJS = *source.RenderJS
+	}
+
+	if source.Limit > 0 {
+		opts.Limit = source.Limit
+	}
+
+	if source.MaxDepth > 0 {
+		o.logger.Debug().
+			Int("max_depth", source.MaxDepth).
+			Str("url", source.URL).
+			Msg("Source max_depth specified but config override not implemented")
+	}
+
+	return opts
 }

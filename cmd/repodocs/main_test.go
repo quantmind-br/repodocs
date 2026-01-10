@@ -697,3 +697,58 @@ func BenchmarkCheckWritePermissions(b *testing.B) {
 		checkWritePermissions()
 	}
 }
+
+func TestManifestFlag_Registered(t *testing.T) {
+	flag := rootCmd.PersistentFlags().Lookup("manifest")
+	require.NotNil(t, flag)
+	assert.Equal(t, "string", flag.Value.Type())
+	assert.Equal(t, "", flag.DefValue)
+}
+
+func TestManifestFlag_MutualExclusivity(t *testing.T) {
+	tmpDir := testutil.TempDir(t)
+	manifestFile := filepath.Join(tmpDir, "manifest.yaml")
+	content := `
+sources:
+  - url: https://example.com
+`
+	require.NoError(t, os.WriteFile(manifestFile, []byte(content), 0644))
+
+	oldManifestPath := manifestPath
+	defer func() { manifestPath = oldManifestPath }()
+
+	manifestPath = manifestFile
+
+	err := run(rootCmd, []string{"https://example.com"})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot specify both --manifest and URL argument")
+}
+
+func TestManifestPath_FileNotFound(t *testing.T) {
+	oldManifestPath := manifestPath
+	defer func() { manifestPath = oldManifestPath }()
+
+	manifestPath = "/nonexistent/manifest.yaml"
+
+	err := run(rootCmd, []string{})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "manifest file not found")
+}
+
+func TestManifestPath_InvalidYAML(t *testing.T) {
+	tmpDir := testutil.TempDir(t)
+	manifestFile := filepath.Join(tmpDir, "manifest.yaml")
+	require.NoError(t, os.WriteFile(manifestFile, []byte("not: valid: yaml: ["), 0644))
+
+	oldManifestPath := manifestPath
+	defer func() { manifestPath = oldManifestPath }()
+
+	manifestPath = manifestFile
+
+	err := run(rootCmd, []string{})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to load manifest")
+}

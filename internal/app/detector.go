@@ -22,6 +22,21 @@ const (
 	StrategyUnknown     StrategyType = "unknown"
 )
 
+var validStrategies = map[StrategyType]bool{
+	StrategyLLMS:        true,
+	StrategyPkgGo:       true,
+	StrategyDocsRS:      true,
+	StrategySitemap:     true,
+	StrategyWiki:        true,
+	StrategyGitHubPages: true,
+	StrategyGit:         true,
+	StrategyCrawler:     true,
+}
+
+func IsValidStrategy(s StrategyType) bool {
+	return validStrategies[s]
+}
+
 // DetectStrategy determines the appropriate strategy based on URL patterns
 func DetectStrategy(rawURL string) StrategyType {
 	// Trim whitespace

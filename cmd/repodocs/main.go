@@ -13,6 +13,7 @@ import (
 	"github.com/quantmind-br/repodocs-go/internal/app"
 	"github.com/quantmind-br/repodocs-go/internal/config"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs-go/internal/manifest"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 	"github.com/quantmind-br/repodocs-go/pkg/version"
 	"github.com/spf13/cobra"
@@ -20,9 +21,10 @@ import (
 )
 
 var (
-	cfgFile string
-	verbose bool
-	log     *utils.Logger
+	cfgFile      string
+	verbose      bool
+	manifestPath string
+	log          *utils.Logger
 
 	// Dependencies for testing
 	osStat       = os.Stat
@@ -83,6 +85,7 @@ func init() {
 	rootCmd.PersistentFlags().String("user-agent", "", "Custom User-Agent")
 	rootCmd.PersistentFlags().String("content-selector", "", "CSS selector for main content")
 	rootCmd.PersistentFlags().String("exclude-selector", "", "CSS selector for elements to exclude from content")
+	rootCmd.PersistentFlags().StringVar(&manifestPath, "manifest", "", "Path to manifest file (YAML/JSON) for batch processing")
 
 	// Bind flags to viper
 	_ = viper.BindPFlag("output.directory", rootCmd.PersistentFlags().Lookup("output"))
@@ -126,7 +129,13 @@ func run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Check if URL was provided
+	if manifestPath != "" {
+		if len(args) > 0 {
+			return fmt.Errorf("cannot specify both --manifest and URL argument")
+		}
+		return runManifest(cmd, cfg)
+	}
+
 	if len(args) == 0 {
 		return cmd.Help()
 	}
@@ -200,8 +209,73 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Run extraction
 	return orchestrator.Run(ctx, url, orchOpts)
+}
+
+func runManifest(cmd *cobra.Command, cfg *config.Config) error {
+	loader := manifest.NewLoader()
+	manifestCfg, err := loader.Load(manifestPath)
+	if err != nil {
+		return fmt.Errorf("failed to load manifest: %w", err)
+	}
+
+	if manifestCfg.Options.Output != "" {
+		cfg.Output.Directory = manifestCfg.Options.Output
+	}
+	if manifestCfg.Options.Concurrency > 0 {
+		cfg.Concurrency.Workers = manifestCfg.Options.Concurrency
+	}
+	if manifestCfg.Options.CacheTTL > 0 {
+		cfg.Cache.TTL = manifestCfg.Options.CacheTTL
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigCh
+		log.Info().Msg("Shutting down gracefully...")
+		cancel()
+	}()
+
+	limit, _ := cmd.Flags().GetInt("limit")
+	dryRun, _ := cmd.Flags().GetBool("dry-run")
+	split, _ := cmd.Flags().GetBool("split")
+	includeAssets, _ := cmd.Flags().GetBool("include-assets")
+	contentSelector, _ := cmd.Flags().GetString("content-selector")
+	excludeSelector, _ := cmd.Flags().GetString("exclude-selector")
+	excludePatterns, _ := cmd.Flags().GetStringSlice("exclude")
+	renderJS, _ := cmd.Flags().GetBool("render-js")
+	force, _ := cmd.Flags().GetBool("force")
+	filterURL, _ := cmd.Flags().GetString("filter")
+
+	orchOpts := app.OrchestratorOptions{
+		CommonOptions: domain.CommonOptions{
+			Verbose:  verbose,
+			DryRun:   dryRun,
+			Force:    force,
+			RenderJS: renderJS,
+			Limit:    limit,
+		},
+		Config:          cfg,
+		Split:           split,
+		IncludeAssets:   includeAssets,
+		ContentSelector: contentSelector,
+		ExcludeSelector: excludeSelector,
+		ExcludePatterns: excludePatterns,
+		FilterURL:       filterURL,
+	}
+
+	orchestrator, err := app.NewOrchestrator(orchOpts)
+	if err != nil {
+		return fmt.Errorf("failed to create orchestrator: %w", err)
+	}
+	defer orchestrator.Close()
+
+	return orchestrator.RunManifest(ctx, manifestCfg, orchOpts)
 }
 
 var doctorCmd = &cobra.Command{
