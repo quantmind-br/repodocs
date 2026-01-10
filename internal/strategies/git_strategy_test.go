@@ -277,9 +277,9 @@ func TestBuildArchiveURL_GitHub(t *testing.T) {
 	strategy := NewGitStrategy(deps)
 
 	info := &repoInfo{
-		platform: "github",
-		owner:    "testuser",
-		repo:     "testrepo",
+		Platform: "github",
+		Owner:    "testuser",
+		Repo:     "testrepo",
 	}
 
 	url := strategy.buildArchiveURL(info, "main")
@@ -301,9 +301,9 @@ func TestBuildArchiveURL_GitLab(t *testing.T) {
 	strategy := NewGitStrategy(deps)
 
 	info := &repoInfo{
-		platform: "gitlab",
-		owner:    "testuser",
-		repo:     "testrepo",
+		Platform: "gitlab",
+		Owner:    "testuser",
+		Repo:     "testrepo",
 	}
 
 	url := strategy.buildArchiveURL(info, "master")
@@ -325,9 +325,9 @@ func TestBuildArchiveURL_Custom(t *testing.T) {
 	strategy := NewGitStrategy(deps)
 
 	info := &repoInfo{
-		platform: "custom",
-		owner:    "testuser",
-		repo:     "testrepo",
+		Platform: "custom",
+		Owner:    "testuser",
+		Repo:     "testrepo",
 	}
 
 	url := strategy.buildArchiveURL(info, "develop")
@@ -635,8 +635,10 @@ func TestProcessFiles_Success(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		DryRun:      true,
-		Limit:       0,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+			Limit:  0,
+		},
 		Concurrency: 2,
 	}
 
@@ -667,8 +669,10 @@ func TestProcessFiles_Invalid(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		DryRun:      true,
-		Limit:       0,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+			Limit:  0,
+		},
 		Concurrency: 2,
 	}
 
@@ -695,8 +699,10 @@ func TestProcessFiles_Empty(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		DryRun:      true,
-		Limit:       0,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+			Limit:  0,
+		},
 		Concurrency: 2,
 	}
 
@@ -728,7 +734,9 @@ func TestProcessFile_HTML(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		DryRun: true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	// Test processFile logic directly
@@ -749,7 +757,9 @@ func TestProcessFile_Error(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		DryRun: true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	// Try to process a non-existent file
@@ -885,10 +895,10 @@ func TestParseGitURLWithPath_GitHub(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, tt.wantRepoURL, info.repoURL)
-			assert.Equal(t, tt.wantBranch, info.branch)
-			assert.Equal(t, tt.wantSubPath, info.subPath)
-			assert.Equal(t, "github", info.platform)
+			assert.Equal(t, tt.wantRepoURL, info.RepoURL)
+			assert.Equal(t, tt.wantBranch, info.Branch)
+			assert.Equal(t, tt.wantSubPath, info.SubPath)
+			assert.Equal(t, "github", string(info.Platform))
 		})
 	}
 }
@@ -926,10 +936,10 @@ func TestParseGitURLWithPath_GitLab(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			info, err := strategy.parseGitURLWithPath(tt.url)
 			require.NoError(t, err)
-			assert.Equal(t, tt.wantRepoURL, info.repoURL)
-			assert.Equal(t, tt.wantBranch, info.branch)
-			assert.Equal(t, tt.wantSubPath, info.subPath)
-			assert.Equal(t, "gitlab", info.platform)
+			assert.Equal(t, tt.wantRepoURL, info.RepoURL)
+			assert.Equal(t, tt.wantBranch, info.Branch)
+			assert.Equal(t, tt.wantSubPath, info.SubPath)
+			assert.Equal(t, "gitlab", string(info.Platform))
 		})
 	}
 }
@@ -1263,7 +1273,9 @@ func TestExecute_ArchiveFailCloneSuccess(t *testing.T) {
 	// Use file:// protocol which doesn't support archive download
 	ctx := context.Background()
 	opts := Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit: 10,
+		},
 		Concurrency: 1,
 	}
 
@@ -1295,7 +1307,9 @@ func TestExecute_BothMethodsFail(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit: 10,
+		},
 		Concurrency: 1,
 	}
 

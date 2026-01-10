@@ -24,7 +24,9 @@ func TestNewLLMSStrategy(t *testing.T) {
 		EnableCache: false,
 		OutputDir:   "/tmp",
 		Flat:        false,
-		DryRun:      true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -121,7 +123,9 @@ func TestLLMSStrategy_Execute_Success(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -130,9 +134,11 @@ func TestLLMSStrategy_Execute_Success(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: true,
+		},
 		Concurrency: 1,
-		DryRun:      true,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
@@ -171,7 +177,9 @@ func TestLLMSStrategy_Execute_WithFilter(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -180,10 +188,12 @@ func TestLLMSStrategy_Execute_WithFilter(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: true,
+		},
 		Concurrency: 1,
 		FilterURL:   "/docs",
-		DryRun:      true,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
@@ -226,7 +236,9 @@ func TestLLMSStrategy_Execute_WithLimit(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -235,9 +247,11 @@ func TestLLMSStrategy_Execute_WithLimit(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       2,
+		CommonOptions: domain.CommonOptions{
+			Limit:  2,
+			DryRun: true,
+		},
 		Concurrency: 1,
-		DryRun:      true,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
@@ -275,7 +289,9 @@ This is a markdown guide.
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -284,9 +300,11 @@ This is a markdown guide.
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: true,
+		},
 		Concurrency: 1,
-		DryRun:      true,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
@@ -321,7 +339,9 @@ func TestLLMSStrategy_Execute_ContextCancellation(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -332,9 +352,11 @@ func TestLLMSStrategy_Execute_ContextCancellation(t *testing.T) {
 	cancel() // Cancel immediately
 
 	opts := Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: true,
+		},
 		Concurrency: 1,
-		DryRun:      true,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
@@ -359,7 +381,9 @@ func TestLLMSStrategy_Execute_EmptyLLMS(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -368,9 +392,11 @@ func TestLLMSStrategy_Execute_EmptyLLMS(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: true,
+		},
 		Concurrency: 1,
-		DryRun:      true,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
@@ -534,7 +560,9 @@ func TestLLMSStrategy_Execute_TitleFallback(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -543,9 +571,11 @@ func TestLLMSStrategy_Execute_TitleFallback(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: true,
+		},
 		Concurrency: 1,
-		DryRun:      true,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
@@ -582,7 +612,9 @@ func TestLLMSStrategy_Execute_FetchError(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -591,9 +623,11 @@ func TestLLMSStrategy_Execute_FetchError(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: true,
+		},
 		Concurrency: 1,
-		DryRun:      true,
 	}
 
 	// Should not fail, should continue processing other pages

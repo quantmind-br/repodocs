@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -76,7 +77,9 @@ func TestProcessSitemapIndex(t *testing.T) {
 			OutputDir:      t.TempDir(),
 			Flat:           true,
 			JSONMetadata:   false,
-			DryRun:         true, // Don't actually write files
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 		require.NoError(t, err)
 		defer deps.Close()
@@ -85,7 +88,9 @@ func TestProcessSitemapIndex(t *testing.T) {
 
 		// Execute with sitemap index - this will call processSitemapIndex
 		err = strategy.Execute(ctx, server.URL+"/sitemap-index.xml", Options{
-			Limit:       10,
+			CommonOptions: domain.CommonOptions{
+				Limit: 10,
+			},
 			Concurrency: 1,
 		})
 
@@ -157,7 +162,9 @@ func TestProcessSitemapIndex(t *testing.T) {
 			OutputDir:      t.TempDir(),
 			Flat:           true,
 			JSONMetadata:   false,
-			DryRun:         true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 		require.NoError(t, err)
 		defer deps.Close()
@@ -166,7 +173,9 @@ func TestProcessSitemapIndex(t *testing.T) {
 
 		// Execute
 		err = strategy.Execute(ctx, server.URL+"/mixed-sitemap.xml", Options{
-			Limit:       10,
+			CommonOptions: domain.CommonOptions{
+				Limit: 10,
+			},
 			Concurrency: 1,
 		})
 
@@ -217,7 +226,9 @@ func TestProcessSitemapIndex(t *testing.T) {
 			OutputDir:      t.TempDir(),
 			Flat:           true,
 			JSONMetadata:   false,
-			DryRun:         true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 		require.NoError(t, err)
 		defer deps.Close()
@@ -226,7 +237,9 @@ func TestProcessSitemapIndex(t *testing.T) {
 
 		// Execute should not fail on invalid nested sitemap
 		err = strategy.Execute(ctx, server.URL+"/sitemap-index.xml", Options{
-			Limit:       10,
+			CommonOptions: domain.CommonOptions{
+				Limit: 10,
+			},
 			Concurrency: 1,
 		})
 
@@ -282,7 +295,9 @@ func TestProcessSitemapIndex(t *testing.T) {
 			OutputDir:      t.TempDir(),
 			Flat:           true,
 			JSONMetadata:   false,
-			DryRun:         true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 		require.NoError(t, err)
 		defer deps.Close()
@@ -294,7 +309,9 @@ func TestProcessSitemapIndex(t *testing.T) {
 
 		// Execute should return context cancellation error
 		err = strategy.Execute(ctx, server.URL+"/sitemap-index.xml", Options{
-			Limit:       10,
+			CommonOptions: domain.CommonOptions{
+				Limit: 10,
+			},
 			Concurrency: 1,
 		})
 
@@ -446,7 +463,9 @@ func TestProcessSitemapIndex_Success(t *testing.T) {
 		OutputDir:      t.TempDir(),
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -455,7 +474,9 @@ func TestProcessSitemapIndex_Success(t *testing.T) {
 
 	// Execute with sitemap index - this will call processSitemapIndex
 	err = strategy.Execute(ctx, server.URL+"/sitemap-index.xml", Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit: 10,
+		},
 		Concurrency: 1,
 	})
 
@@ -486,7 +507,9 @@ func TestProcessSitemapIndex_Empty(t *testing.T) {
 		OutputDir:      t.TempDir(),
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -495,7 +518,9 @@ func TestProcessSitemapIndex_Empty(t *testing.T) {
 
 	// Execute with empty sitemap
 	err = strategy.Execute(ctx, server.URL+"/sitemap.xml", Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit: 10,
+		},
 		Concurrency: 1,
 	})
 
@@ -608,7 +633,9 @@ func TestProcessSitemapIndex_Nested(t *testing.T) {
 		OutputDir:      t.TempDir(),
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -617,7 +644,9 @@ func TestProcessSitemapIndex_Nested(t *testing.T) {
 
 	// Execute with nested sitemap index
 	err = strategy.Execute(ctx, server.URL+"/sitemap.xml", Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit: 10,
+		},
 		Concurrency: 2,
 	})
 

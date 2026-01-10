@@ -12,6 +12,7 @@ import (
 
 	"github.com/quantmind-br/repodocs-go/internal/cache"
 	"github.com/quantmind-br/repodocs-go/internal/converter"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/fetcher"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
@@ -155,10 +156,12 @@ func TestE2E_SitemapParsing(t *testing.T) {
 	defer cancel()
 
 	err = sitemapStrategy.Execute(ctx, server.URL+"/sitemap.xml", strategies.Options{
-		Limit:       10,
 		Concurrency: 2,
-		DryRun:      false,
-		Force:       true,
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: false,
+			Force:  true,
+		},
 	})
 	require.NoError(t, err)
 
@@ -257,9 +260,11 @@ func TestE2E_SitemapIndex(t *testing.T) {
 	defer cancel()
 
 	err = sitemapStrategy.Execute(ctx, server.URL+"/sitemap.xml", strategies.Options{
-		Limit:       10,
 		Concurrency: 2,
-		Force:       true,
+		CommonOptions: domain.CommonOptions{
+			Limit: 10,
+			Force: true,
+		},
 	})
 	require.NoError(t, err)
 
@@ -337,9 +342,11 @@ func TestE2E_SitemapWithLimit(t *testing.T) {
 
 	// Limit to 5 pages
 	err = sitemapStrategy.Execute(ctx, server.URL+"/sitemap.xml", strategies.Options{
-		Limit:       5,
 		Concurrency: 2,
-		Force:       true,
+		CommonOptions: domain.CommonOptions{
+			Limit: 5,
+			Force: true,
+		},
 	})
 	require.NoError(t, err)
 

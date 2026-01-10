@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
 	"github.com/quantmind-br/repodocs-go/tests/testutil"
 	"github.com/stretchr/testify/assert"
@@ -63,9 +64,9 @@ func TestIntegration_CrawlerStrategy_Execute_Success(t *testing.T) {
 
 	ctx := context.Background()
 	opts := strategies.Options{
-		Limit:       10,
-		MaxDepth:    1,
-		Concurrency: 1,
+		CommonOptions: domain.CommonOptions{Limit: 10},
+		MaxDepth:      1,
+		Concurrency:   1,
 	}
 
 	// Act
@@ -89,9 +90,9 @@ func TestIntegration_CrawlerStrategy_Execute_ContextCancellation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	opts := strategies.Options{
-		Limit:       10,
-		MaxDepth:    1,
-		Concurrency: 1,
+		CommonOptions: domain.CommonOptions{Limit: 10},
+		MaxDepth:      1,
+		Concurrency:   1,
 	}
 
 	// Cancel context after a very short delay (allows crawl to start but not complete)
@@ -112,8 +113,8 @@ func TestIntegration_CrawlerStrategy_Execute_InvalidURL(t *testing.T) {
 
 	ctx := context.Background()
 	opts := strategies.Options{
-		Limit:       10,
-		Concurrency: 1,
+		CommonOptions: domain.CommonOptions{Limit: 10},
+		Concurrency:   1,
 	}
 
 	// Act - invalid URL
@@ -145,9 +146,9 @@ func TestIntegration_CrawlerStrategy_Execute_Limit(t *testing.T) {
 
 	ctx := context.Background()
 	opts := strategies.Options{
-		Limit:       2, // Limit to 2 pages
-		MaxDepth:    1,
-		Concurrency: 1,
+		CommonOptions: domain.CommonOptions{Limit: 2}, // Limit to 2 pages
+		MaxDepth:      1,
+		Concurrency:   1,
 	}
 
 	// Act
@@ -201,9 +202,9 @@ func TestIntegration_CrawlerStrategy_Execute_ContentTypeFilter(t *testing.T) {
 
 	ctx := context.Background()
 	opts := strategies.Options{
-		Limit:       10,
-		MaxDepth:    1,
-		Concurrency: 1,
+		CommonOptions: domain.CommonOptions{Limit: 10},
+		MaxDepth:      1,
+		Concurrency:   1,
 	}
 
 	// Act
@@ -226,10 +227,9 @@ func TestIntegration_CrawlerStrategy_Execute_DryRun(t *testing.T) {
 
 	ctx := context.Background()
 	opts := strategies.Options{
-		Limit:       10,
-		MaxDepth:    1,
-		Concurrency: 1,
-		DryRun:      true, // Dry run mode
+		CommonOptions: domain.CommonOptions{Limit: 10, DryRun: true},
+		MaxDepth:      1,
+		Concurrency:   1,
 	}
 
 	// Act
@@ -267,9 +267,9 @@ func TestIntegration_CrawlerStrategy_Execute_MarkdownContent(t *testing.T) {
 
 	ctx := context.Background()
 	opts := strategies.Options{
-		Limit:       10,
-		MaxDepth:    2,
-		Concurrency: 1,
+		CommonOptions: domain.CommonOptions{Limit: 10},
+		MaxDepth:      2,
+		Concurrency:   1,
 	}
 
 	err := strategy.Execute(ctx, server.URL+"/", opts)
@@ -292,9 +292,9 @@ func TestIntegration_CrawlerStrategy_Execute_MarkdownURL(t *testing.T) {
 
 	ctx := context.Background()
 	opts := strategies.Options{
-		Limit:       10,
-		MaxDepth:    2,
-		Concurrency: 1,
+		CommonOptions: domain.CommonOptions{Limit: 10},
+		MaxDepth:      2,
+		Concurrency:   1,
 	}
 
 	err := strategy.Execute(ctx, server.URL+"/", opts)
@@ -321,9 +321,9 @@ func TestIntegration_CrawlerStrategy_Execute_MixedHTMLAndMarkdown(t *testing.T) 
 
 	ctx := context.Background()
 	opts := strategies.Options{
-		Limit:       10,
-		MaxDepth:    2,
-		Concurrency: 1,
+		CommonOptions: domain.CommonOptions{Limit: 10},
+		MaxDepth:      2,
+		Concurrency:   1,
 	}
 
 	err := strategy.Execute(ctx, server.URL+"/", opts)
@@ -361,9 +361,9 @@ func TestIntegration_CrawlerStrategy_Execute_MarkdownExtensions(t *testing.T) {
 
 			ctx := context.Background()
 			opts := strategies.Options{
-				Limit:       10,
-				MaxDepth:    2,
-				Concurrency: 1,
+				CommonOptions: domain.CommonOptions{Limit: 10},
+				MaxDepth:      2,
+				Concurrency:   1,
 			}
 
 			err := strategy.Execute(ctx, server.URL+"/", opts)

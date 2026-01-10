@@ -18,16 +18,12 @@ type Strategy interface {
 
 // StrategyOptions contains options for strategy execution
 type StrategyOptions struct {
+	CommonOptions
 	Output          string
 	Concurrency     int
-	Limit           int
 	MaxDepth        int
 	Exclude         []string
 	NoFolders       bool
-	DryRun          bool
-	Verbose         bool
-	Force           bool
-	RenderJS        bool
 	Split           bool
 	IncludeAssets   bool
 	ContentSelector string

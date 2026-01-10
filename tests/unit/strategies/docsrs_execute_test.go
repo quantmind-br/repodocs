@@ -85,7 +85,9 @@ func TestDocsRSStrategy_Execute_ValidCrate(t *testing.T) {
 
 	err := strategy.Execute(ctx, "https://docs.rs/std", strategies.Options{
 		Concurrency: 2,
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit: 10,
+		},
 	})
 	require.NoError(t, err)
 }
@@ -193,7 +195,9 @@ func TestDocsRSStrategy_Execute_Limit(t *testing.T) {
 	strategy := strategies.NewDocsRSStrategy(deps)
 
 	err := strategy.Execute(ctx, "https://docs.rs/mycrate", strategies.Options{
-		Limit: 1,
+		CommonOptions: domain.CommonOptions{
+			Limit: 1,
+		},
 	})
 	require.NoError(t, err)
 }

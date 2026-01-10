@@ -279,10 +279,12 @@ func TestNewDependencies(t *testing.T) {
 		OutputDir:       tmpDir + "/output",
 		Flat:            false,
 		JSONMetadata:    true,
-		Force:           true,
-		DryRun:          false,
-		Verbose:         false,
-		SourceURL:       "https://example.com",
+		CommonOptions: domain.CommonOptions{
+			Force:   true,
+			DryRun:  false,
+			Verbose: false,
+		},
+		SourceURL: "https://example.com",
 	})
 
 	require.NoError(t, err)

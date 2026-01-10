@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	gogit "github.com/go-git/go-git/v5"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 	"github.com/stretchr/testify/assert"
@@ -178,7 +179,9 @@ func TestWikiStrategy_Execute_Success(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		DryRun: true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	// Parse the wiki URL first to get info
@@ -342,7 +345,9 @@ func TestWikiStrategy_ProcessPage(t *testing.T) {
 	ctx := context.Background()
 	opts := Options{
 		NoFolders: false,
-		DryRun:    true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	err := strategy.processPage(ctx, page, structure, "https://github.com/owner/repo/wiki", opts)
@@ -430,8 +435,10 @@ func TestWikiStrategy_ProcessPages(t *testing.T) {
 
 		ctx := context.Background()
 		opts := Options{
-			Limit:  2,
-			DryRun: true,
+			CommonOptions: domain.CommonOptions{
+				Limit:  2,
+				DryRun: true,
+			},
 		}
 
 		err := strategy.processPages(ctx, structure, wikiInfo, opts)
@@ -461,7 +468,9 @@ func TestWikiStrategy_ProcessPages(t *testing.T) {
 
 		ctx := context.Background()
 		opts := Options{
-			DryRun: true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		}
 
 		err := strategy.processPages(ctx, structure, wikiInfo, opts)
@@ -522,7 +531,9 @@ func TestWikiStrategy_ContextCancellation(t *testing.T) {
 	cancel() // Cancel immediately
 
 	opts := Options{
-		DryRun: true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	err := strategy.Execute(ctx, "https://github.com/owner/repo/wiki", opts)
@@ -540,7 +551,9 @@ func TestWikiStrategy_Execute_URLParseError(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		DryRun: true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	err := strategy.Execute(ctx, "https://example.com/not-a-wiki", opts)

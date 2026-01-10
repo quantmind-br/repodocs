@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/config"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -150,8 +151,10 @@ func TestOrchestrator_Run_VerboseLogging(t *testing.T) {
 	}
 
 	orch, err := NewOrchestrator(OrchestratorOptions{
-		Config:          cfg,
-		Verbose:         true,
+		Config: cfg,
+		CommonOptions: domain.CommonOptions{
+			Verbose: true,
+		},
 		StrategyFactory: mockFactory,
 	})
 	require.NoError(t, err)
@@ -186,8 +189,10 @@ func TestOrchestrator_Run_DryRun(t *testing.T) {
 	}
 
 	orch, err := NewOrchestrator(OrchestratorOptions{
-		Config:          cfg,
-		DryRun:          true,
+		Config: cfg,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 		StrategyFactory: mockFactory,
 	})
 	require.NoError(t, err)
@@ -195,7 +200,9 @@ func TestOrchestrator_Run_DryRun(t *testing.T) {
 
 	ctx := context.Background()
 	err = orch.Run(ctx, "https://example.com/docs", OrchestratorOptions{
-		DryRun: true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	assert.NoError(t, err)
 }
@@ -232,7 +239,9 @@ func TestOrchestrator_Run_WithLimit(t *testing.T) {
 
 	ctx := context.Background()
 	err = orch.Run(ctx, "https://example.com/docs", OrchestratorOptions{
-		Limit: 5,
+		CommonOptions: domain.CommonOptions{
+			Limit: 5,
+		},
 	})
 	assert.NoError(t, err)
 }
@@ -389,8 +398,10 @@ func TestNewOrchestrator_LoggingLevels(t *testing.T) {
 			}
 
 			orch, err := NewOrchestrator(OrchestratorOptions{
-				Config:  cfg,
-				Verbose: tt.verbose,
+				Config: cfg,
+				CommonOptions: domain.CommonOptions{
+					Verbose: tt.verbose,
+				},
 			})
 			require.NoError(t, err)
 			orch.Close()
@@ -434,8 +445,10 @@ func TestNewOrchestrator_RendererOptions(t *testing.T) {
 			}
 
 			orch, err := NewOrchestrator(OrchestratorOptions{
-				Config:   cfg,
-				RenderJS: tt.renderJS,
+				Config: cfg,
+				CommonOptions: domain.CommonOptions{
+					RenderJS: tt.renderJS,
+				},
 			})
 			require.NoError(t, err)
 			orch.Close()
@@ -465,7 +478,9 @@ func TestNewOrchestrator_ForceOption(t *testing.T) {
 
 	orch, err := NewOrchestrator(OrchestratorOptions{
 		Config: cfg,
-		Force:  true,
+		CommonOptions: domain.CommonOptions{
+			Force: true,
+		},
 	})
 	require.NoError(t, err)
 	orch.Close()

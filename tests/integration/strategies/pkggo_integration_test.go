@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/converter"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/fetcher"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
@@ -94,8 +95,10 @@ func TestPkgGoStrategy_Execute_SplitSections(t *testing.T) {
 
 	// Act - execute with split enabled
 	opts := strategies.Options{
-		Split:  true,
-		DryRun: false,
+		Split: true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: false,
+		},
 	}
 	err = strategy.Execute(ctx, server.URL+"/fmt", opts)
 
@@ -137,7 +140,9 @@ func TestPkgGoStrategy_Execute_DryRun(t *testing.T) {
 
 	// Act - execute with dry run enabled
 	opts := strategies.Options{
-		DryRun: true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 	err = strategy.Execute(ctx, server.URL+"/fmt", opts)
 

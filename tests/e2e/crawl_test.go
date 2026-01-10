@@ -11,6 +11,7 @@ import (
 
 	"github.com/quantmind-br/repodocs-go/internal/cache"
 	"github.com/quantmind-br/repodocs-go/internal/converter"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/fetcher"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
@@ -146,10 +147,12 @@ func TestE2E_CrawlMockSite(t *testing.T) {
 
 	err = crawler.Execute(ctx, server.URL, strategies.Options{
 		MaxDepth:    2,
-		Limit:       10,
 		Concurrency: 2,
-		DryRun:      false,
-		Force:       true,
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: false,
+			Force:  true,
+		},
 	})
 	require.NoError(t, err)
 
@@ -246,9 +249,11 @@ func TestE2E_CrawlWithLimit(t *testing.T) {
 	// Crawl with limit of 5
 	err = crawler.Execute(ctx, server.URL, strategies.Options{
 		MaxDepth:    2,
-		Limit:       5,
 		Concurrency: 2,
-		Force:       true,
+		CommonOptions: domain.CommonOptions{
+			Limit: 5,
+			Force: true,
+		},
 	})
 	require.NoError(t, err)
 
@@ -339,8 +344,10 @@ func TestE2E_CrawlWithExclude(t *testing.T) {
 	err = crawler.Execute(ctx, server.URL, strategies.Options{
 		MaxDepth:    2,
 		Concurrency: 1,
-		Force:       true,
 		Exclude:     []string{".*/admin.*", ".*/login.*"},
+		CommonOptions: domain.CommonOptions{
+			Force: true,
+		},
 	})
 	require.NoError(t, err)
 
@@ -456,7 +463,9 @@ Creates a new user.
 	err = crawler.Execute(ctx, server.URL, strategies.Options{
 		MaxDepth:    2,
 		Concurrency: 1,
-		Force:       true,
+		CommonOptions: domain.CommonOptions{
+			Force: true,
+		},
 	})
 	require.NoError(t, err)
 

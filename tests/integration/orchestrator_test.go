@@ -12,6 +12,7 @@ import (
 
 	"github.com/quantmind-br/repodocs-go/internal/app"
 	"github.com/quantmind-br/repodocs-go/internal/config"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/tests/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -73,15 +74,19 @@ func TestFullPipeline_Website(t *testing.T) {
 	cfg.Concurrency.MaxDepth = 2
 
 	orchestrator, err := app.NewOrchestrator(app.OrchestratorOptions{
-		Config:  cfg,
-		Verbose: true,
+		Config: cfg,
+		CommonOptions: domain.CommonOptions{
+			Verbose: true,
+		},
 	})
 	require.NoError(t, err)
 	defer orchestrator.Close()
 
 	// Act - Run the crawler strategy
 	err = orchestrator.Run(context.Background(), server.URL, app.OrchestratorOptions{
-		Limit: 3,
+		CommonOptions: domain.CommonOptions{
+			Limit: 3,
+		},
 	})
 
 	// Assert
@@ -114,8 +119,10 @@ func TestFullPipeline_GitRepo(t *testing.T) {
 	cfg.Cache.Enabled = false
 
 	orchestrator, err := app.NewOrchestrator(app.OrchestratorOptions{
-		Config:  cfg,
-		Verbose: true,
+		Config: cfg,
+		CommonOptions: domain.CommonOptions{
+			Verbose: true,
+		},
 	})
 	require.NoError(t, err)
 	defer orchestrator.Close()
@@ -182,15 +189,19 @@ func TestFullPipeline_Sitemap(t *testing.T) {
 	cfg.Concurrency.Workers = 2
 
 	orchestrator, err := app.NewOrchestrator(app.OrchestratorOptions{
-		Config:  cfg,
-		Verbose: true,
+		Config: cfg,
+		CommonOptions: domain.CommonOptions{
+			Verbose: true,
+		},
 	})
 	require.NoError(t, err)
 	defer orchestrator.Close()
 
 	// Act - Run sitemap strategy
 	err = orchestrator.Run(context.Background(), server.URL+"/sitemap.xml", app.OrchestratorOptions{
-		Limit: 3,
+		CommonOptions: domain.CommonOptions{
+			Limit: 3,
+		},
 	})
 
 	// Assert
@@ -214,8 +225,10 @@ func TestFullPipeline_PkgGo(t *testing.T) {
 	cfg.Cache.Enabled = false
 
 	orchestrator, err := app.NewOrchestrator(app.OrchestratorOptions{
-		Config:  cfg,
-		Verbose: true,
+		Config: cfg,
+		CommonOptions: domain.CommonOptions{
+			Verbose: true,
+		},
 	})
 	require.NoError(t, err)
 	defer orchestrator.Close()
@@ -273,15 +286,19 @@ func TestCache_Integration(t *testing.T) {
 	cfg.Concurrency.Timeout = 5 * time.Second
 
 	orchestrator, err := app.NewOrchestrator(app.OrchestratorOptions{
-		Config:  cfg,
-		Verbose: true,
+		Config: cfg,
+		CommonOptions: domain.CommonOptions{
+			Verbose: true,
+		},
 	})
 	require.NoError(t, err)
 	defer orchestrator.Close()
 
 	// Act - First run (should cache)
 	err = orchestrator.Run(context.Background(), server.URL, app.OrchestratorOptions{
-		Limit: 1,
+		CommonOptions: domain.CommonOptions{
+			Limit: 1,
+		},
 	})
 	require.NoError(t, err)
 
@@ -320,8 +337,10 @@ func TestConcurrency_MultipleURLs(t *testing.T) {
 	cfg.Concurrency.Workers = 3
 
 	orchestrator, err := app.NewOrchestrator(app.OrchestratorOptions{
-		Config:  cfg,
-		Verbose: true,
+		Config: cfg,
+		CommonOptions: domain.CommonOptions{
+			Verbose: true,
+		},
 	})
 	require.NoError(t, err)
 	defer orchestrator.Close()
@@ -337,7 +356,9 @@ func TestConcurrency_MultipleURLs(t *testing.T) {
 	for i, url := range urls {
 		t.Run("concurrent-run-"+string(rune('A'+i)), func(t *testing.T) {
 			err := orchestrator.Run(context.Background(), url, app.OrchestratorOptions{
-				Limit: 1,
+				CommonOptions: domain.CommonOptions{
+					Limit: 1,
+				},
 			})
 			require.NoError(t, err)
 		})
@@ -375,8 +396,10 @@ func TestContextCancellation_FullFlow(t *testing.T) {
 	cfg.Concurrency.Timeout = 1 * time.Second
 
 	orchestrator, err := app.NewOrchestrator(app.OrchestratorOptions{
-		Config:  cfg,
-		Verbose: true,
+		Config: cfg,
+		CommonOptions: domain.CommonOptions{
+			Verbose: true,
+		},
 	})
 	require.NoError(t, err)
 	defer orchestrator.Close()
@@ -386,7 +409,9 @@ func TestContextCancellation_FullFlow(t *testing.T) {
 	defer cancel()
 
 	err = orchestrator.Run(ctx, server.URL+"/slow", app.OrchestratorOptions{
-		Limit: 1,
+		CommonOptions: domain.CommonOptions{
+			Limit: 1,
+		},
 	})
 
 	// Assert
@@ -441,7 +466,9 @@ func TestErrorHandling_Graceful(t *testing.T) {
 
 		// Act - Non-routable IP (should timeout or fail quickly)
 		err = orchestrator.Run(context.Background(), "http://192.0.2.1", app.OrchestratorOptions{
-			Limit: 1,
+			CommonOptions: domain.CommonOptions{
+				Limit: 1,
+			},
 		})
 
 		// Assert - Should handle non-existent server gracefully
@@ -462,15 +489,19 @@ func TestErrorHandling_Graceful(t *testing.T) {
 		cfg.Cache.Enabled = false
 
 		orchestrator, err := app.NewOrchestrator(app.OrchestratorOptions{
-			Config:  cfg,
-			Verbose: true,
+			Config: cfg,
+			CommonOptions: domain.CommonOptions{
+				Verbose: true,
+			},
 		})
 		require.NoError(t, err)
 		defer orchestrator.Close()
 
 		// Act
 		err = orchestrator.Run(context.Background(), server.URL+"/notfound", app.OrchestratorOptions{
-			Limit: 1,
+			CommonOptions: domain.CommonOptions{
+				Limit: 1,
+			},
 		})
 
 		// Assert - Should handle 404 gracefully
@@ -519,8 +550,10 @@ func TestPerformance_LargeSite(t *testing.T) {
 	cfg.Concurrency.MaxDepth = 2
 
 	orchestrator, err := app.NewOrchestrator(app.OrchestratorOptions{
-		Config:  cfg,
-		Verbose: true,
+		Config: cfg,
+		CommonOptions: domain.CommonOptions{
+			Verbose: true,
+		},
 	})
 	require.NoError(t, err)
 	defer orchestrator.Close()
@@ -528,7 +561,9 @@ func TestPerformance_LargeSite(t *testing.T) {
 	// Act
 	start := time.Now()
 	err = orchestrator.Run(context.Background(), server.URL, app.OrchestratorOptions{
-		Limit: 20,
+		CommonOptions: domain.CommonOptions{
+			Limit: 20,
+		},
 	})
 	duration := time.Since(start)
 
@@ -574,16 +609,20 @@ func TestRenderer_PoolExhaustion(t *testing.T) {
 	cfg.Concurrency.Workers = 2
 
 	orchestrator, err := app.NewOrchestrator(app.OrchestratorOptions{
-		Config:   cfg,
-		Verbose:  true,
-		RenderJS: true,
+		Config: cfg,
+		CommonOptions: domain.CommonOptions{
+			Verbose:  true,
+			RenderJS: true,
+		},
 	})
 	require.NoError(t, err)
 	defer orchestrator.Close()
 
 	// Act - Run with JavaScript rendering
 	err = orchestrator.Run(context.Background(), server.URL, app.OrchestratorOptions{
-		Limit: 1,
+		CommonOptions: domain.CommonOptions{
+			Limit: 1,
+		},
 	})
 
 	// Assert - Should handle JS rendering gracefully
@@ -629,8 +668,10 @@ func TestMultipleOrchestrators(t *testing.T) {
 	cfg1.Concurrency.Workers = 1
 
 	orchestrator1, err := app.NewOrchestrator(app.OrchestratorOptions{
-		Config:  cfg1,
-		Verbose: true,
+		Config: cfg1,
+		CommonOptions: domain.CommonOptions{
+			Verbose: true,
+		},
 	})
 	require.NoError(t, err)
 	defer orchestrator1.Close()
@@ -642,20 +683,26 @@ func TestMultipleOrchestrators(t *testing.T) {
 	cfg2.Concurrency.Workers = 2
 
 	orchestrator2, err := app.NewOrchestrator(app.OrchestratorOptions{
-		Config:  cfg2,
-		Verbose: true,
+		Config: cfg2,
+		CommonOptions: domain.CommonOptions{
+			Verbose: true,
+		},
 	})
 	require.NoError(t, err)
 	defer orchestrator2.Close()
 
 	// Act - Use both orchestrators
 	err = orchestrator1.Run(context.Background(), server1.URL, app.OrchestratorOptions{
-		Limit: 1,
+		CommonOptions: domain.CommonOptions{
+			Limit: 1,
+		},
 	})
 	require.NoError(t, err)
 
 	err = orchestrator2.Run(context.Background(), server2.URL, app.OrchestratorOptions{
-		Limit: 1,
+		CommonOptions: domain.CommonOptions{
+			Limit: 1,
+		},
 	})
 	require.NoError(t, err)
 
@@ -688,7 +735,9 @@ func TestOrchestrator_OptionsValidation(t *testing.T) {
 
 		// Act - Run with limit 0 (should process all available)
 		err = orchestrator.Run(context.Background(), server.URL, app.OrchestratorOptions{
-			Limit: 0,
+			CommonOptions: domain.CommonOptions{
+				Limit: 0,
+			},
 		})
 
 		require.NoError(t, err)
@@ -711,7 +760,9 @@ func TestOrchestrator_OptionsValidation(t *testing.T) {
 
 		// Act - Run with negative limit
 		err = orchestrator.Run(context.Background(), server.URL, app.OrchestratorOptions{
-			Limit: -1,
+			CommonOptions: domain.CommonOptions{
+				Limit: -1,
+			},
 		})
 
 		// Should handle gracefully
@@ -736,7 +787,9 @@ func TestOrchestrator_OptionsValidation(t *testing.T) {
 
 		// Act
 		err = orchestrator.Run(context.Background(), server.URL, app.OrchestratorOptions{
-			Limit: 1,
+			CommonOptions: domain.CommonOptions{
+				Limit: 1,
+			},
 		})
 
 		require.NoError(t, err)

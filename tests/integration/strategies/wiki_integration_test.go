@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
@@ -68,7 +69,9 @@ func TestWikiStrategy_Execute_NonExistentWiki(t *testing.T) {
 
 	err := strategy.Execute(ctx, "https://github.com/nonexistent-owner-xyz/nonexistent-repo-xyz/wiki", strategies.Options{
 		Output: tempDir,
-		DryRun: false,
+		CommonOptions: domain.CommonOptions{
+			DryRun: false,
+		},
 	})
 
 	require.Error(t, err)
@@ -93,8 +96,10 @@ func TestWikiStrategy_Execute_RealWiki(t *testing.T) {
 
 	err := strategy.Execute(ctx, "https://github.com/Alexays/Waybar/wiki", strategies.Options{
 		Output: tempDir,
-		Limit:  5,
-		DryRun: false,
+		CommonOptions: domain.CommonOptions{
+			Limit:  5,
+			DryRun: false,
+		},
 	})
 
 	require.NoError(t, err)
@@ -126,8 +131,10 @@ func TestWikiStrategy_Execute_DryRun(t *testing.T) {
 
 	err := strategy.Execute(ctx, "https://github.com/Alexays/Waybar/wiki", strategies.Options{
 		Output: tempDir,
-		Limit:  3,
-		DryRun: true,
+		CommonOptions: domain.CommonOptions{
+			Limit:  3,
+			DryRun: true,
+		},
 	})
 
 	require.NoError(t, err)

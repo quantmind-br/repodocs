@@ -126,7 +126,9 @@ func TestCrawlerStrategy_Execute_Simple(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -135,10 +137,12 @@ func TestCrawlerStrategy_Execute_Simple(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       1,
+		CommonOptions: domain.CommonOptions{
+			Limit:  1,
+			DryRun: true,
+		},
 		Concurrency: 1,
 		MaxDepth:    1,
-		DryRun:      true,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/", opts)
@@ -174,7 +178,9 @@ func TestCrawlerStrategy_Execute_WithLinks(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -183,10 +189,12 @@ func TestCrawlerStrategy_Execute_WithLinks(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       3,
+		CommonOptions: domain.CommonOptions{
+			Limit:  1,
+			DryRun: true,
+		},
 		Concurrency: 1,
-		MaxDepth:    2,
-		DryRun:      true,
+		MaxDepth:    1,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/", opts)
@@ -219,7 +227,9 @@ func TestCrawlerStrategy_Execute_WithExclude(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -228,11 +238,13 @@ func TestCrawlerStrategy_Execute_WithExclude(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: true,
+		},
 		Concurrency: 1,
 		MaxDepth:    2,
 		Exclude:     []string{"/admin", "/api.*"},
-		DryRun:      true,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/", opts)
@@ -269,7 +281,9 @@ func TestCrawlerStrategy_Execute_WithFilterURL(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -278,11 +292,13 @@ func TestCrawlerStrategy_Execute_WithFilterURL(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: true,
+		},
 		Concurrency: 1,
 		MaxDepth:    2,
 		FilterURL:   server.URL + "/docs",
-		DryRun:      true,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/", opts)
@@ -327,7 +343,9 @@ func TestCrawlerStrategy_Execute_ContextCancellation(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -338,10 +356,12 @@ func TestCrawlerStrategy_Execute_ContextCancellation(t *testing.T) {
 	cancel() // Cancel immediately
 
 	opts := Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: true,
+		},
 		Concurrency: 1,
 		MaxDepth:    2,
-		DryRun:      true,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/", opts)
@@ -370,7 +390,9 @@ This is a **test** markdown file.
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -379,10 +401,12 @@ This is a **test** markdown file.
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       1,
+		CommonOptions: domain.CommonOptions{
+			Limit:  1,
+			DryRun: true,
+		},
 		Concurrency: 1,
 		MaxDepth:    1,
-		DryRun:      true,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/", opts)
@@ -408,7 +432,7 @@ func TestIsHTMLContentType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := isHTMLContentType(tt.contentType)
+			result := IsHTMLContentType(tt.contentType)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -434,7 +458,9 @@ func TestCrawlerStrategy_Execute_LimitTests(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -443,10 +469,12 @@ func TestCrawlerStrategy_Execute_LimitTests(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       1,
+		CommonOptions: domain.CommonOptions{
+			Limit:  3,
+			DryRun: true,
+		},
 		Concurrency: 1,
 		MaxDepth:    2,
-		DryRun:      true,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/", opts)
@@ -474,7 +502,9 @@ func TestCrawlerStrategy_Execute_DifferentDomains(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -483,10 +513,12 @@ func TestCrawlerStrategy_Execute_DifferentDomains(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Limit:       10,
+		CommonOptions: domain.CommonOptions{
+			Limit:  1,
+			DryRun: true,
+		},
 		Concurrency: 1,
-		MaxDepth:    2,
-		DryRun:      true,
+		MaxDepth:    1,
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/", opts)

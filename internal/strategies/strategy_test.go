@@ -44,8 +44,10 @@ func TestNewDependencies(t *testing.T) {
 			OutputDir:      "/tmp",
 			Flat:           false,
 			JSONMetadata:   false,
-			DryRun:         true,
-			Verbose:        false,
+			CommonOptions: domain.CommonOptions{
+				DryRun:  true,
+				Verbose: false,
+			},
 		})
 
 		require.NoError(t, err)
@@ -75,7 +77,9 @@ func TestNewDependencies(t *testing.T) {
 			OutputDir:      "/tmp",
 			Flat:           false,
 			JSONMetadata:   false,
-			DryRun:         true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 
 		require.NoError(t, err)
@@ -95,7 +99,9 @@ func TestNewDependencies(t *testing.T) {
 			OutputDir:      tmpDir,
 			Flat:           false,
 			JSONMetadata:   true,
-			DryRun:         true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 
 		require.NoError(t, err)
@@ -118,8 +124,10 @@ func TestNewDependencies(t *testing.T) {
 			OutputDir:      "/tmp",
 			Flat:           false,
 			JSONMetadata:   false,
-			DryRun:         true,
 			LLMConfig:      llmConfig,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 
 		require.NoError(t, err)
@@ -143,7 +151,9 @@ func TestNewDependencies_ErrorCases(t *testing.T) {
 			OutputDir:      "/tmp",
 			Flat:           false,
 			JSONMetadata:   false,
-			DryRun:         true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 
 		// Should either fail or create a nil cache
@@ -165,7 +175,9 @@ func TestDependencies_Close(t *testing.T) {
 			OutputDir:      "/tmp",
 			Flat:           false,
 			JSONMetadata:   false,
-			DryRun:         true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 
 		require.NoError(t, err)
@@ -187,7 +199,9 @@ func TestDependencies_Close(t *testing.T) {
 			OutputDir:      "/tmp",
 			Flat:           false,
 			JSONMetadata:   false,
-			DryRun:         true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 
 		require.NoError(t, err)
@@ -214,8 +228,10 @@ func TestDependencies_Close(t *testing.T) {
 			OutputDir:      tmpDir,
 			Flat:           false,
 			JSONMetadata:   true,
-			DryRun:         true,
 			LLMConfig:      llmConfig,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 
 		require.NoError(t, err)
@@ -237,7 +253,9 @@ func TestDependencies_FlushMetadata(t *testing.T) {
 			OutputDir:      "/tmp",
 			Flat:           false,
 			JSONMetadata:   false,
-			DryRun:         true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 
 		require.NoError(t, err)
@@ -259,7 +277,9 @@ func TestDependencies_FlushMetadata(t *testing.T) {
 			OutputDir:      tmpDir,
 			Flat:           false,
 			JSONMetadata:   true,
-			DryRun:         true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 
 		require.NoError(t, err)
@@ -282,7 +302,9 @@ func TestDependencies_SetStrategy(t *testing.T) {
 			OutputDir:      "/tmp",
 			Flat:           false,
 			JSONMetadata:   false,
-			DryRun:         true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 
 		require.NoError(t, err)
@@ -303,7 +325,9 @@ func TestDependencies_SetStrategy(t *testing.T) {
 			OutputDir:      tmpDir,
 			Flat:           false,
 			JSONMetadata:   true,
-			DryRun:         true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 
 		require.NoError(t, err)
@@ -325,7 +349,9 @@ func TestDependencies_SetSourceURL(t *testing.T) {
 			OutputDir:      "/tmp",
 			Flat:           false,
 			JSONMetadata:   false,
-			DryRun:         true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 
 		require.NoError(t, err)
@@ -346,7 +372,9 @@ func TestDependencies_SetSourceURL(t *testing.T) {
 			OutputDir:      tmpDir,
 			Flat:           false,
 			JSONMetadata:   true,
-			DryRun:         true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+			},
 		})
 
 		require.NoError(t, err)
@@ -370,8 +398,10 @@ func TestDependencies_WriteDocument(t *testing.T) {
 			OutputDir:      tmpDir,
 			Flat:           true,
 			JSONMetadata:   false,
-			DryRun:         false,
-			Force:          true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: false,
+				Force:  true,
+			},
 		})
 
 		require.NoError(t, err)
@@ -399,8 +429,10 @@ func TestDependencies_WriteDocument(t *testing.T) {
 			OutputDir:      tmpDir,
 			Flat:           true,
 			JSONMetadata:   false,
-			DryRun:         true,
-			Force:          true,
+			CommonOptions: domain.CommonOptions{
+				DryRun: true,
+				Force:  true,
+			},
 		})
 
 		require.NoError(t, err)
@@ -549,8 +581,10 @@ func TestNewDependencies_WithContentSelector(t *testing.T) {
 		OutputDir:       "/tmp",
 		Flat:            false,
 		JSONMetadata:    false,
-		DryRun:          true,
 		ContentSelector: "main article",
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 
 	require.NoError(t, err)
@@ -568,8 +602,10 @@ func TestNewDependencies_WithExcludeSelector(t *testing.T) {
 		OutputDir:       "/tmp",
 		Flat:            false,
 		JSONMetadata:    false,
-		DryRun:          true,
 		ExcludeSelector: ".sidebar, .footer",
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 
 	require.NoError(t, err)
@@ -592,10 +628,12 @@ func TestDependencies_Integration(t *testing.T) {
 		OutputDir:       tmpDir,
 		Flat:            false,
 		JSONMetadata:    true,
-		Force:           true,
-		DryRun:          false,
-		Verbose:         false,
 		SourceURL:       "https://example.com",
+		CommonOptions: domain.CommonOptions{
+			Force:   true,
+			DryRun:  false,
+			Verbose: false,
+		},
 	})
 
 	require.NoError(t, err)

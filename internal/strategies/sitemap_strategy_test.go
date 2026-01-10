@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/converter"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,9 @@ func TestNewSitemapStrategy(t *testing.T) {
 		EnableCache: false,
 		OutputDir:   "/tmp",
 		Flat:        false,
-		DryRun:      true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	if err != nil {
 		t.Skipf("Failed to create dependencies: %v", err)
@@ -56,7 +59,9 @@ func TestSitemapStrategy_SetFetcher(t *testing.T) {
 		EnableCache: false,
 		OutputDir:   "/tmp",
 		Flat:        false,
-		DryRun:      true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	if err != nil {
 		t.Skipf("Failed to create dependencies: %v", err)

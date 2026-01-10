@@ -30,37 +30,29 @@ type Strategy interface {
 
 // Options contains common options for all strategies
 type Options struct {
+	domain.CommonOptions
 	Output          string
 	Concurrency     int
-	Limit           int
 	MaxDepth        int
 	Exclude         []string
 	NoFolders       bool
-	DryRun          bool
-	Verbose         bool
-	Force           bool
-	RenderJS        bool
 	Split           bool
 	IncludeAssets   bool
 	ContentSelector string
 	ExcludeSelector string
 	CacheTTL        string
-	FilterURL       string // Base URL filter - only crawl URLs starting with this path
+	FilterURL       string
 }
 
 // DefaultOptions returns default strategy options
 func DefaultOptions() Options {
 	return Options{
-		Output:      "./docs",
-		Concurrency: 5,
-		Limit:       0,
-		MaxDepth:    3,
-		NoFolders:   false,
-		DryRun:      false,
-		Verbose:     false,
-		Force:       false,
-		RenderJS:    false,
-		Split:       false,
+		CommonOptions: domain.DefaultCommonOptions(),
+		Output:        "./docs",
+		Concurrency:   5,
+		MaxDepth:      3,
+		NoFolders:     false,
+		Split:         false,
 	}
 }
 
@@ -290,6 +282,7 @@ func (d *Dependencies) WriteDocument(ctx context.Context, doc *domain.Document) 
 
 // DependencyOptions contains options for creating dependencies
 type DependencyOptions struct {
+	domain.CommonOptions
 	Timeout         time.Duration
 	EnableCache     bool
 	CacheTTL        time.Duration
@@ -303,9 +296,6 @@ type DependencyOptions struct {
 	OutputDir       string
 	Flat            bool
 	JSONMetadata    bool
-	Force           bool
-	DryRun          bool
-	Verbose         bool
 	LLMConfig       *config.LLMConfig
 	SourceURL       string
 }

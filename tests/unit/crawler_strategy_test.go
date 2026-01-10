@@ -681,7 +681,9 @@ func TestCrawlerStrategy_Execute_DryRun(t *testing.T) {
 		MaxDepth:    1,
 		Concurrency: 1,
 		Output:      tempDir,
-		DryRun:      true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	err := strategy.Execute(context.Background(), "http://example.com/", opts)
@@ -718,7 +720,9 @@ func TestCrawlerStrategy_Execute_WithMockFetcher(t *testing.T) {
 		MaxDepth:    1,
 		Concurrency: 1,
 		Output:      tempDir,
-		Force:       true,
+		CommonOptions: domain.CommonOptions{
+			Force: true,
+		},
 	}
 
 	err := strategy.Execute(context.Background(), "http://example.com/", opts)
@@ -811,8 +815,10 @@ func TestCrawlerStrategy_Execute_WithLimit(t *testing.T) {
 		MaxDepth:    2,
 		Concurrency: 1,
 		Output:      tempDir,
-		Limit:       2,
-		Force:       true,
+		CommonOptions: domain.CommonOptions{
+			Limit: 2,
+			Force: true,
+		},
 	}
 
 	err := strategy.Execute(context.Background(), "http://example.com/", opts)

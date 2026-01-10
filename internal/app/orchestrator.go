@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/config"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 )
@@ -20,20 +21,14 @@ type Orchestrator struct {
 
 // OrchestratorOptions contains options for creating an orchestrator
 type OrchestratorOptions struct {
+	domain.CommonOptions
 	Config          *config.Config
-	Verbose         bool
-	DryRun          bool
-	Force           bool
-	RenderJS        bool
 	Split           bool
 	IncludeAssets   bool
-	Limit           int
 	ContentSelector string
 	ExcludeSelector string
 	ExcludePatterns []string
 	FilterURL       string
-	// StrategyFactory allows injecting custom strategy creation logic for testing
-	// If nil, uses default strategy creation
 	StrategyFactory func(StrategyType, *strategies.Dependencies) strategies.Strategy
 }
 
@@ -74,6 +69,13 @@ func NewOrchestrator(opts OrchestratorOptions) (*Orchestrator, error) {
 
 	// Create dependencies
 	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
+		CommonOptions: domain.CommonOptions{
+			Verbose:  opts.Verbose,
+			DryRun:   opts.DryRun,
+			Force:    opts.Force || cfg.Output.Overwrite,
+			RenderJS: opts.RenderJS,
+			Limit:    opts.Limit,
+		},
 		Timeout:         cfg.Concurrency.Timeout,
 		EnableCache:     cfg.Cache.Enabled,
 		CacheTTL:        cfg.Cache.TTL,
@@ -87,9 +89,6 @@ func NewOrchestrator(opts OrchestratorOptions) (*Orchestrator, error) {
 		OutputDir:       cfg.Output.Directory,
 		Flat:            cfg.Output.Flat,
 		JSONMetadata:    cfg.Output.JSONMetadata,
-		Force:           opts.Force || cfg.Output.Overwrite,
-		DryRun:          opts.DryRun,
-		Verbose:         opts.Verbose,
 		LLMConfig:       &cfg.LLM,
 	})
 	if err != nil {
@@ -146,16 +145,18 @@ func (o *Orchestrator) Run(ctx context.Context, url string, opts OrchestratorOpt
 	o.deps.SetStrategy(strategy.Name())
 
 	strategyOpts := strategies.Options{
+		CommonOptions: domain.CommonOptions{
+			Verbose:  opts.Verbose,
+			DryRun:   opts.DryRun,
+			Force:    opts.Force || o.config.Output.Overwrite,
+			RenderJS: opts.RenderJS || o.config.Rendering.ForceJS,
+			Limit:    opts.Limit,
+		},
 		Output:          o.config.Output.Directory,
 		Concurrency:     o.config.Concurrency.Workers,
-		Limit:           opts.Limit,
 		MaxDepth:        o.config.Concurrency.MaxDepth,
 		Exclude:         append(o.config.Exclude, opts.ExcludePatterns...),
 		NoFolders:       o.config.Output.Flat,
-		DryRun:          opts.DryRun,
-		Verbose:         opts.Verbose,
-		Force:           opts.Force || o.config.Output.Overwrite,
-		RenderJS:        opts.RenderJS || o.config.Rendering.ForceJS,
 		Split:           opts.Split,
 		IncludeAssets:   opts.IncludeAssets,
 		ContentSelector: opts.ContentSelector,

@@ -523,7 +523,9 @@ func TestExecute_WithValidLLMS(t *testing.T) {
 	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
 		EnableCache:    false,
 		EnableRenderer: false,
-		Verbose:        false,
+		CommonOptions: domain.CommonOptions{
+			Verbose: false,
+		},
 	})
 	require.NoError(t, err)
 
@@ -533,9 +535,11 @@ func TestExecute_WithValidLLMS(t *testing.T) {
 	strategy := strategies.NewLLMSStrategy(deps)
 	opts := strategies.Options{
 		Concurrency: 1,
-		Limit:       0,
-		Force:       true,
 		Output:      t.TempDir(),
+		CommonOptions: domain.CommonOptions{
+			Limit: 0,
+			Force: true,
+		},
 	}
 
 	// Act
@@ -560,16 +564,20 @@ func TestExecute_WithEmptyLLMS(t *testing.T) {
 	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
 		EnableCache:    false,
 		EnableRenderer: false,
-		Verbose:        false,
+		CommonOptions: domain.CommonOptions{
+			Verbose: false,
+		},
 	})
 	require.NoError(t, err)
 
 	strategy := strategies.NewLLMSStrategy(deps)
 	opts := strategies.Options{
 		Concurrency: 1,
-		Limit:       0,
-		Force:       true,
 		Output:      t.TempDir(),
+		CommonOptions: domain.CommonOptions{
+			Limit: 0,
+			Force: true,
+		},
 	}
 
 	// Act
@@ -614,16 +622,20 @@ func TestExecute_WithInvalidHTML(t *testing.T) {
 	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
 		EnableCache:    false,
 		EnableRenderer: false,
-		Verbose:        false,
+		CommonOptions: domain.CommonOptions{
+			Verbose: false,
+		},
 	})
 	require.NoError(t, err)
 
 	strategy := strategies.NewLLMSStrategy(deps)
 	opts := strategies.Options{
 		Concurrency: 1,
-		Limit:       0,
-		Force:       true,
 		Output:      t.TempDir(),
+		CommonOptions: domain.CommonOptions{
+			Limit: 0,
+			Force: true,
+		},
 	}
 
 	// Act
@@ -648,16 +660,20 @@ func TestExecute_FetchError(t *testing.T) {
 	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
 		EnableCache:    false,
 		EnableRenderer: false,
-		Verbose:        false,
+		CommonOptions: domain.CommonOptions{
+			Verbose: false,
+		},
 	})
 	require.NoError(t, err)
 
 	strategy := strategies.NewLLMSStrategy(deps)
 	opts := strategies.Options{
 		Concurrency: 1,
-		Limit:       0,
-		Force:       true,
 		Output:      t.TempDir(),
+		CommonOptions: domain.CommonOptions{
+			Limit: 0,
+			Force: true,
+		},
 	}
 
 	// Act
@@ -988,16 +1004,20 @@ This is the API documentation.
 	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
 		EnableCache:    false,
 		EnableRenderer: false,
-		Verbose:        false,
+		CommonOptions: domain.CommonOptions{
+			Verbose: false,
+		},
 	})
 	require.NoError(t, err)
 
 	strategy := strategies.NewLLMSStrategy(deps)
 	opts := strategies.Options{
 		Concurrency: 1,
-		Limit:       0,
-		Force:       true,
 		Output:      t.TempDir(),
+		CommonOptions: domain.CommonOptions{
+			Limit: 0,
+			Force: true,
+		},
 	}
 
 	err = strategy.Execute(ctx, llmsServer.URL, opts)
@@ -1029,16 +1049,20 @@ Welcome to the documentation.
 	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
 		EnableCache:    false,
 		EnableRenderer: false,
-		Verbose:        false,
+		CommonOptions: domain.CommonOptions{
+			Verbose: false,
+		},
 	})
 	require.NoError(t, err)
 
 	strategy := strategies.NewLLMSStrategy(deps)
 	opts := strategies.Options{
 		Concurrency: 1,
-		Limit:       0,
-		Force:       true,
 		Output:      t.TempDir(),
+		CommonOptions: domain.CommonOptions{
+			Limit: 0,
+			Force: true,
+		},
 	}
 
 	err = strategy.Execute(ctx, llmsServer.URL, opts)
@@ -1070,17 +1094,21 @@ func TestExecute_WithFilterURL(t *testing.T) {
 	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
 		EnableCache:    false,
 		EnableRenderer: false,
-		Verbose:        false,
+		CommonOptions: domain.CommonOptions{
+			Verbose: false,
+		},
 	})
 	require.NoError(t, err)
 
 	strategy := strategies.NewLLMSStrategy(deps)
 	opts := strategies.Options{
 		Concurrency: 1,
-		Limit:       0,
-		Force:       true,
 		Output:      t.TempDir(),
 		FilterURL:   "https://platform.claude.com/docs/en/agents-and-tools/",
+		CommonOptions: domain.CommonOptions{
+			Limit: 0,
+			Force: true,
+		},
 	}
 
 	err = strategy.Execute(ctx, llmsServer.URL, opts)

@@ -793,13 +793,13 @@ func TestPkgGoStrategy_OptionsHandling(t *testing.T) {
 		},
 		{
 			name:    "DryRun enabled",
-			opts:    strategies.Options{DryRun: true},
+			opts:    strategies.Options{CommonOptions: domain.CommonOptions{DryRun: true}},
 			isSplit: false,
 			isDry:   true,
 		},
 		{
 			name:    "Both enabled",
-			opts:    strategies.Options{Split: true, DryRun: true},
+			opts:    strategies.Options{Split: true, CommonOptions: domain.CommonOptions{DryRun: true}},
 			isSplit: true,
 			isDry:   true,
 		},

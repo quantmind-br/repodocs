@@ -12,6 +12,7 @@ import (
 
 	"github.com/quantmind-br/repodocs-go/internal/app"
 	"github.com/quantmind-br/repodocs-go/internal/config"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 	"github.com/quantmind-br/repodocs-go/pkg/version"
 	"github.com/spf13/cobra"
@@ -171,14 +172,16 @@ func run(cmd *cobra.Command, args []string) error {
 
 	// Create orchestrator options
 	orchOpts := app.OrchestratorOptions{
+		CommonOptions: domain.CommonOptions{
+			Verbose:  verbose,
+			DryRun:   dryRun,
+			Force:    force,
+			RenderJS: renderJS,
+			Limit:    limit,
+		},
 		Config:          cfg,
-		Verbose:         verbose,
-		DryRun:          dryRun,
-		Force:           force,
-		RenderJS:        renderJS,
 		Split:           split,
 		IncludeAssets:   includeAssets,
-		Limit:           limit,
 		ContentSelector: contentSelector,
 		ExcludeSelector: excludeSelector,
 		ExcludePatterns: excludePatterns,

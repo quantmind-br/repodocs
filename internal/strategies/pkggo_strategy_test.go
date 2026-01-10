@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/converter"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 	"github.com/stretchr/testify/assert"
@@ -85,7 +86,9 @@ func TestPkgGoStrategy_SetFetcher(t *testing.T) {
 		EnableCache: false,
 		OutputDir:   "/tmp",
 		Flat:        false,
-		DryRun:      true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	defer deps.Close()
 
@@ -133,7 +136,9 @@ func TestPkgGoStrategy_Execute_SinglePage(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -142,8 +147,10 @@ func TestPkgGoStrategy_Execute_SinglePage(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Split:  false,
-		DryRun: true,
+		Split: false,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
@@ -194,7 +201,9 @@ func TestPkgGoStrategy_Execute_SplitMode(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -203,8 +212,10 @@ func TestPkgGoStrategy_Execute_SplitMode(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Split:  true,
-		DryRun: true,
+		Split: true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
@@ -241,7 +252,9 @@ func TestPkgGoStrategy_Execute_ContextCancellation(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -252,8 +265,10 @@ func TestPkgGoStrategy_Execute_ContextCancellation(t *testing.T) {
 	cancel() // Cancel immediately
 
 	opts := Options{
-		Split:  false,
-		DryRun: true,
+		Split: false,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
@@ -291,7 +306,9 @@ func TestPkgGoStrategy_Execute_WithoutDocumentationContent(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -300,8 +317,10 @@ func TestPkgGoStrategy_Execute_WithoutDocumentationContent(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Split:  false,
-		DryRun: true,
+		Split: false,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
@@ -344,7 +363,9 @@ func TestPkgGoStrategy_Execute_WithEmptySection(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -353,8 +374,10 @@ func TestPkgGoStrategy_Execute_WithEmptySection(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Split:  true,
-		DryRun: true,
+		Split: true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
@@ -378,7 +401,9 @@ func TestPkgGoStrategy_Execute_FetchError(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -387,8 +412,10 @@ func TestPkgGoStrategy_Execute_FetchError(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Split:  false,
-		DryRun: true,
+		Split: false,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
@@ -432,7 +459,9 @@ func TestPkgGoStrategy_Execute_SplitWithSectionSkip(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -441,8 +470,10 @@ func TestPkgGoStrategy_Execute_SplitWithSectionSkip(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Split:  true,
-		DryRun: true,
+		Split: true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
@@ -479,7 +510,9 @@ func TestPkgGoStrategy_Execute_MissingPackageTitle(t *testing.T) {
 		OutputDir:      tmpDir,
 		Flat:           true,
 		JSONMetadata:   false,
-		DryRun:         true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -488,8 +521,10 @@ func TestPkgGoStrategy_Execute_MissingPackageTitle(t *testing.T) {
 
 	ctx := context.Background()
 	opts := Options{
-		Split:  false,
-		DryRun: true,
+		Split: false,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 
 	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)

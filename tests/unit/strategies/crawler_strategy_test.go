@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -82,7 +81,6 @@ func TestCrawlerStrategy_CanHandle(t *testing.T) {
 	}
 }
 
-// TestIsHTMLContentType tests content type detection
 func TestIsHTMLContentType(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -115,24 +113,25 @@ func TestIsHTMLContentType(t *testing.T) {
 			expected:    false,
 		},
 		{
-			name:        "Empty content type",
+			name:        "Empty content type defaults to HTML",
 			contentType: "",
-			expected:    false,
+			expected:    true,
 		},
 		{
 			name:        "Case insensitive HTML",
 			contentType: "TEXT/HTML",
 			expected:    true,
 		},
+		{
+			name:        "text/markdown",
+			contentType: "text/markdown",
+			expected:    false,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Import the function from internal package
-			// We need to use reflection or test it through Execute
-			// For now, we'll test it indirectly through content type handling
-			result := strings.Contains(strings.ToLower(tc.contentType), "text/html") ||
-				strings.Contains(strings.ToLower(tc.contentType), "application/xhtml+xml")
+			result := strategies.IsHTMLContentType(tc.contentType)
 			assert.Equal(t, tc.expected, result)
 		})
 	}

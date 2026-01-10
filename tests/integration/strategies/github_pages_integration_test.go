@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/converter"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/fetcher"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
@@ -41,9 +42,9 @@ func TestGitHubPagesStrategy_SitemapDiscovery(t *testing.T) {
 	strategy := strategies.NewGitHubPagesStrategy(deps)
 
 	opts := strategies.Options{
-		MaxDepth:    1,
-		Limit:       10,
-		Concurrency: 2,
+		CommonOptions: domain.CommonOptions{Limit: 10},
+		MaxDepth:      1,
+		Concurrency:   2,
 	}
 
 	err := strategy.Execute(ctx, server.URL, opts)
@@ -73,9 +74,9 @@ func TestGitHubPagesStrategy_LLMsTxtDiscovery(t *testing.T) {
 	strategy := strategies.NewGitHubPagesStrategy(deps)
 
 	opts := strategies.Options{
-		MaxDepth:    1,
-		Limit:       10,
-		Concurrency: 2,
+		CommonOptions: domain.CommonOptions{Limit: 10},
+		MaxDepth:      1,
+		Concurrency:   2,
 	}
 
 	err := strategy.Execute(ctx, server.URL, opts)
@@ -105,9 +106,9 @@ func TestGitHubPagesStrategy_MkDocsDiscovery(t *testing.T) {
 	strategy := strategies.NewGitHubPagesStrategy(deps)
 
 	opts := strategies.Options{
-		MaxDepth:    1,
-		Limit:       10,
-		Concurrency: 2,
+		CommonOptions: domain.CommonOptions{Limit: 10},
+		MaxDepth:      1,
+		Concurrency:   2,
 	}
 
 	err := strategy.Execute(ctx, server.URL, opts)
@@ -136,9 +137,9 @@ func TestGitHubPagesStrategy_DryRun(t *testing.T) {
 	strategy := strategies.NewGitHubPagesStrategy(deps)
 
 	opts := strategies.Options{
-		DryRun:      true,
-		MaxDepth:    1,
-		Concurrency: 2,
+		CommonOptions: domain.CommonOptions{DryRun: true},
+		MaxDepth:      1,
+		Concurrency:   2,
 	}
 
 	err := strategy.Execute(ctx, server.URL, opts)
@@ -171,9 +172,9 @@ func TestGitHubPagesStrategy_WithProjectSubpath(t *testing.T) {
 	strategy := strategies.NewGitHubPagesStrategy(deps)
 
 	opts := strategies.Options{
-		MaxDepth:    1,
-		Limit:       10,
-		Concurrency: 2,
+		CommonOptions: domain.CommonOptions{Limit: 10},
+		MaxDepth:      1,
+		Concurrency:   2,
 	}
 
 	err := strategy.Execute(ctx, projectURL, opts)
@@ -193,9 +194,9 @@ func TestGitHubPagesStrategy_EmptyDiscovery(t *testing.T) {
 	strategy := strategies.NewGitHubPagesStrategy(deps)
 
 	opts := strategies.Options{
-		MaxDepth:    1,
-		Limit:       10,
-		Concurrency: 2,
+		CommonOptions: domain.CommonOptions{Limit: 10},
+		MaxDepth:      1,
+		Concurrency:   2,
 	}
 
 	err := strategy.Execute(ctx, server.URL, opts)

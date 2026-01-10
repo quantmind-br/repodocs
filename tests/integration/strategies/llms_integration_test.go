@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/converter"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/fetcher"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
@@ -38,7 +39,9 @@ func TestLLMSStrategy_Execute_DryRun(t *testing.T) {
 
 	// Act - execute with dry run enabled
 	opts := strategies.Options{
-		DryRun: true,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 	}
 	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 

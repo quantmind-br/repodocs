@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/config"
+	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -97,11 +98,13 @@ func TestDetectStrategy_EdgeCases(t *testing.T) {
 // TestCreateStrategy tests strategy creation
 func TestCreateStrategy(t *testing.T) {
 	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 		Timeout:     10 * time.Second,
 		EnableCache: false,
 		OutputDir:   "/tmp",
 		Flat:        false,
-		DryRun:      true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -136,11 +139,13 @@ func TestCreateStrategy(t *testing.T) {
 // TestGetAllStrategies tests getting all strategies
 func TestGetAllStrategies(t *testing.T) {
 	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 		Timeout:     10 * time.Second,
 		EnableCache: false,
 		OutputDir:   "/tmp",
 		Flat:        false,
-		DryRun:      true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
@@ -166,11 +171,13 @@ func TestGetAllStrategies(t *testing.T) {
 // TestFindMatchingStrategy tests finding a matching strategy for a URL
 func TestFindMatchingStrategy(t *testing.T) {
 	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
 		Timeout:     10 * time.Second,
 		EnableCache: false,
 		OutputDir:   "/tmp",
 		Flat:        false,
-		DryRun:      true,
 	})
 	require.NoError(t, err)
 	defer deps.Close()
