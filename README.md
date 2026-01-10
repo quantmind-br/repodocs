@@ -64,6 +64,94 @@ Generate JSON metadata and limit to 10 pages:
 repodocs https://example.com --json-meta --limit 10
 ```
 
+Process multiple sources from a manifest file:
+```bash
+repodocs --manifest sources.yaml
+```
+
+## Batch Processing with Manifests
+
+For processing multiple documentation sources, RepoDocs supports manifest files in YAML or JSON format. This enables reproducible, one-command data ingestion for complex RAG pipelines.
+
+### Creating a Manifest
+
+Create a `sources.yaml` file:
+
+```yaml
+sources:
+  - url: https://docs.example.com
+    strategy: crawler
+    content_selector: "article.main"
+    max_depth: 3
+
+  - url: https://github.com/org/repo
+    strategy: git
+    include:
+      - "docs/**/*.md"
+      - "README.md"
+
+options:
+  output: ./knowledge-base
+  continue_on_error: true
+```
+
+### Running with a Manifest
+
+```bash
+repodocs --manifest sources.yaml
+```
+
+### Manifest Schema
+
+#### Sources
+
+Each source defines a documentation URL and optional configuration:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `url` | string | Yes | URL to extract documentation from |
+| `strategy` | string | No | Force a specific strategy (`crawler`, `git`, `sitemap`, etc.) |
+| `content_selector` | string | No | CSS selector for main content |
+| `exclude_selector` | string | No | CSS selector for elements to remove |
+| `exclude` | array | No | URL/path patterns to skip |
+| `include` | array | No | Path patterns to include (git strategy) |
+| `max_depth` | int | No | Maximum crawl depth |
+| `render_js` | bool | No | Force JavaScript rendering |
+| `limit` | int | No | Maximum pages from this source |
+
+#### Options
+
+Global options that apply to the entire manifest:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `continue_on_error` | bool | `false` | Continue processing if a source fails |
+| `output` | string | `./docs` | Output directory for all sources |
+| `concurrency` | int | `5` | Number of concurrent workers |
+
+### Error Handling
+
+By default, execution stops on the first source failure. Use `continue_on_error: true` to process all sources regardless of individual failures:
+
+```yaml
+options:
+  continue_on_error: true
+```
+
+With this option:
+- Failed sources are logged but don't stop execution
+- All sources are attempted
+- Summary shows success/failure counts
+- Exit code is non-zero if any source failed
+
+### Example Manifests
+
+See the `examples/manifests/` directory for sample manifest files:
+- `simple.yaml` - Basic single-source manifest
+- `multi-source.yaml` - Multiple sources with different strategies
+- `error-tolerant.yaml` - Continues on errors
+- `full-options.yaml` - All available options documented
+
 ## Architecture
 
 RepoDocs follows a decoupled, interface-driven architecture structured as a processing pipeline:
@@ -92,6 +180,7 @@ RepoDocs can be configured via CLI flags or a configuration file (default: `~/.r
 
 | Flag | Short | Description | Default |
 | :--- | :--- | :--- | :--- |
+| `--manifest` | | Path to manifest file (YAML/JSON) for batch processing | |
 | `--output` | `-o` | Output directory | `./docs` |
 | `--concurrency` | `-j` | Number of concurrent workers | `5` |
 | `--max-depth` | `-d` | Maximum crawl depth | `4` |

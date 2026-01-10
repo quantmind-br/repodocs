@@ -1,0 +1,28 @@
+sources:
+  - url: https://docs.example.com
+    strategy: crawler
+    content_selector: "article.main"
+    exclude_selector: ".sidebar, .footer, .nav"
+    exclude:
+      - "*/changelog/*"
+      - "*/archive/*"
+    max_depth: 4
+    render_js: true
+    limit: 100
+
+  - url: https://github.com/org/repo
+    strategy: git
+    include:
+      - "docs/**/*.md"
+      - "*.md"
+    exclude:
+      - "docs/internal/*"
+
+  - url: https://pkg.go.dev/github.com/org/repo
+    strategy: pkggo
+
+options:
+  continue_on_error: true
+  output: ./knowledge-base
+  concurrency: 5
+  cache_ttl: 24h

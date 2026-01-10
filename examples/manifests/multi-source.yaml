@@ -1,0 +1,18 @@
+sources:
+  - url: https://docs.example.com
+    strategy: crawler
+    content_selector: "article.main"
+    max_depth: 3
+
+  - url: https://github.com/org/repo
+    strategy: git
+    include:
+      - "docs/**/*.md"
+      - "README.md"
+
+  - url: https://api.example.com/docs
+    strategy: sitemap
+
+options:
+  output: ./knowledge-base
+  concurrency: 10
