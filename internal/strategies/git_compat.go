@@ -30,10 +30,11 @@ func NewGitStrategy(deps *Dependencies) *GitStrategy {
 
 	if deps != nil {
 		gitDeps = &git.StrategyDependencies{
-			Writer:     deps.Writer,
-			Logger:     deps.Logger,
-			HTTPClient: deps.HTTPClient,
-			WriteFunc:  deps.WriteDocument,
+			Writer:       deps.Writer,
+			Logger:       deps.Logger,
+			HTTPClient:   deps.HTTPClient,
+			WriteFunc:    deps.WriteDocument,
+			StateManager: deps.StateManager,
 		}
 		httpClient = deps.HTTPClient
 	}
@@ -103,22 +104,24 @@ func (s *GitStrategy) findDocumentationFiles(dir string, filterPath string) ([]s
 
 func (s *GitStrategy) processFiles(ctx context.Context, files []string, tmpDir, repoURL, branch string, opts Options) error {
 	processOpts := git.ProcessOptions{
-		RepoURL:     repoURL,
-		Branch:      branch,
-		Concurrency: opts.Concurrency,
-		Limit:       opts.Limit,
-		DryRun:      opts.DryRun,
-		WriteFunc:   s.deps.WriteDocument,
+		RepoURL:      repoURL,
+		Branch:       branch,
+		Concurrency:  opts.Concurrency,
+		Limit:        opts.Limit,
+		DryRun:       opts.DryRun,
+		WriteFunc:    s.deps.WriteDocument,
+		StateManager: s.deps.StateManager,
 	}
 	return s.processor.ProcessFiles(ctx, files, tmpDir, processOpts)
 }
 
 func (s *GitStrategy) processFile(ctx context.Context, path, tmpDir, repoURL, branch string, opts Options) error {
 	processOpts := git.ProcessOptions{
-		RepoURL:   repoURL,
-		Branch:    branch,
-		DryRun:    opts.DryRun,
-		WriteFunc: s.deps.WriteDocument,
+		RepoURL:      repoURL,
+		Branch:       branch,
+		DryRun:       opts.DryRun,
+		WriteFunc:    s.deps.WriteDocument,
+		StateManager: s.deps.StateManager,
 	}
 	return s.processor.ProcessFile(ctx, path, tmpDir, processOpts)
 }

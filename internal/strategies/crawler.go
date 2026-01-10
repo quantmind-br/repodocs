@@ -179,6 +179,14 @@ func (s *CrawlerStrategy) processResponse(ctx context.Context, r *colly.Response
 	doc.SourceStrategy = s.Name()
 	doc.FetchedAt = time.Now()
 
+	if s.deps.StateManager != nil {
+		s.deps.StateManager.MarkSeen(currentURL)
+		if doc.ContentHash != "" && !s.deps.StateManager.ShouldProcess(currentURL, doc.ContentHash) {
+			s.logger.Debug().Str("url", currentURL).Msg("Skipping unchanged page")
+			return
+		}
+	}
+
 	if !cctx.opts.DryRun {
 		if err := s.deps.WriteDocument(ctx, doc); err != nil {
 			s.logger.Warn().Err(err).Str("url", currentURL).Msg("Failed to write document")

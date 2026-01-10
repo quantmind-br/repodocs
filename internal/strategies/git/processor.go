@@ -2,6 +2,8 @@ package git
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"os"
@@ -10,6 +12,7 @@ import (
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs-go/internal/state"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 )
 
@@ -26,13 +29,14 @@ func NewProcessor(opts ProcessorOptions) *Processor {
 }
 
 type ProcessOptions struct {
-	RepoURL     string
-	Branch      string
-	FilterPath  string
-	Concurrency int
-	Limit       int
-	DryRun      bool
-	WriteFunc   func(ctx context.Context, doc *domain.Document) error
+	RepoURL      string
+	Branch       string
+	FilterPath   string
+	Concurrency  int
+	Limit        int
+	DryRun       bool
+	WriteFunc    func(ctx context.Context, doc *domain.Document) error
+	StateManager *state.Manager
 }
 
 func (p *Processor) FindDocumentationFiles(dir string, filterPath string) ([]string, error) {
@@ -119,10 +123,13 @@ func (p *Processor) ProcessFile(ctx context.Context, path, tmpDir string, opts P
 	relPathURL := strings.ReplaceAll(relPath, "\\", "/")
 	fileURL := opts.RepoURL + "/blob/" + opts.Branch + "/" + relPathURL
 
+	contentHash := computeHash(content)
+
 	doc := &domain.Document{
 		URL:            fileURL,
 		Title:          ExtractTitleFromPath(relPath),
 		Content:        string(content),
+		ContentHash:    contentHash,
 		FetchedAt:      time.Now(),
 		WordCount:      len(strings.Fields(string(content))),
 		CharCount:      len(content),
@@ -135,11 +142,26 @@ func (p *Processor) ProcessFile(ctx context.Context, path, tmpDir string, opts P
 		doc.Content = "```\n" + string(content) + "\n```"
 	}
 
+	if opts.StateManager != nil {
+		opts.StateManager.MarkSeen(fileURL)
+		if !opts.StateManager.ShouldProcess(fileURL, contentHash) {
+			if p.logger != nil {
+				p.logger.Debug().Str("file", relPath).Msg("Skipping unchanged file")
+			}
+			return nil
+		}
+	}
+
 	if !opts.DryRun && opts.WriteFunc != nil {
 		return opts.WriteFunc(ctx, doc)
 	}
 
 	return nil
+}
+
+func computeHash(content []byte) string {
+	hash := sha256.Sum256(content)
+	return hex.EncodeToString(hash[:])
 }
 
 func ExtractTitleFromPath(path string) string {

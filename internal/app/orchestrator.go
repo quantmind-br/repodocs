@@ -77,6 +77,9 @@ func NewOrchestrator(opts OrchestratorOptions) (*Orchestrator, error) {
 			Force:    opts.Force || cfg.Output.Overwrite,
 			RenderJS: opts.RenderJS,
 			Limit:    opts.Limit,
+			Sync:     opts.Sync,
+			FullSync: opts.FullSync,
+			Prune:    opts.Prune,
 		},
 		Timeout:         cfg.Concurrency.Timeout,
 		EnableCache:     cfg.Cache.Enabled,
@@ -187,6 +190,19 @@ func (o *Orchestrator) Run(ctx context.Context, url string, opts OrchestratorOpt
 
 	if err := o.deps.FlushMetadata(); err != nil {
 		o.logger.Warn().Err(err).Msg("Failed to flush metadata")
+	}
+
+	if opts.Prune {
+		pruned, err := o.deps.PruneDeletedFiles(ctx)
+		if err != nil {
+			o.logger.Warn().Err(err).Msg("Failed to prune deleted files")
+		} else if pruned > 0 {
+			o.logger.Info().Int("pruned", pruned).Msg("Removed deleted pages")
+		}
+	}
+
+	if err := o.deps.SaveState(ctx); err != nil {
+		o.logger.Warn().Err(err).Msg("Failed to save state")
 	}
 
 	duration := time.Since(startTime)

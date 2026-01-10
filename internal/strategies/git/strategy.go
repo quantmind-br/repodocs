@@ -10,14 +10,16 @@ import (
 
 	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/output"
+	"github.com/quantmind-br/repodocs-go/internal/state"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 )
 
 type StrategyDependencies struct {
-	Writer     *output.Writer
-	Logger     *utils.Logger
-	HTTPClient *http.Client
-	WriteFunc  func(ctx context.Context, doc *domain.Document) error
+	Writer       *output.Writer
+	Logger       *utils.Logger
+	HTTPClient   *http.Client
+	WriteFunc    func(ctx context.Context, doc *domain.Document) error
+	StateManager *state.Manager
 }
 
 type Strategy struct {
@@ -172,13 +174,14 @@ func (s *Strategy) Execute(ctx context.Context, rawURL string, opts ExecuteOptio
 	}
 
 	processOpts := ProcessOptions{
-		RepoURL:     repoURL,
-		Branch:      branch,
-		FilterPath:  filterPath,
-		Concurrency: opts.Concurrency,
-		Limit:       opts.Limit,
-		DryRun:      opts.DryRun,
-		WriteFunc:   s.deps.WriteFunc,
+		RepoURL:      repoURL,
+		Branch:       branch,
+		FilterPath:   filterPath,
+		Concurrency:  opts.Concurrency,
+		Limit:        opts.Limit,
+		DryRun:       opts.DryRun,
+		WriteFunc:    s.deps.WriteFunc,
+		StateManager: s.deps.StateManager,
 	}
 
 	return s.processor.ProcessFiles(ctx, files, tmpDir, processOpts)

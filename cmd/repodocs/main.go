@@ -87,6 +87,11 @@ func init() {
 	rootCmd.PersistentFlags().String("exclude-selector", "", "CSS selector for elements to exclude from content")
 	rootCmd.PersistentFlags().StringVar(&manifestPath, "manifest", "", "Path to manifest file (YAML/JSON) for batch processing")
 
+	// Sync flags
+	rootCmd.PersistentFlags().Bool("sync", false, "Enable incremental sync mode (skip unchanged pages)")
+	rootCmd.PersistentFlags().Bool("full-sync", false, "Force full re-processing (ignore state)")
+	rootCmd.PersistentFlags().Bool("prune", false, "Remove files for deleted pages")
+
 	// Bind flags to viper
 	_ = viper.BindPFlag("output.directory", rootCmd.PersistentFlags().Lookup("output"))
 	_ = viper.BindPFlag("concurrency.workers", rootCmd.PersistentFlags().Lookup("concurrency"))
@@ -167,7 +172,6 @@ func run(cmd *cobra.Command, args []string) error {
 		cancel()
 	}()
 
-	// Get flags
 	limit, _ := cmd.Flags().GetInt("limit")
 	dryRun, _ := cmd.Flags().GetBool("dry-run")
 	split, _ := cmd.Flags().GetBool("split")
@@ -178,8 +182,10 @@ func run(cmd *cobra.Command, args []string) error {
 	renderJS, _ := cmd.Flags().GetBool("render-js")
 	force, _ := cmd.Flags().GetBool("force")
 	filterURL, _ := cmd.Flags().GetString("filter")
+	syncEnabled, _ := cmd.Flags().GetBool("sync")
+	fullSync, _ := cmd.Flags().GetBool("full-sync")
+	prune, _ := cmd.Flags().GetBool("prune")
 
-	// Create orchestrator options
 	orchOpts := app.OrchestratorOptions{
 		CommonOptions: domain.CommonOptions{
 			Verbose:  verbose,
@@ -187,6 +193,9 @@ func run(cmd *cobra.Command, args []string) error {
 			Force:    force,
 			RenderJS: renderJS,
 			Limit:    limit,
+			Sync:     syncEnabled,
+			FullSync: fullSync,
+			Prune:    prune,
 		},
 		Config:          cfg,
 		Split:           split,
@@ -251,6 +260,9 @@ func runManifest(cmd *cobra.Command, cfg *config.Config) error {
 	renderJS, _ := cmd.Flags().GetBool("render-js")
 	force, _ := cmd.Flags().GetBool("force")
 	filterURL, _ := cmd.Flags().GetString("filter")
+	syncEnabled, _ := cmd.Flags().GetBool("sync")
+	fullSync, _ := cmd.Flags().GetBool("full-sync")
+	prune, _ := cmd.Flags().GetBool("prune")
 
 	orchOpts := app.OrchestratorOptions{
 		CommonOptions: domain.CommonOptions{
@@ -259,6 +271,9 @@ func runManifest(cmd *cobra.Command, cfg *config.Config) error {
 			Force:    force,
 			RenderJS: renderJS,
 			Limit:    limit,
+			Sync:     syncEnabled,
+			FullSync: fullSync,
+			Prune:    prune,
 		},
 		Config:          cfg,
 		Split:           split,

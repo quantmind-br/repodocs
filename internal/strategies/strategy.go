@@ -2,8 +2,10 @@ package strategies
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/quantmind-br/repodocs-go/internal/llm"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/renderer"
+	"github.com/quantmind-br/repodocs-go/internal/state"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 )
 
@@ -67,9 +70,9 @@ type Dependencies struct {
 	LLMProvider      domain.LLMProvider
 	MetadataEnhancer *llm.MetadataEnhancer
 	Collector        *output.MetadataCollector
-	HTTPClient       *http.Client // Optional custom HTTP client (e.g., for testing)
+	HTTPClient       *http.Client
+	StateManager     *state.Manager
 
-	// Lazy renderer initialization
 	rendererOnce sync.Once
 	rendererOpts renderer.RendererOptions
 	rendererErr  error
@@ -189,6 +192,21 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 		}
 	}
 
+	var stateManager *state.Manager
+	if opts.Sync && !opts.FullSync {
+		stateManager = state.NewManager(state.ManagerOptions{
+			BaseDir:   opts.OutputDir,
+			SourceURL: opts.SourceURL,
+			Logger:    logger,
+			Disabled:  false,
+		})
+		if err := stateManager.Load(context.Background()); err != nil {
+			if !errors.Is(err, state.ErrStateNotFound) {
+				logger.Warn().Err(err).Msg("Failed to load state, starting fresh")
+			}
+		}
+	}
+
 	return &Dependencies{
 		Fetcher:          fetcherClient,
 		Renderer:         rendererImpl,
@@ -199,6 +217,7 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 		LLMProvider:      llmProvider,
 		MetadataEnhancer: metadataEnhancer,
 		Collector:        collector,
+		StateManager:     stateManager,
 		rendererOpts:     rendererOpts,
 	}, nil
 }
@@ -225,6 +244,43 @@ func (d *Dependencies) FlushMetadata() error {
 		return d.Collector.Flush()
 	}
 	return nil
+}
+
+func (d *Dependencies) SaveState(ctx context.Context) error {
+	if d.StateManager != nil {
+		return d.StateManager.Save(ctx)
+	}
+	return nil
+}
+
+func (d *Dependencies) PruneDeletedFiles(ctx context.Context) (int, error) {
+	if d.StateManager == nil || d.StateManager.IsDisabled() {
+		return 0, nil
+	}
+
+	deleted := d.StateManager.GetDeletedPages()
+	if len(deleted) == 0 {
+		return 0, nil
+	}
+
+	var pruned int
+	for _, page := range deleted {
+		if err := os.Remove(page.FilePath); err != nil {
+			if !os.IsNotExist(err) {
+				d.Logger.Warn().Err(err).Str("file", page.FilePath).Msg("Failed to remove deleted page")
+				continue
+			}
+		}
+		pruned++
+		d.Logger.Info().Str("file", page.FilePath).Msg("Removed deleted page")
+	}
+
+	d.StateManager.RemoveDeletedFromState()
+	return pruned, nil
+}
+
+func (d *Dependencies) GetStateManager() *state.Manager {
+	return d.StateManager
 }
 
 func (d *Dependencies) SetStrategy(name string) {
@@ -277,7 +333,20 @@ func (d *Dependencies) WriteDocument(ctx context.Context, doc *domain.Document) 
 		return fmt.Errorf("writer is not configured")
 	}
 
-	return d.Writer.Write(ctx, doc)
+	if err := d.Writer.Write(ctx, doc); err != nil {
+		return err
+	}
+
+	if d.StateManager != nil && doc.ContentHash != "" {
+		filePath := d.Writer.GetPath(doc.URL)
+		d.StateManager.Update(doc.URL, state.PageState{
+			ContentHash: doc.ContentHash,
+			FetchedAt:   doc.FetchedAt,
+			FilePath:    filePath,
+		})
+	}
+
+	return nil
 }
 
 // DependencyOptions contains options for creating dependencies

@@ -7,6 +7,9 @@ type CommonOptions struct {
 	Force    bool
 	RenderJS bool
 	Limit    int
+	Sync     bool
+	FullSync bool
+	Prune    bool
 }
 
 // DefaultCommonOptions returns CommonOptions with default values.
