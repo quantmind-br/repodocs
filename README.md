@@ -42,6 +42,50 @@ Use the built-in "doctor" command to verify your environment:
 ./repodocs doctor
 ```
 
+## Testing
+
+RepoDocs has comprehensive test coverage with **64.8% overall coverage** and **9 packages above 90%**.
+
+### Running Tests
+
+```bash
+# Unit tests (fast)
+make test
+# or
+go test ./... -short
+
+# Integration tests
+make test-integration
+# or
+go test ./tests/integration/... -tags=integration
+
+# Full test suite
+go test ./...
+
+# Coverage report
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.html
+```
+
+### Test Coverage
+
+| Package | Coverage | Status |
+|---------|----------|--------|
+| git | 100.0% | ✅ Excellent |
+| domain | 97.1% | ✅ Excellent |
+| manifest | 97.0% | ✅ Excellent |
+| state | 95.5% | ✅ Excellent |
+| output | 94.4% | ✅ Excellent |
+| llm | 92.9% | ✅ Excellent |
+| utils | 90.9% | ✅ Excellent |
+| cache | 91.3% | ✅ Excellent |
+| config | 91.4% | ✅ Excellent |
+| converter | 87.3% | ✅ Good |
+| fetcher | 84.1% | ✅ Good |
+| strategies/git | 79.5% | ✅ Good |
+
+See [TESTING.md](TESTING.md) for detailed testing guidelines, patterns, and best practices.
+
 ## Quick Start
 
 Extract documentation from a URL to the default `./docs` directory:
