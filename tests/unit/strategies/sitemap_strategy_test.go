@@ -555,3 +555,97 @@ func TestSitemapStrategy_Execute_SitemapIndex(t *testing.T) {
 	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	require.NoError(t, err)
 }
+
+// TestSortURLsByLastMod tests sorting URLs by last modification date
+func TestSortURLsByLastMod(t *testing.T) {
+	now := time.Now()
+	yesterday := now.Add(-24 * time.Hour)
+	twoDaysAgo := now.Add(-48 * time.Hour)
+	weekAgo := now.Add(-7 * 24 * time.Hour)
+
+	urls := []domain.SitemapURL{
+		{URL: "https://example.com/old", LastMod: twoDaysAgo},
+		{URL: "https://example.com/recent", LastMod: now},
+		{URL: "https://example.com/yesterday", LastMod: yesterday},
+		{URL: "https://example.com/very-old", LastMod: weekAgo},
+	}
+
+	sortURLsByLastMod(urls)
+
+	// Should be sorted with most recent first
+	assert.Equal(t, "https://example.com/recent", urls[0].URL)
+	assert.Equal(t, "https://example.com/yesterday", urls[1].URL)
+	assert.Equal(t, "https://example.com/old", urls[2].URL)
+	assert.Equal(t, "https://example.com/very-old", urls[3].URL)
+}
+
+// TestSortURLsByLastMod_Empty tests sorting empty slice
+func TestSortURLsByLastMod_Empty(t *testing.T) {
+	urls := []domain.SitemapURL{}
+
+	sortURLsByLastMod(urls) // Should not panic
+
+	assert.Empty(t, urls)
+}
+
+// TestSortURLsByLastMod_SameDates tests sorting when dates are the same
+func TestSortURLsByLastMod_SameDates(t *testing.T) {
+	now := time.Now()
+
+	urls := []domain.SitemapURL{
+		{URL: "https://example.com/a", LastMod: now},
+		{URL: "https://example.com/b", LastMod: now},
+		{URL: "https://example.com/c", LastMod: now},
+	}
+
+	sortURLsByLastMod(urls) // Should not panic, order may vary
+
+	assert.Len(t, urls, 3)
+}
+
+// TestSortURLsByLastMod_ZeroDates tests sorting with zero dates
+func TestSortURLsByLastMod_ZeroDates(t *testing.T) {
+	now := time.Now()
+
+	urls := []domain.SitemapURL{
+		{URL: "https://example.com/zero1", LastMod: time.Time{}},
+		{URL: "https://example.com/recent", LastMod: now},
+		{URL: "https://example.com/zero2", LastMod: time.Time{}},
+	}
+
+	sortURLsByLastMod(urls)
+
+	// Zero times should sort to the end
+	assert.Equal(t, "https://example.com/recent", urls[0].URL)
+}
+
+// TestDecompressGzip tests gzip decompression
+func TestDecompressGzip(t *testing.T) {
+	original := []byte("<html><body>Test content</body></html>")
+	
+	// Compress the data
+	var compressed bytes.Buffer
+	writer := gzip.NewWriter(&compressed)
+	_, err := writer.Write(original)
+	require.NoError(t, err)
+	writer.Close()
+
+	// Decompress
+	decompressed, err := decompressGzip(compressed.Bytes())
+	assert.NoError(t, err)
+	assert.Equal(t, original, decompressed)
+}
+
+// TestDecompressGzip_InvalidData tests decompressing invalid gzip data
+func TestDecompressGzip_InvalidData(t *testing.T) {
+	invalidData := []byte("not gzip data")
+
+	_, err := decompressGzip(invalidData)
+	assert.Error(t, err)
+}
+
+// TestDecompressGzip_Empty tests decompressing empty data
+func TestDecompressGzip_Empty(t *testing.T) {
+	_, err := decompressGzip([]byte{})
+	assert.Error(t, err)
+}
