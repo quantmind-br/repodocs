@@ -224,3 +224,210 @@ func TestRender_WithWaitStable(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, html)
 }
+
+// TestRender_WithCookiesEmptyDomainPath tests setCookies fallback when domain/path are empty
+func TestRender_WithCookiesEmptyDomainPath(t *testing.T) {
+	if !renderer.IsAvailable() {
+		t.Skip("Browser not available, skipping test")
+	}
+
+	opts := renderer.DefaultRendererOptions()
+	opts.MaxTabs = 1
+
+	r, err := renderer.NewRenderer(opts)
+	if err != nil {
+		t.Skip("Failed to create renderer:", err)
+	}
+	defer r.Close()
+
+	cookies := []*http.Cookie{
+		{
+			Name:     "sessionCookie",
+			Value:    "abc123",
+			Path:     "",
+			Domain:   "",
+			Secure:   false,
+			HttpOnly: false,
+		},
+	}
+
+	renderOpts := domain.RenderOptions{
+		Timeout:     10 * time.Second,
+		WaitStable:  0,
+		ScrollToEnd: false,
+		Cookies:     cookies,
+	}
+
+	ctx := context.Background()
+	_, _ = r.Render(ctx, "about:blank", renderOpts)
+}
+
+// TestRender_WithMultipleCookies tests rendering with multiple cookies
+func TestRender_WithMultipleCookies(t *testing.T) {
+	if !renderer.IsAvailable() {
+		t.Skip("Browser not available, skipping test")
+	}
+
+	opts := renderer.DefaultRendererOptions()
+	opts.MaxTabs = 1
+
+	r, err := renderer.NewRenderer(opts)
+	if err != nil {
+		t.Skip("Failed to create renderer:", err)
+	}
+	defer r.Close()
+
+	cookies := []*http.Cookie{
+		{
+			Name:     "cookie1",
+			Value:    "value1",
+			Path:     "/app",
+			Domain:   "example.com",
+			Secure:   true,
+			HttpOnly: true,
+		},
+		{
+			Name:     "cookie2",
+			Value:    "value2",
+			Path:     "/api",
+			Domain:   "api.example.com",
+			Secure:   true,
+			HttpOnly: false,
+		},
+	}
+
+	renderOpts := domain.RenderOptions{
+		Timeout:     10 * time.Second,
+		WaitStable:  0,
+		ScrollToEnd: false,
+		Cookies:     cookies,
+	}
+
+	ctx := context.Background()
+	_, _ = r.Render(ctx, "about:blank", renderOpts)
+}
+
+// TestRender_NavigationError tests rendering with an invalid URL that causes navigation error
+func TestRender_NavigationError(t *testing.T) {
+	if !renderer.IsAvailable() {
+		t.Skip("Browser not available, skipping test")
+	}
+
+	opts := renderer.DefaultRendererOptions()
+	opts.MaxTabs = 1
+
+	r, err := renderer.NewRenderer(opts)
+	if err != nil {
+		t.Skip("Failed to create renderer:", err)
+	}
+	defer r.Close()
+
+	renderOpts := domain.RenderOptions{
+		Timeout:     5 * time.Second,
+		WaitStable:  0,
+		ScrollToEnd: false,
+	}
+
+	ctx := context.Background()
+
+	// Use an invalid protocol to trigger navigation error
+	_, err = r.Render(ctx, "invalid://not-a-real-protocol", renderOpts)
+	// This should return an error due to invalid URL/protocol
+	assert.Error(t, err)
+}
+
+// TestRender_ContextCancellation tests that rendering respects context cancellation
+func TestRender_ContextCancellation(t *testing.T) {
+	if !renderer.IsAvailable() {
+		t.Skip("Browser not available, skipping test")
+	}
+
+	opts := renderer.DefaultRendererOptions()
+	opts.MaxTabs = 1
+
+	r, err := renderer.NewRenderer(opts)
+	if err != nil {
+		t.Skip("Failed to create renderer:", err)
+	}
+	defer r.Close()
+
+	renderOpts := domain.RenderOptions{
+		Timeout:     30 * time.Second, // Long timeout
+		WaitStable:  10 * time.Second, // Long wait
+		ScrollToEnd: false,
+	}
+
+	// Create a context that's already cancelled
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	_, err = r.Render(ctx, "about:blank", renderOpts)
+	// Should return context error
+	assert.Error(t, err)
+}
+
+// TestRender_StealthModeDisabled tests rendering with stealth mode disabled
+func TestRender_StealthModeDisabled(t *testing.T) {
+	if !renderer.IsAvailable() {
+		t.Skip("Browser not available, skipping test")
+	}
+
+	opts := renderer.DefaultRendererOptions()
+	opts.MaxTabs = 1
+	opts.Stealth = false // Disable stealth mode
+
+	r, err := renderer.NewRenderer(opts)
+	if err != nil {
+		t.Skip("Failed to create renderer:", err)
+	}
+	defer r.Close()
+
+	renderOpts := domain.RenderOptions{
+		Timeout:     10 * time.Second,
+		WaitStable:  0,
+		ScrollToEnd: false,
+	}
+
+	ctx := context.Background()
+
+	html, err := r.Render(ctx, "about:blank", renderOpts)
+	assert.NoError(t, err)
+	assert.NotNil(t, html)
+}
+
+// TestNewRenderer_WithCustomBrowserPath tests creating renderer with a custom browser path
+func TestNewRenderer_WithCustomBrowserPath(t *testing.T) {
+	if !renderer.IsAvailable() {
+		t.Skip("Browser not available, skipping test")
+	}
+
+	// Get the actual browser path
+	browserPath, exists := renderer.GetBrowserPath()
+	if !exists {
+		t.Skip("Browser path not found, skipping test")
+	}
+
+	opts := renderer.DefaultRendererOptions()
+	opts.MaxTabs = 1
+	opts.BrowserPath = browserPath // Use the detected browser path
+
+	r, err := renderer.NewRenderer(opts)
+	assert.NoError(t, err)
+	assert.NotNil(t, r)
+
+	if r != nil {
+		err = r.Close()
+		assert.NoError(t, err)
+	}
+}
+
+// TestNewRenderer_InvalidBrowserPath tests creating renderer with an invalid browser path
+func TestNewRenderer_InvalidBrowserPath(t *testing.T) {
+	opts := renderer.DefaultRendererOptions()
+	opts.MaxTabs = 1
+	opts.BrowserPath = "/nonexistent/path/to/browser"
+
+	_, err := renderer.NewRenderer(opts)
+	// Should fail because browser doesn't exist at path
+	assert.Error(t, err)
+}
