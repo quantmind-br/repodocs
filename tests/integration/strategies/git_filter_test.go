@@ -4,7 +4,9 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/strategies"
@@ -79,4 +81,192 @@ func TestGitStrategy_Execute_PathFiltering(t *testing.T) {
 		_, err = os.Stat(opts.Output)
 		assert.True(t, os.IsNotExist(err), "Dry run should not create output directory")
 	})
+}
+
+// TestGitStrategy_RealPublicRepo tests processing actual public repository
+func TestGitStrategy_RealPublicRepo(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	outputDir := t.TempDir()
+
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "warn"})
+	writer := output.NewWriter(output.WriterOptions{
+		BaseDir: outputDir,
+		Force:   true,
+	})
+
+	deps := &strategies.Dependencies{
+		Writer: writer,
+		Logger: logger,
+	}
+
+	strategy := strategies.NewGitStrategy(deps)
+
+	tests := []struct {
+		name    string
+		repoURL string
+		wantErr bool
+	}{
+		{
+			name:    "GitHub public repo",
+			repoURL: "https://github.com/golang/example",
+			wantErr: false,
+		},
+		{
+			name:    "Small repo with markdown",
+			repoURL: "https://github.com/owner/repo", // This will fail, testing error handling
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			opts := strategies.DefaultOptions()
+			opts.Output = filepath.Join(outputDir, tt.name)
+
+			err := strategy.Execute(ctx, tt.repoURL, opts)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestGitStrategy_WithSubdirectory tests processing specific subdirectory
+func TestGitStrategy_WithSubdirectory(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	outputDir := t.TempDir()
+
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "warn"})
+	writer := output.NewWriter(output.WriterOptions{
+		BaseDir: outputDir,
+		Force:   true,
+	})
+
+	deps := &strategies.Dependencies{
+		Writer: writer,
+		Logger: logger,
+	}
+
+	strategy := strategies.NewGitStrategy(deps)
+
+	repoURL := "https://github.com/golang/example"
+	opts := strategies.DefaultOptions()
+	opts.Output = filepath.Join(outputDir, "subdir-test")
+	opts.FilterURL = "hello" // Test specific subdirectory
+
+	err := strategy.Execute(context.Background(), repoURL, opts)
+	// Should complete without error even if directory doesn't exist
+	// The strategy should handle it gracefully
+	require.NoError(t, err)
+}
+
+// TestGitStrategy_InvalidRepo tests handling invalid repositories
+func TestGitStrategy_InvalidRepo(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	outputDir := t.TempDir()
+
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	writer := output.NewWriter(output.WriterOptions{
+		BaseDir: outputDir,
+		Force:   true,
+	})
+
+	deps := &strategies.Dependencies{
+		Writer: writer,
+		Logger: logger,
+	}
+
+	strategy := strategies.NewGitStrategy(deps)
+
+	tests := []struct {
+		name    string
+		repoURL string
+	}{
+		{
+			name:    "Invalid URL",
+			repoURL: "not-a-valid-url",
+		},
+		{
+			name:    "Non-existent repo",
+			repoURL: "https://github.com/this-repo-definitely-does-not-exist-12345/repo",
+		},
+		{
+			name:    "Private repo without auth",
+			repoURL: "https://github.com/private-org/private-repo",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			opts := strategies.DefaultOptions()
+			opts.Output = filepath.Join(outputDir, tt.name)
+
+			err := strategy.Execute(ctx, tt.repoURL, opts)
+			assert.Error(t, err, "Should return error for invalid repository")
+		})
+	}
+}
+
+// TestGitStrategy_Concurrency tests concurrent processing
+func TestGitStrategy_Concurrency(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	outputDir := t.TempDir()
+
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "warn"})
+	writer := output.NewWriter(output.WriterOptions{
+		BaseDir: outputDir,
+		Force:   true,
+	})
+
+	deps := &strategies.Dependencies{
+		Writer: writer,
+		Logger: logger,
+	}
+
+	strategy := strategies.NewGitStrategy(deps)
+
+	repoURL := "https://github.com/golang/example"
+
+	// Run multiple extractions concurrently
+	done := make(chan error, 3)
+
+	for i := 0; i < 3; i++ {
+		go func(index int) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			opts := strategies.DefaultOptions()
+			opts.Output = filepath.Join(outputDir, "concurrent", strconv.Itoa(index))
+
+			err := strategy.Execute(ctx, repoURL, opts)
+			done <- err
+		}(i)
+	}
+
+	// Wait for all to complete
+	for i := 0; i < 3; i++ {
+		err := <-done
+		assert.NoError(t, err, "Concurrent extraction should succeed")
+	}
 }
