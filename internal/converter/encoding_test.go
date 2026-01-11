@@ -219,3 +219,54 @@ func TestMin(t *testing.T) {
 		})
 	}
 }
+
+// TestIsUTF8_ValidUTF8 tests valid UTF-8 strings  
+func TestIsUTF8_ValidUTF8(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []byte
+		want  bool
+	}{
+		{name: "simple ASCII", input: []byte("Hello, world!"), want: true},
+		{name: "UTF-8 with emoji", input: []byte("Hello 👋 World 🌍"), want: true},
+		{name: "UTF-8 with accented", input: []byte("café résumé naïve"), want: true},
+		{name: "UTF-8 with Chinese", input: []byte("你好世界"), want: true},
+		{name: "empty byte array", input: []byte(""), want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsUTF8(tt.input)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+
+// TestGetEncoder tests getting encoders
+func TestGetEncoder(t *testing.T) {
+	tests := []struct {
+		name    string
+		charset string
+		wantErr bool
+	}{
+		{name: "utf-8", charset: "utf-8", wantErr: false},
+		{name: "iso-8859-1", charset: "iso-8859-1", wantErr: false},
+		{name: "windows-1252", charset: "windows-1252", wantErr: false},
+		{name: "empty charset", charset: "", wantErr: true},
+		{name: "invalid charset", charset: "invalid-xyz", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			enc, err := GetEncoder(tt.charset)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Nil(t, enc)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, enc)
+			}
+		})
+	}
+}
