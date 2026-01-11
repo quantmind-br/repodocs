@@ -58,11 +58,40 @@ func TestIsUTF8(t *testing.T) {
 		{"empty", []byte(""), true},
 		{"UTF-8 with meta", []byte(`<meta charset="utf-8">`), true},
 		{"UTF-8 content", []byte(`<meta charset="UTF-8">Hello`), true},
+		{"ISO-8859-1 detected as non-UTF8", []byte(`<meta charset="iso-8859-1">Hello`), false},
+		{"Latin1 content", []byte{0xFF, 0xFE}, false}, // Invalid UTF-8 sequence
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := converter.IsUTF8(tt.bytes)
 			assert.Equal(t, tt.expect, result)
+		})
+	}
+}
+
+// TestGetEncoder tests getting encoders for charsets
+func TestGetEncoder(t *testing.T) {
+	tests := []struct {
+		name         string
+		charsetName  string
+		expectError  bool
+	}{
+		{"UTF-8", "utf-8", false},
+		{"ISO-8859-1", "iso-8859-1", false},
+		{"Windows-1252", "windows-1252", false},
+		{"Unsupported charset", "unknown-charset", true},
+		{"Empty charset", "", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			enc, err := converter.GetEncoder(tt.charsetName)
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Nil(t, enc)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, enc)
+			}
 		})
 	}
 }
