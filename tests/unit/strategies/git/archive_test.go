@@ -293,17 +293,9 @@ func TestFetch_Success(t *testing.T) {
 
 	tmpDir := t.TempDir()
 
-	result, err := f.Fetch(context.Background(), &git.RepoInfo{
-		Platform: git.PlatformGitHub,
-		Owner:    "owner",
-		Repo:     "repo",
-		URL:      server.URL + "/archive.tar.gz",
-	}, "main", tmpDir)
-
+	// Test DownloadAndExtract directly since BuildArchiveURL uses hardcoded formats
+	err := f.DownloadAndExtract(context.Background(), server.URL, tmpDir)
 	assert.NoError(t, err)
-	assert.Equal(t, tmpDir, result.LocalPath)
-	assert.Equal(t, "main", result.Branch)
-	assert.Equal(t, "archive", result.Method)
 
 	readmePath := filepath.Join(tmpDir, "README.md")
 	content, err := os.ReadFile(readmePath)

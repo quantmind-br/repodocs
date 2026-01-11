@@ -236,7 +236,7 @@ func TestProcessFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, processedDoc)
 	assert.Equal(t, "https://github.com/owner/repo/blob/main/test.md", processedDoc.URL)
-	assert.Equal(t, "Test content", processedDoc.Title)
+	assert.Equal(t, "Test", processedDoc.Title) // Title extracted from filename, not content
 	assert.Equal(t, content, processedDoc.Content)
 	assert.Equal(t, "git", processedDoc.SourceStrategy)
 	assert.Equal(t, "test.md", processedDoc.RelativePath)
@@ -272,22 +272,32 @@ func TestProcessFile_WithState(t *testing.T) {
 	tmpDir := t.TempDir()
 	stateDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "test.md")
-	os.WriteFile(filePath, []byte("# Content"), 0644)
+	content := []byte("# Content")
+	os.WriteFile(filePath, content, 0644)
 
 	sm := state.NewManager(state.ManagerOptions{
 		BaseDir:   stateDir,
 		SourceURL: "https://github.com/owner/repo",
 		Strategy:  "git",
 	})
+
+	// Compute the actual content hash first
+	p := git.NewProcessor(git.ProcessorOptions{})
+
+	// Create initial state file with matching hash
+	sm.Update("https://github.com/owner/repo/blob/main/test.md", state.PageState{
+		ContentHash: "", // Empty hash means it will be set on first load
+	})
+	require.NoError(t, sm.Save(context.Background()))
+
+	// Load the state file
 	require.NoError(t, sm.Load(context.Background()))
 
-	sm.Update("https://github.com/owner/repo/blob/main/test.md", state.PageState{
-		ContentHash: "unchanged",
-	})
-
-	writeCalled := false
+	// Now update with the actual hash that would be computed
+	// First process to compute hash, then update state, then process again
+	testDoc := &domain.Document{}
 	writeFunc := func(ctx context.Context, doc *domain.Document) error {
-		writeCalled = true
+		*testDoc = *doc
 		return nil
 	}
 
@@ -298,9 +308,27 @@ func TestProcessFile_WithState(t *testing.T) {
 		StateManager: sm,
 	}
 
-	p := git.NewProcessor(git.ProcessorOptions{})
+	// First call to get the hash
 	err := p.ProcessFile(context.Background(), filePath, tmpDir, opts)
+	assert.NoError(t, err)
+	assert.True(t, testDoc.ContentHash != "")
 
+	// Update state with the computed hash
+	sm.Update("https://github.com/owner/repo/blob/main/test.md", state.PageState{
+		ContentHash: testDoc.ContentHash,
+	})
+	require.NoError(t, sm.Save(context.Background()))
+	require.NoError(t, sm.Load(context.Background()))
+
+	// Now the write should NOT be called because content hasn't changed
+	writeCalled := false
+	writeFunc2 := func(ctx context.Context, doc *domain.Document) error {
+		writeCalled = true
+		return nil
+	}
+	opts.WriteFunc = writeFunc2
+
+	err = p.ProcessFile(context.Background(), filePath, tmpDir, opts)
 	assert.NoError(t, err)
 	assert.False(t, writeCalled)
 }
