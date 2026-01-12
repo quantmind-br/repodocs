@@ -13,30 +13,31 @@ import (
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 )
 
-// LLMSStrategy extracts documentation from llms.txt files
 type LLMSStrategy struct {
-	deps           *Dependencies
-	fetcher        domain.Fetcher
-	converter      *converter.Pipeline
-	markdownReader *converter.MarkdownReader
-	writer         *output.Writer
-	logger         *utils.Logger
+	deps            *Dependencies
+	fetcher         domain.Fetcher
+	converter       *converter.Pipeline
+	markdownReader  *converter.MarkdownReader
+	plainTextReader *converter.PlainTextReader
+	writer          *output.Writer
+	logger          *utils.Logger
 }
 
-// NewLLMSStrategy creates a new LLMS strategy
 func NewLLMSStrategy(deps *Dependencies) *LLMSStrategy {
 	if deps == nil {
 		return &LLMSStrategy{
-			markdownReader: converter.NewMarkdownReader(),
+			markdownReader:  converter.NewMarkdownReader(),
+			plainTextReader: converter.NewPlainTextReader(),
 		}
 	}
 	return &LLMSStrategy{
-		deps:           deps,
-		fetcher:        deps.Fetcher,
-		converter:      deps.Converter,
-		markdownReader: converter.NewMarkdownReader(),
-		writer:         deps.Writer,
-		logger:         deps.Logger,
+		deps:            deps,
+		fetcher:         deps.Fetcher,
+		converter:       deps.Converter,
+		markdownReader:  converter.NewMarkdownReader(),
+		plainTextReader: converter.NewPlainTextReader(),
+		writer:          deps.Writer,
+		logger:          deps.Logger,
 	}
 }
 
@@ -125,6 +126,12 @@ func (s *LLMSStrategy) Execute(ctx context.Context, url string, opts Options) er
 			doc, err = s.markdownReader.Read(string(pageResp.Body), link.URL)
 			if err != nil {
 				s.logger.Warn().Err(err).Str("url", link.URL).Msg("Failed to read markdown")
+				return nil
+			}
+		} else if converter.IsPlainTextContent(pageResp.ContentType, link.URL) {
+			doc, err = s.plainTextReader.Read(string(pageResp.Body), link.URL)
+			if err != nil {
+				s.logger.Warn().Err(err).Str("url", link.URL).Msg("Failed to read plain text")
 				return nil
 			}
 		} else {

@@ -665,3 +665,233 @@ func TestLLMSStrategy_Execute_ContextCancellation(t *testing.T) {
 	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	assert.Error(t, err)
 }
+
+func TestLLMSStrategy_Execute_PlainTextFile(t *testing.T) {
+	servedContentTypes := make(map[string]string)
+
+	var serverURL string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		if strings.HasSuffix(path, "llms.txt") {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("[Full Docs](" + serverURL + "/llms-full.txt)\n[API Reference](" + serverURL + "/api.html)"))
+			return
+		}
+
+		if strings.HasSuffix(path, ".txt") {
+			servedContentTypes[path] = "text/plain"
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`# Full Documentation
+
+This is the full documentation content in plain text format.
+
+[Link to API](https://example.com/api)`))
+			return
+		}
+
+		servedContentTypes[path] = "text/html"
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head><title>API Reference</title></head>
+<body><h1>API Reference</h1><p>This is HTML content.</p></body>
+</html>`))
+	}))
+	defer server.Close()
+	serverURL = server.URL
+
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	tmpDir := t.TempDir()
+	writer := output.NewWriter(output.WriterOptions{
+		BaseDir: tmpDir,
+		Force:   true,
+	})
+
+	deps := &strategies.Dependencies{
+		Fetcher:   testutil.NewSimpleFetcher(server.URL),
+		Converter: testutil.NewHTMLConverter(t),
+		Logger:    logger,
+		Writer:    writer,
+	}
+
+	strategy := strategies.NewLLMSStrategy(deps)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = tmpDir
+	opts.Concurrency = 1
+
+	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	require.NoError(t, err)
+
+	assert.Equal(t, "text/plain", servedContentTypes["/llms-full.txt"], "Expected .txt file to be served as text/plain")
+	assert.Equal(t, "text/html", servedContentTypes["/api.html"], "Expected .html file to be served as text/html")
+}
+
+func TestLLMSStrategy_Execute_PlainTextContentType(t *testing.T) {
+	var serverURL string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		if strings.HasSuffix(path, "llms.txt") {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("[Plain Content](" + serverURL + "/content)"))
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`Plain Text Content
+
+This is plain text served with text/plain content type
+but without a .txt extension in the URL.`))
+	}))
+	defer server.Close()
+	serverURL = server.URL
+
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	tmpDir := t.TempDir()
+	writer := output.NewWriter(output.WriterOptions{
+		BaseDir: tmpDir,
+		Force:   true,
+	})
+
+	deps := &strategies.Dependencies{
+		Fetcher:   testutil.NewSimpleFetcher(server.URL),
+		Converter: testutil.NewHTMLConverter(t),
+		Logger:    logger,
+		Writer:    writer,
+	}
+
+	strategy := strategies.NewLLMSStrategy(deps)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = tmpDir
+	opts.Concurrency = 1
+
+	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	require.NoError(t, err)
+}
+
+func TestLLMSStrategy_Execute_MixedContentTypes(t *testing.T) {
+	processedFiles := make(map[string]bool)
+
+	var serverURL string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		processedFiles[path] = true
+
+		if strings.HasSuffix(path, "llms.txt") {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("[Plain Text](" + serverURL + "/docs.txt)\n" +
+				"[Markdown](" + serverURL + "/readme.md)\n" +
+				"[HTML Page](" + serverURL + "/page.html)\n" +
+				"[Another Text](" + serverURL + "/notes.txt)"))
+			return
+		}
+
+		switch {
+		case strings.HasSuffix(path, ".txt"):
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("# Plain Text Document\n\nThis is a plain text file."))
+
+		case strings.HasSuffix(path, ".md"):
+			w.Header().Set("Content-Type", "text/markdown")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("# Markdown Document\n\nThis is a **markdown** file."))
+
+		default:
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`<html><head><title>HTML</title></head><body><h1>HTML Document</h1></body></html>`))
+		}
+	}))
+	defer server.Close()
+	serverURL = server.URL
+
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	tmpDir := t.TempDir()
+	writer := output.NewWriter(output.WriterOptions{
+		BaseDir: tmpDir,
+		Force:   true,
+	})
+
+	deps := &strategies.Dependencies{
+		Fetcher:   testutil.NewSimpleFetcher(server.URL),
+		Converter: testutil.NewHTMLConverter(t),
+		Logger:    logger,
+		Writer:    writer,
+	}
+
+	strategy := strategies.NewLLMSStrategy(deps)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = tmpDir
+	opts.Concurrency = 1
+
+	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	require.NoError(t, err)
+
+	assert.True(t, processedFiles["/docs.txt"], "Expected docs.txt to be processed")
+	assert.True(t, processedFiles["/readme.md"], "Expected readme.md to be processed")
+	assert.True(t, processedFiles["/page.html"], "Expected page.html to be processed")
+	assert.True(t, processedFiles["/notes.txt"], "Expected notes.txt to be processed")
+}
+
+func TestLLMSStrategy_Execute_PlainTextWithLinks(t *testing.T) {
+	var serverURL string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		if strings.HasSuffix(path, "llms.txt") {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("[Full Docs](" + serverURL + "/full.txt)"))
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`# Documentation Overview
+
+Welcome to the documentation.
+
+See [Getting Started](https://example.com/start) for initial setup.
+Check [API Reference](https://example.com/api) for details.`))
+	}))
+	defer server.Close()
+	serverURL = server.URL
+
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	tmpDir := t.TempDir()
+	writer := output.NewWriter(output.WriterOptions{
+		BaseDir: tmpDir,
+		Force:   true,
+	})
+
+	deps := &strategies.Dependencies{
+		Fetcher:   testutil.NewSimpleFetcher(server.URL),
+		Converter: testutil.NewHTMLConverter(t),
+		Logger:    logger,
+		Writer:    writer,
+	}
+
+	strategy := strategies.NewLLMSStrategy(deps)
+
+	ctx := context.Background()
+	opts := strategies.DefaultOptions()
+	opts.Output = tmpDir
+	opts.Concurrency = 1
+
+	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	require.NoError(t, err)
+}

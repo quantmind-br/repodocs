@@ -123,7 +123,102 @@ func TestLLMSStrategy_Execute_WithFixture(t *testing.T) {
 	// For production testing, use: go test -run TestLLMSStrategy_Execute_WithFixture ./tests/integration/... -v
 }
 
-// Helper function to create test dependencies for LLMS strategy integration tests
+func TestLLMSStrategy_Execute_PlainTextFile(t *testing.T) {
+	ctx := context.Background()
+	server := testutil.NewTestServer(t)
+
+	llmsContent := "[Full Docs](" + server.URL + "/llms-full.txt)"
+
+	plainTextContent := `# Full Documentation
+
+This is the full documentation content in plain text format.
+It should be processed by PlainTextReader, not the HTML converter.
+
+[Link to API](https://example.com/api)
+[Link to Guide](https://example.com/guide)`
+
+	server.HandleString(t, "/llms.txt", "text/plain", llmsContent)
+	server.HandleString(t, "/llms-full.txt", "text/plain", plainTextContent)
+
+	tempDir := t.TempDir()
+	deps := createTestLLMSDependencies(t, server.URL, tempDir)
+	strategy := strategies.NewLLMSStrategy(deps)
+
+	opts := strategies.DefaultOptions()
+	opts.Output = tempDir
+	opts.Concurrency = 1
+
+	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	require.NoError(t, err)
+
+	outputFiles, err := os.ReadDir(tempDir)
+	require.NoError(t, err)
+	assert.NotEmpty(t, outputFiles, "Expected output files to be created")
+}
+
+func TestLLMSStrategy_Execute_MixedContentTypes(t *testing.T) {
+	ctx := context.Background()
+	server := testutil.NewTestServer(t)
+
+	llmsContent := "[Plain Text](" + server.URL + "/docs.txt)\n" +
+		"[Markdown](" + server.URL + "/readme.md)\n" +
+		"[HTML Page](" + server.URL + "/page.html)"
+
+	plainTextContent := "# Plain Text Document\n\nThis is a plain text file."
+	markdownContent := "# Markdown Document\n\nThis is a **markdown** file."
+	htmlContent := `<!DOCTYPE html><html><head><title>HTML</title></head><body><h1>HTML Document</h1></body></html>`
+
+	server.HandleString(t, "/llms.txt", "text/plain", llmsContent)
+	server.HandleString(t, "/docs.txt", "text/plain", plainTextContent)
+	server.HandleString(t, "/readme.md", "text/markdown", markdownContent)
+	server.HandleString(t, "/page.html", "text/html", htmlContent)
+
+	tempDir := t.TempDir()
+	deps := createTestLLMSDependencies(t, server.URL, tempDir)
+	strategy := strategies.NewLLMSStrategy(deps)
+
+	opts := strategies.DefaultOptions()
+	opts.Output = tempDir
+	opts.Concurrency = 1
+
+	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	require.NoError(t, err)
+
+	outputFiles, err := os.ReadDir(tempDir)
+	require.NoError(t, err)
+	assert.NotEmpty(t, outputFiles, "Expected output files to be created")
+}
+
+func TestLLMSStrategy_Execute_PlainTextContentTypeDetection(t *testing.T) {
+	ctx := context.Background()
+	server := testutil.NewTestServer(t)
+
+	llmsContent := "[Content](" + server.URL + "/content)"
+
+	plainTextContent := `Plain Text Content
+
+This is plain text served with text/plain content type
+but without a .txt extension in the URL.`
+
+	server.HandleString(t, "/llms.txt", "text/plain", llmsContent)
+	server.HandleString(t, "/content", "text/plain; charset=utf-8", plainTextContent)
+
+	tempDir := t.TempDir()
+	deps := createTestLLMSDependencies(t, server.URL, tempDir)
+	strategy := strategies.NewLLMSStrategy(deps)
+
+	opts := strategies.DefaultOptions()
+	opts.Output = tempDir
+	opts.Concurrency = 1
+
+	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	require.NoError(t, err)
+
+	outputFiles, err := os.ReadDir(tempDir)
+	require.NoError(t, err)
+	assert.NotEmpty(t, outputFiles, "Expected output files to be created for plain text content")
+}
+
 func createTestLLMSDependencies(t *testing.T, baseURL, outputDir string) *strategies.Dependencies {
 	t.Helper()
 

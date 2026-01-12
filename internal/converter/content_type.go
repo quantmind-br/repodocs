@@ -30,6 +30,27 @@ func IsMarkdownContent(contentType, url string) bool {
 	return false
 }
 
+// IsPlainTextContent checks if the content is plain text.
+// Returns true for text/plain content type or .txt URL extension.
+// Query strings and fragments are stripped before checking the extension.
+func IsPlainTextContent(contentType, url string) bool {
+	ct := strings.ToLower(contentType)
+	if strings.Contains(ct, "text/plain") {
+		return true
+	}
+
+	lowerURL := strings.ToLower(url)
+
+	if idx := strings.Index(lowerURL, "?"); idx != -1 {
+		lowerURL = lowerURL[:idx]
+	}
+	if idx := strings.Index(lowerURL, "#"); idx != -1 {
+		lowerURL = lowerURL[:idx]
+	}
+
+	return strings.HasSuffix(lowerURL, ".txt")
+}
+
 // IsHTMLContent checks if the content type indicates HTML content.
 // Returns true for empty content type (assumes HTML for backward compatibility).
 func IsHTMLContent(contentType string) bool {
