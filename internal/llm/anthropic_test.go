@@ -13,7 +13,6 @@ import (
 	"github.com/quantmind-br/repodocs-go/internal/domain"
 )
 
-
 func TestAnthropicProvider_Name(t *testing.T) {
 	provider, err := NewAnthropicProvider(ProviderConfig{
 		APIKey:  "test-key",

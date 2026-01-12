@@ -523,4 +523,3 @@ func TestGoogleProvider_Complete_GenericHTTPError(t *testing.T) {
 	require.ErrorAs(t, err, &llmErr)
 	assert.Equal(t, http.StatusInternalServerError, llmErr.StatusCode)
 }
-

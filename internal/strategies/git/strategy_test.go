@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -1556,8 +1557,11 @@ func TestProcessor_ProcessFiles_Multiple(t *testing.T) {
 	require.NoError(t, os.WriteFile(file2, []byte("# File 2"), 0644))
 
 	var processedFiles []string
+	var mu sync.Mutex
 	writeFunc := func(ctx context.Context, doc *domain.Document) error {
+		mu.Lock()
 		processedFiles = append(processedFiles, doc.Title)
+		mu.Unlock()
 		return nil
 	}
 

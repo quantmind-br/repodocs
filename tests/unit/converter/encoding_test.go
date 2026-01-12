@@ -72,9 +72,9 @@ func TestIsUTF8(t *testing.T) {
 // TestGetEncoder tests getting encoders for charsets
 func TestGetEncoder(t *testing.T) {
 	tests := []struct {
-		name         string
-		charsetName  string
-		expectError  bool
+		name        string
+		charsetName string
+		expectError bool
 	}{
 		{"UTF-8", "utf-8", false},
 		{"ISO-8859-1", "iso-8859-1", false},

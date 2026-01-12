@@ -220,7 +220,7 @@ func TestMin(t *testing.T) {
 	}
 }
 
-// TestIsUTF8_ValidUTF8 tests valid UTF-8 strings  
+// TestIsUTF8_ValidUTF8 tests valid UTF-8 strings
 func TestIsUTF8_ValidUTF8(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -241,7 +241,6 @@ func TestIsUTF8_ValidUTF8(t *testing.T) {
 		})
 	}
 }
-
 
 // TestGetEncoder tests getting encoders
 func TestGetEncoder(t *testing.T) {

@@ -164,12 +164,12 @@ func TestGitStrategy_WithSubdirectory(t *testing.T) {
 	repoURL := "https://github.com/golang/example"
 	opts := strategies.DefaultOptions()
 	opts.Output = filepath.Join(outputDir, "subdir-test")
-	opts.FilterURL = "hello" // Test specific subdirectory
+	opts.FilterURL = "hello" // Test specific subdirectory that doesn't have docs
 
 	err := strategy.Execute(context.Background(), repoURL, opts)
-	// Should complete without error even if directory doesn't exist
-	// The strategy should handle it gracefully
-	require.NoError(t, err)
+	// When a filter path is specified and no files are found, it returns an error
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no documentation files found under path: hello")
 }
 
 // TestGitStrategy_InvalidRepo tests handling invalid repositories
