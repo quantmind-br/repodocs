@@ -218,7 +218,51 @@ RepoDocs follows a decoupled, interface-driven architecture structured as a proc
 
 ## Configuration
 
-RepoDocs can be configured via CLI flags or a configuration file (default: `~/.repodocs/config.yaml`).
+RepoDocs can be configured via CLI flags, environment variables, or a configuration file (default: `~/.repodocs/config.yaml`).
+
+### Interactive Configuration
+
+Use the interactive TUI to configure RepoDocs:
+
+```bash
+repodocs config
+```
+
+This opens an interactive terminal interface where you can navigate through configuration categories, edit values with validation, and save changes.
+
+### Configuration Commands
+
+| Command | Description |
+|---------|-------------|
+| `repodocs config` | Open interactive configuration TUI |
+| `repodocs config edit` | Open interactive configuration TUI |
+| `repodocs config show` | Display current configuration as YAML |
+| `repodocs config init` | Create default config file at ~/.repodocs/config.yaml |
+| `repodocs config path` | Show configuration file path |
+
+### Accessibility
+
+For screen reader support, enable accessible mode:
+
+```bash
+# Using environment variable
+ACCESSIBLE=1 repodocs config
+
+# Using flag
+repodocs config --accessible
+```
+
+### Configuration Categories
+
+The interactive TUI organizes settings into categories:
+
+- **Output**: Directory, flat structure, overwrite behavior, JSON metadata
+- **Concurrency**: Workers, timeout, max crawl depth
+- **Cache**: Enable/disable, TTL, cache directory
+- **Rendering**: JavaScript rendering, JS timeout, scroll behavior
+- **Stealth**: User-Agent, random delays
+- **Logging**: Log level, log format
+- **LLM**: Provider, API key, model, temperature, metadata enhancement
 
 ### Common Flags
 

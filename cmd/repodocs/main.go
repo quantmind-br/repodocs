@@ -481,7 +481,10 @@ var configPathCmd = &cobra.Command{
 	},
 }
 
+var accessibleMode bool
+
 func init() {
+	configCmd.PersistentFlags().BoolVar(&accessibleMode, "accessible", false, "Enable accessible mode for screen readers")
 	configCmd.AddCommand(configEditCmd)
 	configCmd.AddCommand(configShowCmd)
 	configCmd.AddCommand(configInitCmd)
@@ -494,9 +497,12 @@ func runConfigEdit(cmd *cobra.Command, args []string) error {
 		cfg = config.Default()
 	}
 
+	accessible := accessibleMode || os.Getenv("ACCESSIBLE") != ""
+
 	return tui.Run(tui.Options{
-		Config:   cfg,
-		SaveFunc: config.Save,
+		Config:     cfg,
+		SaveFunc:   config.Save,
+		Accessible: accessible,
 	})
 }
 

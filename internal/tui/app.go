@@ -32,11 +32,13 @@ type Model struct {
 	height         int
 	dirty          bool
 	saveFunc       func(*config.Config) error
+	accessible     bool
 }
 
 type Options struct {
-	Config   *config.Config
-	SaveFunc func(*config.Config) error
+	Config     *config.Config
+	SaveFunc   func(*config.Config) error
+	Accessible bool
 }
 
 func NewModel(opts Options) Model {
@@ -50,6 +52,7 @@ func NewModel(opts Options) Model {
 		values:         FromConfig(cfg),
 		originalConfig: cfg,
 		saveFunc:       opts.SaveFunc,
+		accessible:     opts.Accessible,
 	}
 }
 
@@ -119,6 +122,9 @@ func (m Model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.state = stateForm
 		category := Categories[m.menuIndex]
 		m.currentForm = GetFormForCategory(category.ID, m.values)
+		if m.accessible {
+			m.currentForm = m.currentForm.WithAccessible(true)
+		}
 		return m, m.currentForm.Init()
 
 	case "s":
