@@ -128,11 +128,16 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("logging.level", DefaultLogLevel)
 	v.SetDefault("logging.format", DefaultLogFormat)
 
-	// LLM defaults (only optional parameters have defaults)
+	// LLM defaults (all keys must be registered for env var binding)
+	v.SetDefault("llm.provider", "")
+	v.SetDefault("llm.api_key", "")
+	v.SetDefault("llm.base_url", "")
+	v.SetDefault("llm.model", "")
 	v.SetDefault("llm.max_tokens", DefaultLLMMaxTokens)
 	v.SetDefault("llm.temperature", DefaultLLMTemperature)
 	v.SetDefault("llm.timeout", DefaultLLMTimeout)
 	v.SetDefault("llm.max_retries", DefaultLLMMaxRetries)
+	v.SetDefault("llm.enhance_metadata", false)
 }
 
 // EnsureConfigDir creates the config directory if it doesn't exist
