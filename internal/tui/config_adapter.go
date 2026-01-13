@@ -2,22 +2,23 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/config"
 )
 
 // ConfigValues holds form values that map to Config struct.
-// Duration fields are stored as strings for form editing.
+// Numeric and duration fields are stored as strings for form editing.
 type ConfigValues struct {
 	OutputDirectory string
 	OutputFlat      bool
 	OutputOverwrite bool
 	JSONMetadata    bool
 
-	Workers  int
+	Workers  string
 	Timeout  string
-	MaxDepth int
+	MaxDepth string
 
 	CacheEnabled   bool
 	CacheTTL       string
@@ -38,8 +39,8 @@ type ConfigValues struct {
 	LLMAPIKey          string
 	LLMBaseURL         string
 	LLMModel           string
-	LLMMaxTokens       int
-	LLMTemperature     float64
+	LLMMaxTokens       string
+	LLMTemperature     string
 	LLMTimeout         string
 	LLMEnhanceMetadata bool
 
@@ -54,9 +55,9 @@ func FromConfig(cfg *config.Config) *ConfigValues {
 		OutputOverwrite: cfg.Output.Overwrite,
 		JSONMetadata:    cfg.Output.JSONMetadata,
 
-		Workers:  cfg.Concurrency.Workers,
+		Workers:  strconv.Itoa(cfg.Concurrency.Workers),
 		Timeout:  formatDuration(cfg.Concurrency.Timeout),
-		MaxDepth: cfg.Concurrency.MaxDepth,
+		MaxDepth: strconv.Itoa(cfg.Concurrency.MaxDepth),
 
 		CacheEnabled:   cfg.Cache.Enabled,
 		CacheTTL:       formatDuration(cfg.Cache.TTL),
@@ -77,8 +78,8 @@ func FromConfig(cfg *config.Config) *ConfigValues {
 		LLMAPIKey:          cfg.LLM.APIKey,
 		LLMBaseURL:         cfg.LLM.BaseURL,
 		LLMModel:           cfg.LLM.Model,
-		LLMMaxTokens:       cfg.LLM.MaxTokens,
-		LLMTemperature:     cfg.LLM.Temperature,
+		LLMMaxTokens:       strconv.Itoa(cfg.LLM.MaxTokens),
+		LLMTemperature:     strconv.FormatFloat(cfg.LLM.Temperature, 'f', 2, 64),
 		LLMTimeout:         formatDuration(cfg.LLM.Timeout),
 		LLMEnhanceMetadata: cfg.LLM.EnhanceMetadata,
 
@@ -88,6 +89,16 @@ func FromConfig(cfg *config.Config) *ConfigValues {
 
 // ToConfig converts ConfigValues back to a Config struct
 func (v *ConfigValues) ToConfig() (*config.Config, error) {
+	workers, err := parseIntOrDefault(v.Workers, config.DefaultWorkers)
+	if err != nil {
+		return nil, fmt.Errorf("invalid workers: %w", err)
+	}
+
+	maxDepth, err := parseIntOrDefault(v.MaxDepth, config.DefaultMaxDepth)
+	if err != nil {
+		return nil, fmt.Errorf("invalid max_depth: %w", err)
+	}
+
 	timeout, err := parseDurationOrDefault(v.Timeout, config.DefaultTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("invalid timeout: %w", err)
@@ -113,6 +124,16 @@ func (v *ConfigValues) ToConfig() (*config.Config, error) {
 		return nil, fmt.Errorf("invalid random_delay_max: %w", err)
 	}
 
+	llmMaxTokens, err := parseIntOrDefault(v.LLMMaxTokens, config.DefaultLLMMaxTokens)
+	if err != nil {
+		return nil, fmt.Errorf("invalid llm_max_tokens: %w", err)
+	}
+
+	llmTemperature, err := parseFloatOrDefault(v.LLMTemperature, config.DefaultLLMTemperature)
+	if err != nil {
+		return nil, fmt.Errorf("invalid llm_temperature: %w", err)
+	}
+
 	llmTimeout, err := parseDurationOrDefault(v.LLMTimeout, 30*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("invalid llm_timeout: %w", err)
@@ -126,9 +147,9 @@ func (v *ConfigValues) ToConfig() (*config.Config, error) {
 			JSONMetadata: v.JSONMetadata,
 		},
 		Concurrency: config.ConcurrencyConfig{
-			Workers:  v.Workers,
+			Workers:  workers,
 			Timeout:  timeout,
-			MaxDepth: v.MaxDepth,
+			MaxDepth: maxDepth,
 		},
 		Cache: config.CacheConfig{
 			Enabled:   v.CacheEnabled,
@@ -154,8 +175,8 @@ func (v *ConfigValues) ToConfig() (*config.Config, error) {
 			APIKey:          v.LLMAPIKey,
 			BaseURL:         v.LLMBaseURL,
 			Model:           v.LLMModel,
-			MaxTokens:       v.LLMMaxTokens,
-			Temperature:     v.LLMTemperature,
+			MaxTokens:       llmMaxTokens,
+			Temperature:     llmTemperature,
 			Timeout:         llmTimeout,
 			EnhanceMetadata: v.LLMEnhanceMetadata,
 		},
@@ -177,4 +198,18 @@ func parseDurationOrDefault(s string, defaultVal time.Duration) (time.Duration, 
 		return defaultVal, nil
 	}
 	return time.ParseDuration(s)
+}
+
+func parseIntOrDefault(s string, defaultVal int) (int, error) {
+	if s == "" {
+		return defaultVal, nil
+	}
+	return strconv.Atoi(s)
+}
+
+func parseFloatOrDefault(s string, defaultVal float64) (float64, error) {
+	if s == "" {
+		return defaultVal, nil
+	}
+	return strconv.ParseFloat(s, 64)
 }

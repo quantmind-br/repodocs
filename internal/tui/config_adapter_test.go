@@ -62,9 +62,9 @@ func TestFromConfig(t *testing.T) {
 	assert.True(t, values.OutputOverwrite)
 	assert.True(t, values.JSONMetadata)
 
-	assert.Equal(t, 10, values.Workers)
+	assert.Equal(t, "10", values.Workers)
 	assert.Equal(t, "1m0s", values.Timeout)
-	assert.Equal(t, 5, values.MaxDepth)
+	assert.Equal(t, "5", values.MaxDepth)
 
 	assert.True(t, values.CacheEnabled)
 	assert.Equal(t, "48h0m0s", values.CacheTTL)
@@ -85,8 +85,8 @@ func TestFromConfig(t *testing.T) {
 	assert.Equal(t, "sk-test", values.LLMAPIKey)
 	assert.Equal(t, "https://api.openai.com/v1", values.LLMBaseURL)
 	assert.Equal(t, "gpt-4", values.LLMModel)
-	assert.Equal(t, 2000, values.LLMMaxTokens)
-	assert.Equal(t, 0.5, values.LLMTemperature)
+	assert.Equal(t, "2000", values.LLMMaxTokens)
+	assert.Equal(t, "0.50", values.LLMTemperature)
 	assert.Equal(t, "45s", values.LLMTimeout)
 	assert.True(t, values.LLMEnhanceMetadata)
 
@@ -100,9 +100,9 @@ func TestToConfig(t *testing.T) {
 		OutputOverwrite: false,
 		JSONMetadata:    true,
 
-		Workers:  5,
+		Workers:  "5",
 		Timeout:  "30s",
-		MaxDepth: 3,
+		MaxDepth: "3",
 
 		CacheEnabled:   true,
 		CacheTTL:       "24h",
@@ -123,8 +123,8 @@ func TestToConfig(t *testing.T) {
 		LLMAPIKey:          "sk-ant-test",
 		LLMBaseURL:         "",
 		LLMModel:           "claude-3-opus",
-		LLMMaxTokens:       4096,
-		LLMTemperature:     0.7,
+		LLMMaxTokens:       "4096",
+		LLMTemperature:     "0.7",
 		LLMTimeout:         "60s",
 		LLMEnhanceMetadata: true,
 

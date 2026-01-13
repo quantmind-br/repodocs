@@ -65,6 +65,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		if m.state == stateForm && m.currentForm != nil {
+			form, cmd := m.currentForm.Update(msg)
+			if f, ok := form.(*huh.Form); ok {
+				m.currentForm = f
+			}
+			return m, cmd
+		}
 		return m, nil
 
 	case tea.KeyMsg:
@@ -145,6 +152,18 @@ func (m Model) updateForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if msg.String() == "esc" {
 		m.state = stateMenu
 		return m, nil
+	}
+	if m.currentForm != nil {
+		form, cmd := m.currentForm.Update(msg)
+		if f, ok := form.(*huh.Form); ok {
+			m.currentForm = f
+		}
+		if m.currentForm.State == huh.StateCompleted {
+			m.dirty = true
+			m.state = stateMenu
+			return m, nil
+		}
+		return m, cmd
 	}
 	return m, nil
 }

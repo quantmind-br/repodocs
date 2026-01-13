@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"strconv"
-
 	"github.com/charmbracelet/huh"
 )
 
@@ -14,7 +12,8 @@ func CreateOutputForm(values *ConfigValues) *huh.Form {
 				Title("Output Directory").
 				Description("Where to save extracted documentation").
 				Value(&values.OutputDirectory).
-				Placeholder("./docs"),
+				Placeholder("./docs").
+				CharLimit(256),
 
 			huh.NewConfirm().
 				Key("flat").
@@ -38,17 +37,15 @@ func CreateOutputForm(values *ConfigValues) *huh.Form {
 }
 
 func CreateConcurrencyForm(values *ConfigValues) *huh.Form {
-	workersStr := strconv.Itoa(values.Workers)
-	maxDepthStr := strconv.Itoa(values.MaxDepth)
-
 	return huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
 				Key("workers").
 				Title("Workers").
 				Description("Number of concurrent workers (1-50)").
-				Value(&workersStr).
+				Value(&values.Workers).
 				Placeholder("5").
+				CharLimit(3).
 				Validate(ValidateIntRange(1, 50)),
 
 			huh.NewInput().
@@ -57,14 +54,16 @@ func CreateConcurrencyForm(values *ConfigValues) *huh.Form {
 				Description("HTTP request timeout (e.g., 30s, 1m)").
 				Value(&values.Timeout).
 				Placeholder("30s").
+				CharLimit(10).
 				Validate(ValidateDuration),
 
 			huh.NewInput().
 				Key("max_depth").
 				Title("Max Crawl Depth").
 				Description("Maximum depth for recursive crawling (1-100)").
-				Value(&maxDepthStr).
+				Value(&values.MaxDepth).
 				Placeholder("4").
+				CharLimit(3).
 				Validate(ValidateIntRange(1, 100)),
 		),
 	).WithTheme(GetTheme())
@@ -85,6 +84,7 @@ func CreateCacheForm(values *ConfigValues) *huh.Form {
 				Description("How long to keep cached pages (e.g., 24h, 7d)").
 				Value(&values.CacheTTL).
 				Placeholder("24h").
+				CharLimit(10).
 				Validate(ValidateDuration),
 
 			huh.NewInput().
@@ -92,7 +92,8 @@ func CreateCacheForm(values *ConfigValues) *huh.Form {
 				Title("Cache Directory").
 				Description("Directory for cache storage").
 				Value(&values.CacheDirectory).
-				Placeholder("~/.repodocs/cache"),
+				Placeholder("~/.repodocs/cache").
+				CharLimit(256),
 		),
 	).WithTheme(GetTheme())
 }
@@ -112,6 +113,7 @@ func CreateRenderingForm(values *ConfigValues) *huh.Form {
 				Description("Timeout for JavaScript rendering (e.g., 10s, 30s)").
 				Value(&values.JSTimeout).
 				Placeholder("10s").
+				CharLimit(10).
 				Validate(ValidateDuration),
 
 			huh.NewConfirm().
@@ -131,7 +133,8 @@ func CreateStealthForm(values *ConfigValues) *huh.Form {
 				Title("User Agent").
 				Description("Custom User-Agent header (leave empty for default)").
 				Value(&values.UserAgent).
-				Placeholder("Mozilla/5.0..."),
+				Placeholder("Mozilla/5.0...").
+				CharLimit(256),
 
 			huh.NewInput().
 				Key("delay_min").
@@ -139,6 +142,7 @@ func CreateStealthForm(values *ConfigValues) *huh.Form {
 				Description("Minimum delay between requests (e.g., 100ms, 1s)").
 				Value(&values.RandomDelayMin).
 				Placeholder("100ms").
+				CharLimit(10).
 				Validate(ValidateDuration),
 
 			huh.NewInput().
@@ -147,6 +151,7 @@ func CreateStealthForm(values *ConfigValues) *huh.Form {
 				Description("Maximum delay between requests (e.g., 500ms, 2s)").
 				Value(&values.RandomDelayMax).
 				Placeholder("500ms").
+				CharLimit(10).
 				Validate(ValidateDuration),
 		),
 	).WithTheme(GetTheme())
@@ -183,9 +188,6 @@ func CreateLoggingForm(values *ConfigValues) *huh.Form {
 }
 
 func CreateLLMForm(values *ConfigValues) *huh.Form {
-	maxTokensStr := strconv.Itoa(values.LLMMaxTokens)
-	tempStr := strconv.FormatFloat(values.LLMTemperature, 'f', 2, 64)
-
 	return huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
@@ -212,30 +214,34 @@ func CreateLLMForm(values *ConfigValues) *huh.Form {
 				Title("Base URL").
 				Description("Custom API endpoint (leave empty for default)").
 				Value(&values.LLMBaseURL).
-				Placeholder("https://api.openai.com/v1"),
+				Placeholder("https://api.openai.com/v1").
+				CharLimit(256),
 
 			huh.NewInput().
 				Key("model").
 				Title("Model").
 				Description("Model name to use").
 				Value(&values.LLMModel).
-				Placeholder("gpt-4o-mini"),
+				Placeholder("gpt-4o-mini").
+				CharLimit(64),
 		),
 		huh.NewGroup(
 			huh.NewInput().
 				Key("max_tokens").
 				Title("Max Tokens").
 				Description("Maximum tokens for LLM response").
-				Value(&maxTokensStr).
+				Value(&values.LLMMaxTokens).
 				Placeholder("1000").
+				CharLimit(10).
 				Validate(ValidatePositiveInt),
 
 			huh.NewInput().
 				Key("temperature").
 				Title("Temperature").
 				Description("Creativity level (0.0-2.0)").
-				Value(&tempStr).
+				Value(&values.LLMTemperature).
 				Placeholder("0.7").
+				CharLimit(10).
 				Validate(ValidateFloatRange(0, 2)),
 
 			huh.NewInput().
@@ -244,6 +250,7 @@ func CreateLLMForm(values *ConfigValues) *huh.Form {
 				Description("Timeout for LLM requests").
 				Value(&values.LLMTimeout).
 				Placeholder("30s").
+				CharLimit(10).
 				Validate(ValidateDuration),
 
 			huh.NewConfirm().
