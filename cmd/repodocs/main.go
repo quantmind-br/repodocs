@@ -14,10 +14,12 @@ import (
 	"github.com/quantmind-br/repodocs-go/internal/config"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"github.com/quantmind-br/repodocs-go/internal/manifest"
+	"github.com/quantmind-br/repodocs-go/internal/tui"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
 	"github.com/quantmind-br/repodocs-go/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -108,6 +110,7 @@ func init() {
 	// Add subcommands
 	rootCmd.AddCommand(doctorCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(configCmd)
 }
 
 func initConfig() {
@@ -439,4 +442,91 @@ var versionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(version.Full())
 	},
+}
+
+var configCmd = &cobra.Command{
+	Use:   "config",
+	Short: "Manage RepoDocs configuration",
+	Long:  "View, edit, and manage RepoDocs configuration interactively.",
+	RunE:  runConfigEdit,
+}
+
+var configEditCmd = &cobra.Command{
+	Use:   "edit",
+	Short: "Edit configuration interactively",
+	Long:  "Open an interactive TUI to edit RepoDocs configuration.",
+	RunE:  runConfigEdit,
+}
+
+var configShowCmd = &cobra.Command{
+	Use:   "show",
+	Short: "Show current configuration",
+	Long:  "Display the current configuration in YAML format.",
+	RunE:  runConfigShow,
+}
+
+var configInitCmd = &cobra.Command{
+	Use:   "init",
+	Short: "Initialize configuration file",
+	Long:  "Create a default configuration file at ~/.repodocs/config.yaml.",
+	RunE:  runConfigInit,
+}
+
+var configPathCmd = &cobra.Command{
+	Use:   "path",
+	Short: "Show configuration file path",
+	Long:  "Display the path to the configuration file.",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(config.ConfigFilePath())
+	},
+}
+
+func init() {
+	configCmd.AddCommand(configEditCmd)
+	configCmd.AddCommand(configShowCmd)
+	configCmd.AddCommand(configInitCmd)
+	configCmd.AddCommand(configPathCmd)
+}
+
+func runConfigEdit(cmd *cobra.Command, args []string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		cfg = config.Default()
+	}
+
+	return tui.Run(tui.Options{
+		Config:   cfg,
+		SaveFunc: config.Save,
+	})
+}
+
+func runConfigShow(cmd *cobra.Command, args []string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	fmt.Println(string(data))
+	return nil
+}
+
+func runConfigInit(cmd *cobra.Command, args []string) error {
+	path := config.ConfigFilePath()
+
+	if _, err := os.Stat(path); err == nil {
+		return fmt.Errorf("config file already exists at %s (use --force to overwrite)", path)
+	}
+
+	cfg := config.Default()
+	if err := config.Save(cfg); err != nil {
+		return fmt.Errorf("failed to create config: %w", err)
+	}
+
+	fmt.Printf("Created default configuration at %s\n", path)
+	return nil
 }
