@@ -218,22 +218,22 @@ func TestParseDocsRSPath(t *testing.T) {
 // TestParseDocsRSPathWithHost tests docs.rs URL parsing with custom host
 func TestParseDocsRSPathWithHost(t *testing.T) {
 	tests := []struct {
-		name        string
-		url         string
+		name         string
+		url          string
 		expectedHost string
-		wantErr     bool
+		wantErr      bool
 	}{
 		{
-			name:        "matches custom host",
-			url:         "https://custom.docs.rs/serde",
+			name:         "matches custom host",
+			url:          "https://custom.docs.rs/serde",
 			expectedHost: "custom.docs.rs",
-			wantErr:     false,
+			wantErr:      false,
 		},
 		{
-			name:        "doesn't match custom host",
-			url:         "https://other.docs.rs/serde",
+			name:         "doesn't match custom host",
+			url:          "https://other.docs.rs/serde",
 			expectedHost: "custom.docs.rs",
-			wantErr:     true,
+			wantErr:      true,
 		},
 	}
 

@@ -467,9 +467,9 @@ func TestNewRenderer(t *testing.T) {
 
 	t.Run("applies zero timeout defaults", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  0,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   0,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -481,9 +481,9 @@ func TestNewRenderer(t *testing.T) {
 
 	t.Run("applies zero max tabs defaults", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  30 * time.Second,
-			MaxTabs:  0,
-			Headless: true,
+			Timeout:   30 * time.Second,
+			MaxTabs:   0,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -497,9 +497,9 @@ func TestNewRenderer(t *testing.T) {
 
 	t.Run("respects custom timeout", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  30 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   30 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -511,9 +511,9 @@ func TestNewRenderer(t *testing.T) {
 
 	t.Run("respects custom max tabs", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  3,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   3,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -527,10 +527,10 @@ func TestNewRenderer(t *testing.T) {
 
 	t.Run("respects stealth option", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Stealth:  false,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Stealth:   false,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -542,9 +542,9 @@ func TestNewRenderer(t *testing.T) {
 
 	t.Run("respects headless option", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: false,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  false,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -563,9 +563,9 @@ func TestRender(t *testing.T) {
 
 	t.Run("renders simple HTML page", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -590,9 +590,9 @@ func TestRender(t *testing.T) {
 
 	t.Run("applies default timeout when not specified", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  30 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   30 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -613,9 +613,9 @@ func TestRender(t *testing.T) {
 
 	t.Run("respects context cancellation", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -638,9 +638,9 @@ func TestRender(t *testing.T) {
 
 	t.Run("handles navigation error gracefully", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -661,9 +661,9 @@ func TestRender(t *testing.T) {
 
 	t.Run("waits for selector when specified", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -686,9 +686,9 @@ func TestRender(t *testing.T) {
 
 	t.Run("scrolls to end when requested", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -710,9 +710,9 @@ func TestRender(t *testing.T) {
 
 	t.Run("waits for network idle when specified", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -741,9 +741,9 @@ func TestSetCookies(t *testing.T) {
 
 	t.Run("sets cookies with domain", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -760,14 +760,14 @@ func TestSetCookies(t *testing.T) {
 
 		cookies := []*http.Cookie{
 			{
-				Name:  "test1",
-				Value: "value1",
+				Name:   "test1",
+				Value:  "value1",
 				Domain: ".example.com",
 				Path:   "/",
 			},
 			{
-				Name:  "test2",
-				Value: "value2",
+				Name:   "test2",
+				Value:  "value2",
 				Domain: ".example.com",
 				Path:   "/api",
 			},
@@ -779,9 +779,9 @@ func TestSetCookies(t *testing.T) {
 
 	t.Run("sets cookies without domain (extracted from URL)", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -810,9 +810,9 @@ func TestSetCookies(t *testing.T) {
 
 	t.Run("sets cookies without path (defaults to /)", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -829,8 +829,8 @@ func TestSetCookies(t *testing.T) {
 
 		cookies := []*http.Cookie{
 			{
-				Name:  "test",
-				Value: "value",
+				Name:   "test",
+				Value:  "value",
 				Domain: ".example.com",
 				// Path will default to "/"
 			},
@@ -842,9 +842,9 @@ func TestSetCookies(t *testing.T) {
 
 	t.Run("sets cookie with secure flag", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -875,9 +875,9 @@ func TestSetCookies(t *testing.T) {
 
 	t.Run("handles invalid URL", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -903,9 +903,9 @@ func TestSetCookies(t *testing.T) {
 
 	t.Run("handles empty cookies list", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -933,9 +933,9 @@ func TestScrollToEnd(t *testing.T) {
 
 	t.Run("scrolls page with content", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -966,9 +966,9 @@ func TestScrollToEnd(t *testing.T) {
 
 	t.Run("handles short page", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -999,9 +999,9 @@ func TestScrollToEnd(t *testing.T) {
 
 	t.Run("scrolls back to top", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -1045,9 +1045,9 @@ func TestApplyStealthMode(t *testing.T) {
 
 	t.Run("applies stealth mode to page", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -1068,9 +1068,9 @@ func TestApplyStealthMode(t *testing.T) {
 
 	t.Run("sets viewport", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)
@@ -1099,9 +1099,9 @@ func TestApplyStealthMode(t *testing.T) {
 
 	t.Run("hides webdriver flag", func(t *testing.T) {
 		opts := RendererOptions{
-			Timeout:  60 * time.Second,
-			MaxTabs:  1,
-			Headless: true,
+			Timeout:   60 * time.Second,
+			MaxTabs:   1,
+			Headless:  true,
 			NoSandbox: true,
 		}
 		r, err := NewRenderer(opts)

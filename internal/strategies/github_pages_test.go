@@ -682,14 +682,14 @@ func TestGitHubPagesStrategy_FilterURLs_SkipPatterns(t *testing.T) {
 
 	urls := []string{
 		"https://example.github.io/",
-		"https://example.github.io/api/",          // should be filtered
-		"https://example.github.io/auth/login",    // should be filtered
-		"https://example.github.io/static/js/",    // should be filtered
-		"https://example.github.io/static/css/",   // should be filtered
+		"https://example.github.io/api/",        // should be filtered
+		"https://example.github.io/auth/login",  // should be filtered
+		"https://example.github.io/static/js/",  // should be filtered
+		"https://example.github.io/static/css/", // should be filtered
 		"https://example.github.io/docs/",
 		"https://example.github.io/blog/",
-		"https://example.github.io/assets/",       // should be filtered
-		"https://example.github.io/fonts/",        // should be filtered
+		"https://example.github.io/assets/", // should be filtered
+		"https://example.github.io/fonts/",  // should be filtered
 	}
 
 	opts := Options{
@@ -711,13 +711,13 @@ func TestGitHubPagesStrategy_FilterURLs_ExtensionFilters(t *testing.T) {
 
 	urls := []string{
 		"https://example.github.io/docs/",
-		"https://example.github.io/image.png",     // should be filtered
-		"https://example.github.io/style.css",     // should be filtered
-		"https://example.github.io/script.js",     // should be filtered
-		"https://example.github.io/data.json",     // should be filtered
-		"https://example.github.io/video.mp4",     // should be filtered
-		"https://example.github.io/guide.html",    // html should be kept
-		"https://example.github.io/page/",         // no extension should be kept
+		"https://example.github.io/image.png",  // should be filtered
+		"https://example.github.io/style.css",  // should be filtered
+		"https://example.github.io/script.js",  // should be filtered
+		"https://example.github.io/data.json",  // should be filtered
+		"https://example.github.io/video.mp4",  // should be filtered
+		"https://example.github.io/guide.html", // html should be kept
+		"https://example.github.io/page/",      // no extension should be kept
 	}
 
 	opts := Options{
@@ -739,9 +739,9 @@ func TestGitHubPagesStrategy_FilterURLs_ExternalLinks(t *testing.T) {
 
 	urls := []string{
 		"https://example.github.io/docs/",
-		"https://another.github.io/page",        // different domain
-		"https://example.com/docs",              // not github.io
-		"https://cdn.example.com/lib.js",        // external resource
+		"https://another.github.io/page", // different domain
+		"https://example.com/docs",       // not github.io
+		"https://cdn.example.com/lib.js", // external resource
 		"https://example.github.io/blog/",
 	}
 
