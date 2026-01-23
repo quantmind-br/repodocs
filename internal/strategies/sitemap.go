@@ -104,14 +104,102 @@ func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options)
 
 	s.logger.Info().Int("count", len(urls)).Msg("Processing URLs from sitemap")
 
-	// Create progress bar
+	return s.processURLs(ctx, urls, opts)
+}
+
+// processSitemapIndex processes a sitemap index file by collecting all URLs first,
+// then processing them with a single progress bar for consistent display.
+func (s *SitemapStrategy) processSitemapIndex(ctx context.Context, sitemap *domain.Sitemap, opts Options) error {
+	s.logger.Info().Int("count", len(sitemap.Sitemaps)).Msg("Processing sitemap index")
+
+	// Collect all URLs from nested sitemaps first
+	var allURLs []domain.SitemapURL
+	for _, sitemapURL := range sitemap.Sitemaps {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		urls, err := s.collectURLsFromSitemap(ctx, sitemapURL)
+		if err != nil {
+			s.logger.Warn().Err(err).Str("url", sitemapURL).Msg("Failed to fetch nested sitemap")
+			continue
+		}
+		allURLs = append(allURLs, urls...)
+	}
+
+	if len(allURLs) == 0 {
+		s.logger.Warn().Msg("No URLs found in sitemap index")
+		return nil
+	}
+
+	// Sort by lastmod (most recent first)
+	sortURLsByLastMod(allURLs)
+
+	// Apply limit
+	if opts.Limit > 0 && len(allURLs) > opts.Limit {
+		allURLs = allURLs[:opts.Limit]
+	}
+
+	s.logger.Info().Int("count", len(allURLs)).Msg("Processing URLs from sitemap index")
+
+	// Process all URLs with a single progress bar
+	return s.processURLs(ctx, allURLs, opts)
+}
+
+// collectURLsFromSitemap fetches and parses a sitemap, returning its URLs.
+// For sitemap indexes, it recursively collects URLs from all nested sitemaps.
+func (s *SitemapStrategy) collectURLsFromSitemap(ctx context.Context, url string) ([]domain.SitemapURL, error) {
+	resp, err := s.fetcher.Get(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decompress if gzipped
+	content := resp.Body
+	if strings.HasSuffix(strings.ToLower(url), ".gz") {
+		content, err = decompressGzip(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Parse sitemap
+	sitemap, err := parseSitemap(content, url)
+	if err != nil {
+		return nil, err
+	}
+
+	// If it's a nested index, recursively collect URLs
+	if sitemap.IsIndex {
+		var allURLs []domain.SitemapURL
+		for _, nestedURL := range sitemap.Sitemaps {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			default:
+			}
+
+			urls, err := s.collectURLsFromSitemap(ctx, nestedURL)
+			if err != nil {
+				s.logger.Warn().Err(err).Str("url", nestedURL).Msg("Failed to fetch nested sitemap")
+				continue
+			}
+			allURLs = append(allURLs, urls...)
+		}
+		return allURLs, nil
+	}
+
+	return sitemap.URLs, nil
+}
+
+func (s *SitemapStrategy) processURLs(ctx context.Context, urls []domain.SitemapURL, opts Options) error {
 	bar := utils.NewProgressBar(len(urls), utils.DescExtracting)
 
-	// Process URLs concurrently
 	errors := utils.ParallelForEach(ctx, urls, opts.Concurrency, func(ctx context.Context, sitemapURL domain.SitemapURL) error {
 		defer bar.Add(1)
 
-		// Check if already exists
 		if !opts.Force && s.writer.Exists(sitemapURL.Loc) {
 			return nil
 		}
@@ -172,25 +260,6 @@ func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options)
 	}
 
 	s.logger.Info().Msg("Sitemap extraction completed")
-	return nil
-}
-
-// processSitemapIndex processes a sitemap index file
-func (s *SitemapStrategy) processSitemapIndex(ctx context.Context, sitemap *domain.Sitemap, opts Options) error {
-	s.logger.Info().Int("count", len(sitemap.Sitemaps)).Msg("Processing sitemap index")
-
-	for _, sitemapURL := range sitemap.Sitemaps {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
-		if err := s.Execute(ctx, sitemapURL, opts); err != nil {
-			s.logger.Warn().Err(err).Str("url", sitemapURL).Msg("Failed to process nested sitemap")
-		}
-	}
-
 	return nil
 }
 
