@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/config"
@@ -44,6 +45,21 @@ type ConfigValues struct {
 	LLMTimeout         string
 	LLMEnhanceMetadata bool
 
+	ExcludePatterns string
+
+	RateLimitEnabled           bool
+	RateLimitRequestsPerMinute string
+	RateLimitBurstSize         string
+	RateLimitMaxRetries        string
+	RateLimitInitialDelay      string
+	RateLimitMaxDelay          string
+	RateLimitMultiplier        string
+
+	CircuitBreakerEnabled          bool
+	CircuitBreakerFailureThreshold string
+	CircuitBreakerSuccessThreshold string
+	CircuitBreakerResetTimeout     string
+
 	Exclude []string
 }
 
@@ -82,6 +98,21 @@ func FromConfig(cfg *config.Config) *ConfigValues {
 		LLMTemperature:     strconv.FormatFloat(cfg.LLM.Temperature, 'f', 2, 64),
 		LLMTimeout:         formatDuration(cfg.LLM.Timeout),
 		LLMEnhanceMetadata: cfg.LLM.EnhanceMetadata,
+
+		ExcludePatterns: strings.Join(cfg.Exclude, "\n"),
+
+		RateLimitEnabled:           cfg.LLM.RateLimit.Enabled,
+		RateLimitRequestsPerMinute: strconv.Itoa(cfg.LLM.RateLimit.RequestsPerMinute),
+		RateLimitBurstSize:         strconv.Itoa(cfg.LLM.RateLimit.BurstSize),
+		RateLimitMaxRetries:        strconv.Itoa(cfg.LLM.RateLimit.MaxRetries),
+		RateLimitInitialDelay:      formatDuration(cfg.LLM.RateLimit.InitialDelay),
+		RateLimitMaxDelay:          formatDuration(cfg.LLM.RateLimit.MaxDelay),
+		RateLimitMultiplier:        strconv.FormatFloat(cfg.LLM.RateLimit.Multiplier, 'f', 2, 64),
+
+		CircuitBreakerEnabled:          cfg.LLM.RateLimit.CircuitBreaker.Enabled,
+		CircuitBreakerFailureThreshold: strconv.Itoa(cfg.LLM.RateLimit.CircuitBreaker.FailureThreshold),
+		CircuitBreakerSuccessThreshold: strconv.Itoa(cfg.LLM.RateLimit.CircuitBreaker.SuccessThresholdHalfOpen),
+		CircuitBreakerResetTimeout:     formatDuration(cfg.LLM.RateLimit.CircuitBreaker.ResetTimeout),
 
 		Exclude: cfg.Exclude,
 	}
@@ -139,6 +170,60 @@ func (v *ConfigValues) ToConfig() (*config.Config, error) {
 		return nil, fmt.Errorf("invalid llm_timeout: %w", err)
 	}
 
+	rateLimitRequestsPerMinute, err := parseIntOrDefault(v.RateLimitRequestsPerMinute, config.DefaultRateLimitRequestsPerMinute)
+	if err != nil {
+		return nil, fmt.Errorf("invalid rate_limit_requests_per_minute: %w", err)
+	}
+
+	rateLimitBurstSize, err := parseIntOrDefault(v.RateLimitBurstSize, config.DefaultRateLimitBurstSize)
+	if err != nil {
+		return nil, fmt.Errorf("invalid rate_limit_burst_size: %w", err)
+	}
+
+	rateLimitMaxRetries, err := parseIntOrDefault(v.RateLimitMaxRetries, config.DefaultRateLimitMaxRetries)
+	if err != nil {
+		return nil, fmt.Errorf("invalid rate_limit_max_retries: %w", err)
+	}
+
+	rateLimitInitialDelay, err := parseDurationOrDefault(v.RateLimitInitialDelay, config.DefaultRateLimitInitialDelay)
+	if err != nil {
+		return nil, fmt.Errorf("invalid rate_limit_initial_delay: %w", err)
+	}
+
+	rateLimitMaxDelay, err := parseDurationOrDefault(v.RateLimitMaxDelay, config.DefaultRateLimitMaxDelay)
+	if err != nil {
+		return nil, fmt.Errorf("invalid rate_limit_max_delay: %w", err)
+	}
+
+	rateLimitMultiplier, err := parseFloatOrDefault(v.RateLimitMultiplier, config.DefaultRateLimitMultiplier)
+	if err != nil {
+		return nil, fmt.Errorf("invalid rate_limit_multiplier: %w", err)
+	}
+
+	circuitBreakerFailureThreshold, err := parseIntOrDefault(v.CircuitBreakerFailureThreshold, config.DefaultCircuitBreakerFailureThreshold)
+	if err != nil {
+		return nil, fmt.Errorf("invalid circuit_breaker_failure_threshold: %w", err)
+	}
+
+	circuitBreakerSuccessThreshold, err := parseIntOrDefault(v.CircuitBreakerSuccessThreshold, config.DefaultCircuitBreakerSuccessThresholdHalfOpen)
+	if err != nil {
+		return nil, fmt.Errorf("invalid circuit_breaker_success_threshold: %w", err)
+	}
+
+	circuitBreakerResetTimeout, err := parseDurationOrDefault(v.CircuitBreakerResetTimeout, config.DefaultCircuitBreakerResetTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("invalid circuit_breaker_reset_timeout: %w", err)
+	}
+
+	excludePatterns := strings.Split(v.ExcludePatterns, "\n")
+	var excludeList []string
+	for _, pattern := range excludePatterns {
+		trimmed := strings.TrimSpace(pattern)
+		if trimmed != "" {
+			excludeList = append(excludeList, trimmed)
+		}
+	}
+
 	cfg := &config.Config{
 		Output: config.OutputConfig{
 			Directory:    v.OutputDirectory,
@@ -179,8 +264,23 @@ func (v *ConfigValues) ToConfig() (*config.Config, error) {
 			Temperature:     llmTemperature,
 			Timeout:         llmTimeout,
 			EnhanceMetadata: v.LLMEnhanceMetadata,
+			RateLimit: config.RateLimitConfig{
+				Enabled:           v.RateLimitEnabled,
+				RequestsPerMinute: rateLimitRequestsPerMinute,
+				BurstSize:         rateLimitBurstSize,
+				MaxRetries:        rateLimitMaxRetries,
+				InitialDelay:      rateLimitInitialDelay,
+				MaxDelay:          rateLimitMaxDelay,
+				Multiplier:        rateLimitMultiplier,
+				CircuitBreaker: config.CircuitBreakerConfig{
+					Enabled:                  v.CircuitBreakerEnabled,
+					FailureThreshold:         circuitBreakerFailureThreshold,
+					SuccessThresholdHalfOpen: circuitBreakerSuccessThreshold,
+					ResetTimeout:             circuitBreakerResetTimeout,
+				},
+			},
 		},
-		Exclude: v.Exclude,
+		Exclude: excludeList,
 	}
 
 	return cfg, nil

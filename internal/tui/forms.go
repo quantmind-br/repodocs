@@ -262,10 +262,131 @@ func CreateLLMForm(values *ConfigValues) *huh.Form {
 	).WithTheme(GetTheme())
 }
 
+func CreateExcludeForm(values *ConfigValues) *huh.Form {
+	return huh.NewForm(
+		huh.NewGroup(
+			huh.NewText().
+				Key("exclude_patterns").
+				Title("Exclude Patterns").
+				Description("Regex patterns to exclude (one per line)").
+				Value(&values.ExcludePatterns).
+				Placeholder(".*\\.pdf$\n.*/login.*"),
+		),
+	).WithTheme(GetTheme())
+}
+
+func CreateRateLimitForm(values *ConfigValues) *huh.Form {
+	return huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Key("enabled").
+				Title("Enable Rate Limiting").
+				Description("Enable rate limiting for LLM API calls").
+				Value(&values.RateLimitEnabled),
+
+			huh.NewInput().
+				Key("requests_per_minute").
+				Title("Requests Per Minute").
+				Description("Maximum requests per minute (1-1000)").
+				Value(&values.RateLimitRequestsPerMinute).
+				Placeholder("60").
+				CharLimit(4).
+				Validate(ValidateIntRange(1, 1000)),
+
+			huh.NewInput().
+				Key("burst_size").
+				Title("Burst Size").
+				Description("Maximum burst requests (1-100)").
+				Value(&values.RateLimitBurstSize).
+				Placeholder("10").
+				CharLimit(3).
+				Validate(ValidateIntRange(1, 100)),
+
+			huh.NewInput().
+				Key("max_retries").
+				Title("Max Retries").
+				Description("Maximum retry attempts (0-10)").
+				Value(&values.RateLimitMaxRetries).
+				Placeholder("3").
+				CharLimit(2).
+				Validate(ValidateIntRange(0, 10)),
+		),
+		huh.NewGroup(
+			huh.NewInput().
+				Key("initial_delay").
+				Title("Initial Delay").
+				Description("Initial delay between retries (e.g., 1s)").
+				Value(&values.RateLimitInitialDelay).
+				Placeholder("1s").
+				CharLimit(10).
+				Validate(ValidateDuration),
+
+			huh.NewInput().
+				Key("max_delay").
+				Title("Max Delay").
+				Description("Maximum delay between retries (e.g., 1m)").
+				Value(&values.RateLimitMaxDelay).
+				Placeholder("1m0s").
+				CharLimit(10).
+				Validate(ValidateDuration),
+
+			huh.NewInput().
+				Key("multiplier").
+				Title("Backoff Multiplier").
+				Description("Backoff multiplier (1.0-5.0)").
+				Value(&values.RateLimitMultiplier).
+				Placeholder("2.0").
+				CharLimit(10).
+				Validate(ValidateFloatRange(1.0, 5.0)),
+		),
+	).WithTheme(GetTheme())
+}
+
+func CreateCircuitBreakerForm(values *ConfigValues) *huh.Form {
+	return huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Key("enabled").
+				Title("Enable Circuit Breaker").
+				Description("Enable circuit breaker for LLM API calls").
+				Value(&values.CircuitBreakerEnabled),
+
+			huh.NewInput().
+				Key("failure_threshold").
+				Title("Failure Threshold").
+				Description("Failures before opening circuit (1-50)").
+				Value(&values.CircuitBreakerFailureThreshold).
+				Placeholder("5").
+				CharLimit(2).
+				Validate(ValidateIntRange(1, 50)),
+
+			huh.NewInput().
+				Key("success_threshold").
+				Title("Success Threshold").
+				Description("Successes in half-open to close (1-10)").
+				Value(&values.CircuitBreakerSuccessThreshold).
+				Placeholder("1").
+				CharLimit(2).
+				Validate(ValidateIntRange(1, 10)),
+
+			huh.NewInput().
+				Key("reset_timeout").
+				Title("Reset Timeout").
+				Description("Time before half-open state (e.g., 30s)").
+				Value(&values.CircuitBreakerResetTimeout).
+				Placeholder("30s").
+				CharLimit(10).
+				Validate(ValidateDuration),
+		),
+	).WithTheme(GetTheme())
+}
+
 func GetFormForCategory(category string, values *ConfigValues) *huh.Form {
 	switch category {
 	case "output":
 		return CreateOutputForm(values)
+	case "exclude":
+		return CreateExcludeForm(values)
 	case "concurrency":
 		return CreateConcurrencyForm(values)
 	case "cache":
@@ -276,8 +397,12 @@ func GetFormForCategory(category string, values *ConfigValues) *huh.Form {
 		return CreateStealthForm(values)
 	case "logging":
 		return CreateLoggingForm(values)
-	case "llm":
+	case "llm", "llm_basic":
 		return CreateLLMForm(values)
+	case "llm_rate_limit":
+		return CreateRateLimitForm(values)
+	case "llm_circuit_breaker":
+		return CreateCircuitBreakerForm(values)
 	default:
 		return nil
 	}

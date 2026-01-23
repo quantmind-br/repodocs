@@ -15,6 +15,7 @@ type state int
 
 const (
 	stateMenu state = iota
+	stateSubMenu
 	stateForm
 	stateConfirm
 	stateSaved
@@ -22,17 +23,20 @@ const (
 )
 
 type Model struct {
-	state          state
-	values         *ConfigValues
-	originalConfig *config.Config
-	menuIndex      int
-	currentForm    *huh.Form
-	err            error
-	width          int
-	height         int
-	dirty          bool
-	saveFunc       func(*config.Config) error
-	accessible     bool
+	state           state
+	values          *ConfigValues
+	originalConfig  *config.Config
+	menuIndex       int
+	currentForm     *huh.Form
+	err             error
+	width           int
+	height          int
+	dirty           bool
+	saveFunc        func(*config.Config) error
+	accessible      bool
+	subMenuIndex    int
+	parentCategory  *Category
+	cameFromSubMenu bool
 }
 
 type Options struct {
@@ -78,6 +82,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.state {
 		case stateMenu:
 			return m.updateMenu(msg)
+		case stateSubMenu:
+			return m.updateSubMenu(msg)
 		case stateForm:
 			return m.updateForm(msg)
 		case stateConfirm:
@@ -126,9 +132,20 @@ func (m Model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.menuIndex == len(Categories) {
 			return m.handleSave()
 		}
-		m.state = stateForm
 		category := Categories[m.menuIndex]
+
+		// Check if category has sub-categories
+		if category.HasSubCategories() {
+			m.state = stateSubMenu
+			m.parentCategory = &Categories[m.menuIndex]
+			m.subMenuIndex = 0
+			return m, nil
+		}
+
+		// No sub-categories - open form directly (existing behavior)
+		m.state = stateForm
 		m.currentForm = GetFormForCategory(category.ID, m.values)
+		m.cameFromSubMenu = false
 		if m.accessible {
 			m.currentForm = m.currentForm.WithAccessible(true)
 		}
@@ -148,9 +165,50 @@ func (m Model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) updateSubMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "ctrl+c":
+		if m.dirty {
+			m.state = stateConfirm
+			return m, nil
+		}
+		return m, tea.Quit
+
+	case "up", "k":
+		if m.subMenuIndex > 0 {
+			m.subMenuIndex--
+		}
+
+	case "down", "j":
+		if m.subMenuIndex < len(m.parentCategory.SubCategories)-1 {
+			m.subMenuIndex++
+		}
+
+	case "enter":
+		subCat := m.parentCategory.SubCategories[m.subMenuIndex]
+		m.state = stateForm
+		m.currentForm = GetFormForCategory(subCat.ID, m.values)
+		m.cameFromSubMenu = true
+		if m.accessible {
+			m.currentForm = m.currentForm.WithAccessible(true)
+		}
+		return m, m.currentForm.Init()
+
+	case "esc":
+		m.state = stateMenu
+		m.parentCategory = nil
+		return m, nil
+	}
+	return m, nil
+}
+
 func (m Model) updateForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if msg.String() == "esc" {
-		m.state = stateMenu
+		if m.cameFromSubMenu && m.parentCategory != nil {
+			m.state = stateSubMenu
+		} else {
+			m.state = stateMenu
+		}
 		return m, nil
 	}
 	if m.currentForm != nil {
@@ -160,7 +218,11 @@ func (m Model) updateForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		if m.currentForm.State == huh.StateCompleted {
 			m.dirty = true
-			m.state = stateMenu
+			if m.cameFromSubMenu && m.parentCategory != nil {
+				m.state = stateSubMenu
+			} else {
+				m.state = stateMenu
+			}
 			return m, nil
 		}
 		return m, cmd
@@ -211,6 +273,8 @@ func (m Model) View() string {
 	switch m.state {
 	case stateMenu:
 		s.WriteString(m.renderMenu())
+	case stateSubMenu:
+		s.WriteString(m.renderSubMenu())
 	case stateForm:
 		if m.currentForm != nil {
 			s.WriteString(m.currentForm.View())
@@ -261,6 +325,34 @@ func (m Model) renderMenu() string {
 	s.WriteString("\n\n")
 
 	help := HelpStyle.Render("↑/↓ navigate • enter select • s save • q quit")
+	s.WriteString(help)
+
+	return s.String()
+}
+
+func (m Model) renderSubMenu() string {
+	var s strings.Builder
+
+	s.WriteString(DescriptionStyle.Render(m.parentCategory.Name + " Settings"))
+	s.WriteString("\n\n")
+
+	for i, subCat := range m.parentCategory.SubCategories {
+		cursor := "  "
+		style := UnselectedStyle
+		if i == m.subMenuIndex {
+			cursor = "> "
+			style = SelectedStyle
+		}
+		line := fmt.Sprintf("%s%s %s", cursor, subCat.Icon, subCat.Name)
+		s.WriteString(style.Render(line))
+		if i == m.subMenuIndex {
+			s.WriteString(DescriptionStyle.Render("  " + subCat.Description))
+		}
+		s.WriteString("\n")
+	}
+
+	s.WriteString("\n")
+	help := HelpStyle.Render("↑/↓ navigate • enter select • esc back")
 	s.WriteString(help)
 
 	return s.String()

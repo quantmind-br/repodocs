@@ -51,8 +51,23 @@ func TestFromConfig(t *testing.T) {
 			Temperature:     0.5,
 			Timeout:         45 * time.Second,
 			EnhanceMetadata: true,
+			RateLimit: config.RateLimitConfig{
+				Enabled:           true,
+				RequestsPerMinute: 120,
+				BurstSize:         20,
+				MaxRetries:        5,
+				InitialDelay:      2 * time.Second,
+				MaxDelay:          120 * time.Second,
+				Multiplier:        2.5,
+				CircuitBreaker: config.CircuitBreakerConfig{
+					Enabled:                  true,
+					FailureThreshold:         10,
+					SuccessThresholdHalfOpen: 2,
+					ResetTimeout:             60 * time.Second,
+				},
+			},
 		},
-		Exclude: []string{"*.pdf", "*.zip"},
+		Exclude: []string{"*.pdf", "*.zip", ".*/admin.*"},
 	}
 
 	values := FromConfig(cfg)
@@ -90,7 +105,25 @@ func TestFromConfig(t *testing.T) {
 	assert.Equal(t, "45s", values.LLMTimeout)
 	assert.True(t, values.LLMEnhanceMetadata)
 
-	assert.Equal(t, []string{"*.pdf", "*.zip"}, values.Exclude)
+	// Exclude patterns (joined with \n)
+	assert.Equal(t, "*.pdf\n*.zip\n.*/admin.*", values.ExcludePatterns)
+
+	// Rate limit
+	assert.True(t, values.RateLimitEnabled)
+	assert.Equal(t, "120", values.RateLimitRequestsPerMinute)
+	assert.Equal(t, "20", values.RateLimitBurstSize)
+	assert.Equal(t, "5", values.RateLimitMaxRetries)
+	assert.Equal(t, "2s", values.RateLimitInitialDelay)
+	assert.Equal(t, "2m0s", values.RateLimitMaxDelay)
+	assert.Equal(t, "2.50", values.RateLimitMultiplier)
+
+	// Circuit breaker
+	assert.True(t, values.CircuitBreakerEnabled)
+	assert.Equal(t, "10", values.CircuitBreakerFailureThreshold)
+	assert.Equal(t, "2", values.CircuitBreakerSuccessThreshold)
+	assert.Equal(t, "1m0s", values.CircuitBreakerResetTimeout)
+
+	assert.Equal(t, []string{"*.pdf", "*.zip", ".*/admin.*"}, values.Exclude)
 }
 
 func TestToConfig(t *testing.T) {
@@ -127,6 +160,21 @@ func TestToConfig(t *testing.T) {
 		LLMTemperature:     "0.7",
 		LLMTimeout:         "60s",
 		LLMEnhanceMetadata: true,
+
+		ExcludePatterns: "pattern1\npattern2\n  pattern3  \n\npattern4",
+
+		RateLimitEnabled:           true,
+		RateLimitRequestsPerMinute: "100",
+		RateLimitBurstSize:         "15",
+		RateLimitMaxRetries:        "4",
+		RateLimitInitialDelay:      "500ms",
+		RateLimitMaxDelay:          "30s",
+		RateLimitMultiplier:        "1.5",
+
+		CircuitBreakerEnabled:          true,
+		CircuitBreakerFailureThreshold: "8",
+		CircuitBreakerSuccessThreshold: "3",
+		CircuitBreakerResetTimeout:     "45s",
 
 		Exclude: []string{"*.log"},
 	}
@@ -166,7 +214,23 @@ func TestToConfig(t *testing.T) {
 	assert.Equal(t, 60*time.Second, cfg.LLM.Timeout)
 	assert.True(t, cfg.LLM.EnhanceMetadata)
 
-	assert.Equal(t, []string{"*.log"}, cfg.Exclude)
+	// Exclude patterns - should be split, trimmed, empty lines removed
+	assert.Equal(t, []string{"pattern1", "pattern2", "pattern3", "pattern4"}, cfg.Exclude)
+
+	// Rate limit
+	assert.True(t, cfg.LLM.RateLimit.Enabled)
+	assert.Equal(t, 100, cfg.LLM.RateLimit.RequestsPerMinute)
+	assert.Equal(t, 15, cfg.LLM.RateLimit.BurstSize)
+	assert.Equal(t, 4, cfg.LLM.RateLimit.MaxRetries)
+	assert.Equal(t, 500*time.Millisecond, cfg.LLM.RateLimit.InitialDelay)
+	assert.Equal(t, 30*time.Second, cfg.LLM.RateLimit.MaxDelay)
+	assert.Equal(t, 1.5, cfg.LLM.RateLimit.Multiplier)
+
+	// Circuit breaker
+	assert.True(t, cfg.LLM.RateLimit.CircuitBreaker.Enabled)
+	assert.Equal(t, 8, cfg.LLM.RateLimit.CircuitBreaker.FailureThreshold)
+	assert.Equal(t, 3, cfg.LLM.RateLimit.CircuitBreaker.SuccessThresholdHalfOpen)
+	assert.Equal(t, 45*time.Second, cfg.LLM.RateLimit.CircuitBreaker.ResetTimeout)
 }
 
 func TestToConfig_InvalidDuration(t *testing.T) {
@@ -233,4 +297,45 @@ func TestToConfig_DefaultDurations(t *testing.T) {
 	assert.Equal(t, config.DefaultJSTimeout, cfg.Rendering.JSTimeout)
 	assert.Equal(t, config.DefaultRandomDelayMin, cfg.Stealth.RandomDelayMin)
 	assert.Equal(t, config.DefaultRandomDelayMax, cfg.Stealth.RandomDelayMax)
+}
+
+func TestToConfig_EmptyExcludePatterns(t *testing.T) {
+	values := &ConfigValues{
+		ExcludePatterns: "",
+	}
+
+	cfg, err := values.ToConfig()
+	require.NoError(t, err)
+
+	// Empty string should result in empty slice (not nil)
+	assert.Empty(t, cfg.Exclude)
+}
+
+func TestToConfig_DefaultRateLimitAndCircuitBreaker(t *testing.T) {
+	values := &ConfigValues{
+		// Empty strings for all new fields
+		RateLimitRequestsPerMinute:     "",
+		RateLimitBurstSize:             "",
+		RateLimitMaxRetries:            "",
+		RateLimitInitialDelay:          "",
+		RateLimitMaxDelay:              "",
+		RateLimitMultiplier:            "",
+		CircuitBreakerFailureThreshold: "",
+		CircuitBreakerSuccessThreshold: "",
+		CircuitBreakerResetTimeout:     "",
+	}
+
+	cfg, err := values.ToConfig()
+	require.NoError(t, err)
+
+	// Should use defaults
+	assert.Equal(t, config.DefaultRateLimitRequestsPerMinute, cfg.LLM.RateLimit.RequestsPerMinute)
+	assert.Equal(t, config.DefaultRateLimitBurstSize, cfg.LLM.RateLimit.BurstSize)
+	assert.Equal(t, config.DefaultRateLimitMaxRetries, cfg.LLM.RateLimit.MaxRetries)
+	assert.Equal(t, config.DefaultRateLimitInitialDelay, cfg.LLM.RateLimit.InitialDelay)
+	assert.Equal(t, config.DefaultRateLimitMaxDelay, cfg.LLM.RateLimit.MaxDelay)
+	assert.Equal(t, config.DefaultRateLimitMultiplier, cfg.LLM.RateLimit.Multiplier)
+	assert.Equal(t, config.DefaultCircuitBreakerFailureThreshold, cfg.LLM.RateLimit.CircuitBreaker.FailureThreshold)
+	assert.Equal(t, config.DefaultCircuitBreakerSuccessThresholdHalfOpen, cfg.LLM.RateLimit.CircuitBreaker.SuccessThresholdHalfOpen)
+	assert.Equal(t, config.DefaultCircuitBreakerResetTimeout, cfg.LLM.RateLimit.CircuitBreaker.ResetTimeout)
 }
