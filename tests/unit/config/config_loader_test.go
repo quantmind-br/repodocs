@@ -129,14 +129,19 @@ cache:
 }
 
 func TestLoad_WithoutConfigFile(t *testing.T) {
-	// Use a temporary directory without config file
 	tmpDir := t.TempDir()
 
+	// Change to a directory without config file
 	originalWd, err := os.Getwd()
 	require.NoError(t, err)
 	defer os.Chdir(originalWd)
 
 	require.NoError(t, os.Chdir(tmpDir))
+
+	// Override HOME to prevent LoadWithViper from reading ~/.repodocs/config.yaml
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
 
 	// Clean environment variables
 	os.Unsetenv("REPODOCS_OUTPUT_DIRECTORY")
@@ -222,27 +227,26 @@ cache:
 }
 
 func TestLoadWithViper_FileNotFound(t *testing.T) {
-	// Clean environment variables
 	os.Unsetenv("REPODOCS_OUTPUT_DIRECTORY")
 	os.Unsetenv("REPODOCS_CONCURRENCY_WORKERS")
 
-	// Use a directory without config file
 	tmpDir := t.TempDir()
 
-	// Use the temporary directory
 	originalWd, err := os.Getwd()
 	require.NoError(t, err)
 	defer os.Chdir(originalWd)
 
 	require.NoError(t, os.Chdir(tmpDir))
 
-	// Load config with Viper (should succeed with defaults)
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
 	cfg, v, err := config.LoadWithViper()
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
 	require.NotNil(t, v)
 
-	// Should have default values
 	assert.Equal(t, "./docs", cfg.Output.Directory)
 	assert.True(t, cfg.Cache.Enabled)
 }
