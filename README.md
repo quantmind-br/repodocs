@@ -76,13 +76,14 @@ go tool cover -html=coverage.html
 | manifest | 97.0% | ✅ Excellent |
 | state | 95.5% | ✅ Excellent |
 | output | 94.4% | ✅ Excellent |
-| llm | 92.9% | ✅ Excellent |
-| utils | 90.9% | ✅ Excellent |
+| llm | 93.0% | ✅ Excellent |
 | cache | 91.3% | ✅ Excellent |
-| config | 91.4% | ✅ Excellent |
-| converter | 87.3% | ✅ Good |
+| utils | 90.1% | ✅ Excellent |
+| renderer | 89.1% | ✅ Excellent |
+| converter | 87.1% | ✅ Good |
 | fetcher | 84.1% | ✅ Good |
 | strategies/git | 79.5% | ✅ Good |
+| config | 76.0% | ✅ Good |
 
 See [TESTING.md](TESTING.md) for detailed testing guidelines, patterns, and best practices.
 

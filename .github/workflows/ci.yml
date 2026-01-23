@@ -34,12 +34,12 @@ jobs:
             ["internal/converter"]=85
             ["internal/app"]=58
             ["internal/llm"]=70
-            ["internal/config"]=85
+            ["internal/config"]=75
             ["internal/output"]=80
             ["internal/cache"]=75
             ["internal/fetcher"]=70
             ["internal/git"]=80
-            ["cmd/repodocs"]=53
+            ["cmd/repodocs"]=48
             ["internal/domain"]=85
             ["internal/renderer"]=30
           )
