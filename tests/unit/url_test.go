@@ -70,6 +70,23 @@ func TestGenerateOutputDirFromURL(t *testing.T) {
 			expected: "docs_gopls",
 		},
 
+		// docs.rs URLs
+		{
+			name:     "docs.rs crate root",
+			url:      "https://docs.rs/ratatui/latest/ratatui/",
+			expected: "docs_ratatui",
+		},
+		{
+			name:     "docs.rs crate page",
+			url:      "https://docs.rs/crate/serde/1.0.0",
+			expected: "docs_serde",
+		},
+		{
+			name:     "docs.rs with version",
+			url:      "https://docs.rs/tokio/1.0.0/tokio/",
+			expected: "docs_tokio",
+		},
+
 		// Generic URLs
 		{
 			name:     "Simple domain",

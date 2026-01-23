@@ -34,10 +34,30 @@ func TestNewProviderFromConfig_MissingAPIKey(t *testing.T) {
 	assert.ErrorIs(t, err, domain.ErrLLMMissingAPIKey)
 }
 
-func TestNewProviderFromConfig_MissingBaseURL(t *testing.T) {
+func TestNewProviderFromConfig_EmptyBaseURLUsesDefault(t *testing.T) {
+	providers := []string{"openai", "anthropic", "google"}
+
+	for _, provider := range providers {
+		t.Run(provider, func(t *testing.T) {
+			cfg := &config.LLMConfig{
+				Provider: provider,
+				APIKey:   "test-key",
+				Model:    "test-model",
+			}
+
+			p, err := llm.NewProviderFromConfig(cfg)
+
+			require.NoError(t, err)
+			assert.Equal(t, provider, p.Name())
+		})
+	}
+}
+
+func TestNewProviderFromConfig_MissingBaseURLForUnknownProvider(t *testing.T) {
 	cfg := &config.LLMConfig{
-		Provider: "openai",
+		Provider: "unknown",
 		APIKey:   "test-key",
+		Model:    "test-model",
 	}
 
 	_, err := llm.NewProviderFromConfig(cfg)

@@ -154,31 +154,39 @@ func (p *GoogleProvider) Complete(ctx context.Context, req *domain.LLMRequest) (
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		var googleResp googleResponse
+		if json.Unmarshal(respBody, &googleResp) == nil && googleResp.Error != nil {
+			if resp.StatusCode == http.StatusTooManyRequests || googleResp.Error.Status == "RESOURCE_EXHAUSTED" {
+				return nil, &domain.LLMError{
+					Provider:   "google",
+					StatusCode: googleResp.Error.Code,
+					Message:    googleResp.Error.Message,
+					Err:        domain.ErrLLMRateLimited,
+				}
+			}
+			return nil, &domain.LLMError{
+				Provider:   "google",
+				StatusCode: googleResp.Error.Code,
+				Message:    googleResp.Error.Message,
+				Err:        domain.ErrLLMRequestFailed,
+			}
+		}
+		return nil, p.handleHTTPError(resp.StatusCode, respBody)
+	}
+
 	var googleResp googleResponse
 	if err := json.Unmarshal(respBody, &googleResp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	if googleResp.Error != nil {
-		// Check if this is a rate limit error based on status code or error status
-		if resp.StatusCode == http.StatusTooManyRequests || googleResp.Error.Status == "RESOURCE_EXHAUSTED" {
-			return nil, &domain.LLMError{
-				Provider:   "google",
-				StatusCode: googleResp.Error.Code,
-				Message:    googleResp.Error.Message,
-				Err:        domain.ErrLLMRateLimited,
-			}
-		}
 		return nil, &domain.LLMError{
 			Provider:   "google",
 			StatusCode: googleResp.Error.Code,
 			Message:    googleResp.Error.Message,
 			Err:        domain.ErrLLMRequestFailed,
 		}
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, p.handleHTTPError(resp.StatusCode, respBody)
 	}
 
 	if len(googleResp.Candidates) == 0 {

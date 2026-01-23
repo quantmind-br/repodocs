@@ -45,9 +45,15 @@ func (s *DocsRSStrategy) fetchRustdocJSON(ctx context.Context, crateName, versio
 	var jsonData []byte
 	contentType := resp.ContentType
 
-	if strings.Contains(contentType, "zstd") ||
+	// Check for zstd compression via content-type OR magic bytes
+	// Magic bytes 0x28 0xB5 0x2F 0xFD indicate zstd compression
+	// This handles cached responses where content-type may be lost
+	isZstd := strings.Contains(contentType, "zstd") ||
 		strings.Contains(contentType, "x-zstd") ||
-		strings.HasSuffix(endpoint, ".zst") {
+		strings.HasSuffix(endpoint, ".zst") ||
+		(len(resp.Body) >= 4 && resp.Body[0] == 0x28 && resp.Body[1] == 0xB5 && resp.Body[2] == 0x2F && resp.Body[3] == 0xFD)
+
+	if isZstd {
 		decoder, err := zstd.NewReader(nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create zstd decoder: %w", err)

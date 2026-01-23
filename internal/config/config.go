@@ -4,90 +4,90 @@ import "time"
 
 // Config represents the application configuration
 type Config struct {
-	Output      OutputConfig      `mapstructure:"output"`
-	Concurrency ConcurrencyConfig `mapstructure:"concurrency"`
-	Cache       CacheConfig       `mapstructure:"cache"`
-	Rendering   RenderingConfig   `mapstructure:"rendering"`
-	Stealth     StealthConfig     `mapstructure:"stealth"`
-	Exclude     []string          `mapstructure:"exclude"`
-	Logging     LoggingConfig     `mapstructure:"logging"`
-	LLM         LLMConfig         `mapstructure:"llm"`
+	Output      OutputConfig      `mapstructure:"output" yaml:"output"`
+	Concurrency ConcurrencyConfig `mapstructure:"concurrency" yaml:"concurrency"`
+	Cache       CacheConfig       `mapstructure:"cache" yaml:"cache"`
+	Rendering   RenderingConfig   `mapstructure:"rendering" yaml:"rendering"`
+	Stealth     StealthConfig     `mapstructure:"stealth" yaml:"stealth"`
+	Exclude     []string          `mapstructure:"exclude" yaml:"exclude"`
+	Logging     LoggingConfig     `mapstructure:"logging" yaml:"logging"`
+	LLM         LLMConfig         `mapstructure:"llm" yaml:"llm"`
 }
 
 // LLMConfig contains LLM provider settings
 type LLMConfig struct {
-	Provider        string          `mapstructure:"provider"`
-	APIKey          string          `mapstructure:"api_key"`
-	BaseURL         string          `mapstructure:"base_url"`
-	Model           string          `mapstructure:"model"`
-	MaxTokens       int             `mapstructure:"max_tokens"`
-	Temperature     float64         `mapstructure:"temperature"`
-	Timeout         time.Duration   `mapstructure:"timeout"`
-	MaxRetries      int             `mapstructure:"max_retries"` // Deprecated: use RateLimit.MaxRetries
-	EnhanceMetadata bool            `mapstructure:"enhance_metadata"`
-	RateLimit       RateLimitConfig `mapstructure:"rate_limit"`
+	Provider        string          `mapstructure:"provider" yaml:"provider"`
+	APIKey          string          `mapstructure:"api_key" yaml:"api_key"`
+	BaseURL         string          `mapstructure:"base_url" yaml:"base_url"`
+	Model           string          `mapstructure:"model" yaml:"model"`
+	MaxTokens       int             `mapstructure:"max_tokens" yaml:"max_tokens"`
+	Temperature     float64         `mapstructure:"temperature" yaml:"temperature"`
+	Timeout         time.Duration   `mapstructure:"timeout" yaml:"timeout"`
+	MaxRetries      int             `mapstructure:"max_retries" yaml:"max_retries"` // Deprecated: use RateLimit.MaxRetries
+	EnhanceMetadata bool            `mapstructure:"enhance_metadata" yaml:"enhance_metadata"`
+	RateLimit       RateLimitConfig `mapstructure:"rate_limit" yaml:"rate_limit"`
 }
 
 // RateLimitConfig contains rate limiting settings for LLM requests
 type RateLimitConfig struct {
-	Enabled           bool                 `mapstructure:"enabled"`
-	RequestsPerMinute int                  `mapstructure:"requests_per_minute"`
-	BurstSize         int                  `mapstructure:"burst_size"`
-	MaxRetries        int                  `mapstructure:"max_retries"`
-	InitialDelay      time.Duration        `mapstructure:"initial_delay"`
-	MaxDelay          time.Duration        `mapstructure:"max_delay"`
-	Multiplier        float64              `mapstructure:"multiplier"`
-	CircuitBreaker    CircuitBreakerConfig `mapstructure:"circuit_breaker"`
+	Enabled           bool                 `mapstructure:"enabled" yaml:"enabled"`
+	RequestsPerMinute int                  `mapstructure:"requests_per_minute" yaml:"requests_per_minute"`
+	BurstSize         int                  `mapstructure:"burst_size" yaml:"burst_size"`
+	MaxRetries        int                  `mapstructure:"max_retries" yaml:"max_retries"`
+	InitialDelay      time.Duration        `mapstructure:"initial_delay" yaml:"initial_delay"`
+	MaxDelay          time.Duration        `mapstructure:"max_delay" yaml:"max_delay"`
+	Multiplier        float64              `mapstructure:"multiplier" yaml:"multiplier"`
+	CircuitBreaker    CircuitBreakerConfig `mapstructure:"circuit_breaker" yaml:"circuit_breaker"`
 }
 
 // CircuitBreakerConfig contains circuit breaker settings
 type CircuitBreakerConfig struct {
-	Enabled                  bool          `mapstructure:"enabled"`
-	FailureThreshold         int           `mapstructure:"failure_threshold"`
-	SuccessThresholdHalfOpen int           `mapstructure:"success_threshold_half_open"`
-	ResetTimeout             time.Duration `mapstructure:"reset_timeout"`
+	Enabled                  bool          `mapstructure:"enabled" yaml:"enabled"`
+	FailureThreshold         int           `mapstructure:"failure_threshold" yaml:"failure_threshold"`
+	SuccessThresholdHalfOpen int           `mapstructure:"success_threshold_half_open" yaml:"success_threshold_half_open"`
+	ResetTimeout             time.Duration `mapstructure:"reset_timeout" yaml:"reset_timeout"`
 }
 
 // OutputConfig contains output-related settings
 type OutputConfig struct {
-	Directory    string `mapstructure:"directory"`
-	Flat         bool   `mapstructure:"flat"`
-	JSONMetadata bool   `mapstructure:"json_metadata"`
-	Overwrite    bool   `mapstructure:"overwrite"`
+	Directory    string `mapstructure:"directory" yaml:"directory"`
+	Flat         bool   `mapstructure:"flat" yaml:"flat"`
+	JSONMetadata bool   `mapstructure:"json_metadata" yaml:"json_metadata"`
+	Overwrite    bool   `mapstructure:"overwrite" yaml:"overwrite"`
 }
 
 // ConcurrencyConfig contains concurrency settings
 type ConcurrencyConfig struct {
-	Workers  int           `mapstructure:"workers"`
-	Timeout  time.Duration `mapstructure:"timeout"`
-	MaxDepth int           `mapstructure:"max_depth"`
+	Workers  int           `mapstructure:"workers" yaml:"workers"`
+	Timeout  time.Duration `mapstructure:"timeout" yaml:"timeout"`
+	MaxDepth int           `mapstructure:"max_depth" yaml:"max_depth"`
 }
 
 // CacheConfig contains cache settings
 type CacheConfig struct {
-	Enabled   bool          `mapstructure:"enabled"`
-	TTL       time.Duration `mapstructure:"ttl"`
-	Directory string        `mapstructure:"directory"`
+	Enabled   bool          `mapstructure:"enabled" yaml:"enabled"`
+	TTL       time.Duration `mapstructure:"ttl" yaml:"ttl"`
+	Directory string        `mapstructure:"directory" yaml:"directory"`
 }
 
 // RenderingConfig contains JavaScript rendering settings
 type RenderingConfig struct {
-	ForceJS     bool          `mapstructure:"force_js"`
-	JSTimeout   time.Duration `mapstructure:"js_timeout"`
-	ScrollToEnd bool          `mapstructure:"scroll_to_end"`
+	ForceJS     bool          `mapstructure:"force_js" yaml:"force_js"`
+	JSTimeout   time.Duration `mapstructure:"js_timeout" yaml:"js_timeout"`
+	ScrollToEnd bool          `mapstructure:"scroll_to_end" yaml:"scroll_to_end"`
 }
 
 // StealthConfig contains stealth mode settings
 type StealthConfig struct {
-	UserAgent      string        `mapstructure:"user_agent"`
-	RandomDelayMin time.Duration `mapstructure:"random_delay_min"`
-	RandomDelayMax time.Duration `mapstructure:"random_delay_max"`
+	UserAgent      string        `mapstructure:"user_agent" yaml:"user_agent"`
+	RandomDelayMin time.Duration `mapstructure:"random_delay_min" yaml:"random_delay_min"`
+	RandomDelayMax time.Duration `mapstructure:"random_delay_max" yaml:"random_delay_max"`
 }
 
 // LoggingConfig contains logging settings
 type LoggingConfig struct {
-	Level  string `mapstructure:"level"`
-	Format string `mapstructure:"format"`
+	Level  string `mapstructure:"level" yaml:"level"`
+	Format string `mapstructure:"format" yaml:"format"`
 }
 
 // Validate validates the configuration

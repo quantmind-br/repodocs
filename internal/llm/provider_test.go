@@ -43,7 +43,7 @@ func TestNewProviderFromConfig(t *testing.T) {
 			cfg: &config.LLMConfig{
 				Provider: "google",
 				APIKey:   "test-key",
-				BaseURL:  "https://generativelanguage.googleapis.com/v1",
+				BaseURL:  "https://generativelanguage.googleapis.com",
 				Model:    "gemini-pro",
 			},
 			wantErr: nil,
@@ -67,11 +67,38 @@ func TestNewProviderFromConfig(t *testing.T) {
 			wantErr: domain.ErrLLMMissingAPIKey,
 		},
 		{
-			name: "missing base url",
+			name: "empty base url uses default for openai",
 			cfg: &config.LLMConfig{
 				Provider: "openai",
 				APIKey:   "test-key",
 				Model:    "gpt-4",
+			},
+			wantErr: nil,
+		},
+		{
+			name: "empty base url uses default for anthropic",
+			cfg: &config.LLMConfig{
+				Provider: "anthropic",
+				APIKey:   "test-key",
+				Model:    "claude-3",
+			},
+			wantErr: nil,
+		},
+		{
+			name: "empty base url uses default for google",
+			cfg: &config.LLMConfig{
+				Provider: "google",
+				APIKey:   "test-key",
+				Model:    "gemini-pro",
+			},
+			wantErr: nil,
+		},
+		{
+			name: "missing base url for unknown provider",
+			cfg: &config.LLMConfig{
+				Provider: "unknown",
+				APIKey:   "test-key",
+				Model:    "model",
 			},
 			wantErr: domain.ErrLLMMissingBaseURL,
 		},
@@ -144,7 +171,7 @@ func TestNewProvider(t *testing.T) {
 			cfg: ProviderConfig{
 				Provider: "google",
 				APIKey:   "test-key",
-				BaseURL:  "https://generativelanguage.googleapis.com/v1",
+				BaseURL:  "https://generativelanguage.googleapis.com",
 				Model:    "gemini-pro",
 			},
 			wantErr: false,
@@ -198,20 +225,37 @@ func TestNewProvider(t *testing.T) {
 	}
 }
 
-// TestProviderConfigDefaults tests that defaults are applied
 func TestProviderConfigDefaults(t *testing.T) {
 	cfg := ProviderConfig{
 		Provider: "openai",
 		APIKey:   "test-key",
 		BaseURL:  "https://api.openai.com/v1",
 		Model:    "gpt-4",
-		// No timeout set - should default to 60s
 	}
 
 	provider, err := NewProvider(cfg)
 	require.NoError(t, err)
 	require.NotNil(t, provider)
 
-	// Verify the provider was created successfully
 	assert.Equal(t, "openai", provider.Name())
+}
+
+func TestDefaultBaseURL(t *testing.T) {
+	tests := []struct {
+		provider string
+		want     string
+	}{
+		{"openai", DefaultOpenAIBaseURL},
+		{"anthropic", DefaultAnthropicBaseURL},
+		{"google", DefaultGoogleBaseURL},
+		{"unknown", ""},
+		{"", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.provider, func(t *testing.T) {
+			got := DefaultBaseURL(tt.provider)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }

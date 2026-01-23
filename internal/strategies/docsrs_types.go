@@ -34,10 +34,9 @@ type RustdocSpan struct {
 
 // RustdocPath represents a path reference
 type RustdocPath struct {
-	Path string      `json:"path"`
-	ID   interface{} `json:"id"` // Can be int or string
-	Args interface{} `json:"args"`
-	Kind string      `json:"kind"` // In paths map: "struct", "enum", "trait", etc.
+	CrateID int         `json:"crate_id"`
+	Path    interface{} `json:"path"` // Can be string or []string depending on format version
+	Kind    string      `json:"kind"`
 }
 
 // RustdocDeprecation represents deprecation info

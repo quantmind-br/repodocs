@@ -260,6 +260,7 @@ func ExtractLinks(html, baseURL string) []string {
 //   - https://docs.crawl4ai.com/sitemap.xml -> docs_docscrawl4aicom
 //   - https://docs.factory.ai/llms.txt -> docs_docsfactoryai
 //   - https://pkg.go.dev/github.com/user/package -> docs_package
+//   - https://docs.rs/ratatui/latest/ratatui/ -> docs_ratatui
 func GenerateOutputDirFromURL(rawURL string) string {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -307,6 +308,18 @@ func GenerateOutputDirFromURL(rawURL string) string {
 			// Fallback to last part
 			if name == "" && len(parts) > 0 {
 				name = parts[len(parts)-1]
+			}
+		}
+	}
+
+	// Handle docs.rs URLs
+	if name == "" && strings.Contains(host, "docs.rs") {
+		parts := strings.Split(pathStr, "/")
+		if len(parts) >= 1 && parts[0] != "" {
+			if parts[0] == "crate" && len(parts) >= 2 {
+				name = parts[1]
+			} else {
+				name = parts[0]
 			}
 		}
 	}

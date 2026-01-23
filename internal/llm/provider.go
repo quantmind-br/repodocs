@@ -9,6 +9,13 @@ import (
 	"github.com/quantmind-br/repodocs-go/internal/domain"
 )
 
+// Default base URLs for each provider
+const (
+	DefaultOpenAIBaseURL    = "https://api.openai.com/v1"
+	DefaultAnthropicBaseURL = "https://api.anthropic.com/v1"
+	DefaultGoogleBaseURL    = "https://generativelanguage.googleapis.com"
+)
+
 type ProviderConfig struct {
 	Provider    string
 	APIKey      string
@@ -21,6 +28,21 @@ type ProviderConfig struct {
 	HTTPClient  *http.Client
 }
 
+// DefaultBaseURL returns the default base URL for a given provider.
+// Returns empty string if provider is unknown.
+func DefaultBaseURL(provider string) string {
+	switch provider {
+	case "openai":
+		return DefaultOpenAIBaseURL
+	case "anthropic":
+		return DefaultAnthropicBaseURL
+	case "google":
+		return DefaultGoogleBaseURL
+	default:
+		return ""
+	}
+}
+
 func NewProviderFromConfig(cfg *config.LLMConfig) (domain.LLMProvider, error) {
 	if cfg.Provider == "" {
 		return nil, domain.ErrLLMNotConfigured
@@ -28,17 +50,22 @@ func NewProviderFromConfig(cfg *config.LLMConfig) (domain.LLMProvider, error) {
 	if cfg.APIKey == "" {
 		return nil, domain.ErrLLMMissingAPIKey
 	}
-	if cfg.BaseURL == "" {
-		return nil, domain.ErrLLMMissingBaseURL
-	}
 	if cfg.Model == "" {
 		return nil, domain.ErrLLMMissingModel
+	}
+
+	baseURL := cfg.BaseURL
+	if baseURL == "" {
+		baseURL = DefaultBaseURL(cfg.Provider)
+		if baseURL == "" {
+			return nil, domain.ErrLLMMissingBaseURL
+		}
 	}
 
 	pcfg := ProviderConfig{
 		Provider:    cfg.Provider,
 		APIKey:      cfg.APIKey,
-		BaseURL:     cfg.BaseURL,
+		BaseURL:     baseURL,
 		Model:       cfg.Model,
 		MaxTokens:   cfg.MaxTokens,
 		Temperature: cfg.Temperature,
