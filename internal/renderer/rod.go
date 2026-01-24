@@ -219,40 +219,39 @@ func (r *Renderer) setCookies(page *rod.Page, pageURL string, cookies []*http.Co
 	return nil
 }
 
-// scrollToEnd scrolls to the bottom of the page to trigger lazy loading
 func (r *Renderer) scrollToEnd(page *rod.Page) error {
-	// Get initial scroll height
 	result, err := page.Eval(`() => document.body.scrollHeight`)
 	if err != nil {
 		return err
 	}
 	lastHeight := result.Value.Int()
+	stableCount := 0
 
-	for i := 0; i < 10; i++ { // Max 10 scroll iterations
-		// Scroll to bottom
+	for i := 0; i < 10; i++ {
 		_, err := page.Eval(`() => window.scrollTo(0, document.body.scrollHeight)`)
 		if err != nil {
 			return err
 		}
 
-		// Wait for content to load
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(300 * time.Millisecond)
 
-		// Check new scroll height
 		result, err := page.Eval(`() => document.body.scrollHeight`)
 		if err != nil {
 			return err
 		}
 		newHeight := result.Value.Int()
 
-		// If height hasn't changed, we've reached the bottom
 		if newHeight == lastHeight {
-			break
+			stableCount++
+			if stableCount >= 2 {
+				break
+			}
+		} else {
+			stableCount = 0
 		}
 		lastHeight = newHeight
 	}
 
-	// Scroll back to top
 	_, _ = page.Eval(`() => window.scrollTo(0, 0)`)
 
 	return nil
