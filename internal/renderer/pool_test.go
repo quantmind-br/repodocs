@@ -47,7 +47,7 @@ func TestNewTabPool_DefaultSize(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, 5, pool.MaxSize())
-	assert.Equal(t, 5, pool.Size())
+	assert.Equal(t, 0, pool.Size()) // Lazy: 0 tabs initially
 }
 
 // TestNewTabPool_CustomSize tests creating pool with custom size
@@ -79,7 +79,7 @@ func TestNewTabPool_CustomSize(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.expected, pool.MaxSize())
-			assert.Equal(t, tt.expected, pool.Size())
+			assert.Equal(t, 0, pool.Size()) // Lazy: 0 tabs initially
 		})
 	}
 }
@@ -104,7 +104,7 @@ func TestNewTabPool_ZeroSize(t *testing.T) {
 
 	// Should default to 5
 	assert.Equal(t, 5, pool.MaxSize())
-	assert.Equal(t, 5, pool.Size())
+	assert.Equal(t, 0, pool.Size()) // Lazy: 0 tabs initially
 }
 
 // TestAcquire_AvailableTab tests acquiring tab when available
@@ -125,17 +125,17 @@ func TestAcquire_AvailableTab(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Acquire first tab
+	// Acquire first tab (lazy created)
 	page1, err := pool.Acquire(ctx)
 	assert.NoError(t, err)
 	assert.NotNil(t, page1)
-	assert.Equal(t, 1, pool.Size())
+	assert.Equal(t, 0, pool.Size()) // Tab in use
 
-	// Acquire second tab
+	// Acquire second tab (lazy created)
 	page2, err := pool.Acquire(ctx)
 	assert.NoError(t, err)
 	assert.NotNil(t, page2)
-	assert.Equal(t, 0, pool.Size())
+	assert.Equal(t, 0, pool.Size()) // Both tabs in use
 
 	// Release tabs
 	pool.Release(page1)
@@ -483,26 +483,25 @@ func TestSize_WithTabs(t *testing.T) {
 	pool, err := r.GetTabPool()
 	require.NoError(t, err)
 
-	// Initial size
-	assert.Equal(t, 3, pool.Size())
+	// Lazy: initially 0 tabs
+	assert.Equal(t, 0, pool.Size())
 
 	ctx := context.Background()
 
-	// Acquire one
+	// Acquire tabs (lazy creation)
 	page1, _ := pool.Acquire(ctx)
-	assert.Equal(t, 2, pool.Size())
+	assert.Equal(t, 0, pool.Size()) // In use
 
-	// Acquire another
 	page2, _ := pool.Acquire(ctx)
-	assert.Equal(t, 1, pool.Size())
+	assert.Equal(t, 0, pool.Size()) // Both in use
 
 	// Release one
 	pool.Release(page1)
-	assert.Equal(t, 2, pool.Size())
+	assert.Equal(t, 1, pool.Size())
 
 	// Release both
 	pool.Release(page2)
-	assert.Equal(t, 3, pool.Size())
+	assert.Equal(t, 2, pool.Size())
 }
 
 // TestSize_AfterAcquire tests size changes after acquire
@@ -523,15 +522,17 @@ func TestSize_AfterAcquire(t *testing.T) {
 
 	ctx := context.Background()
 
+	// Lazy: start at 0
 	initialSize := pool.Size()
+	assert.Equal(t, 0, initialSize)
 
-	// Acquire tab
+	// Acquire tab (created lazily)
 	page, _ := pool.Acquire(ctx)
-	assert.Equal(t, initialSize-1, pool.Size())
+	assert.Equal(t, 0, pool.Size()) // Tab in use, not in pool
 
 	// Release tab
 	pool.Release(page)
-	assert.Equal(t, initialSize, pool.Size())
+	assert.Equal(t, 1, pool.Size()) // Tab returned to pool
 }
 
 // TestSize_AfterRelease tests size changes after release

@@ -14,9 +14,10 @@ type TabPool struct {
 	activeTabs chan *rod.Page
 	mu         sync.Mutex
 	closed     bool
+	created    int
 }
 
-// NewTabPool creates a new tab pool
+// NewTabPool creates a new tab pool with lazy tab initialization
 func NewTabPool(browser *rod.Browser, maxTabs int) (*TabPool, error) {
 	if maxTabs <= 0 {
 		maxTabs = 5
@@ -26,16 +27,7 @@ func NewTabPool(browser *rod.Browser, maxTabs int) (*TabPool, error) {
 		browser:    browser,
 		maxTabs:    maxTabs,
 		activeTabs: make(chan *rod.Page, maxTabs),
-	}
-
-	// Pre-create tabs
-	for i := 0; i < maxTabs; i++ {
-		page, err := StealthPage(browser)
-		if err != nil {
-			pool.Close()
-			return nil, err
-		}
-		pool.activeTabs <- page
+		created:    0,
 	}
 
 	return pool, nil
@@ -47,6 +39,23 @@ func (p *TabPool) Acquire(ctx context.Context) (*rod.Page, error) {
 	if p.closed {
 		p.mu.Unlock()
 		return nil, ErrPoolClosed
+	}
+
+	select {
+	case page := <-p.activeTabs:
+		p.mu.Unlock()
+		return page, nil
+	default:
+		if p.created < p.maxTabs {
+			page, err := StealthPage(p.browser)
+			if err != nil {
+				p.mu.Unlock()
+				return nil, err
+			}
+			p.created++
+			p.mu.Unlock()
+			return page, nil
+		}
 	}
 	p.mu.Unlock()
 
@@ -108,6 +117,12 @@ func (p *TabPool) Size() int {
 // MaxSize returns the maximum pool size
 func (p *TabPool) MaxSize() int {
 	return p.maxTabs
+}
+
+func (p *TabPool) Created() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.created
 }
 
 // ErrPoolClosed is returned when trying to acquire from a closed pool

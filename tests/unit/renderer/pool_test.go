@@ -31,23 +31,23 @@ func TestTabPool_Size(t *testing.T) {
 		t.Skip("Failed to get tab pool:", err)
 	}
 
-	// Initially, all tabs should be available
-	assert.Equal(t, 5, pool.Size())
+	// Initially, pool should be empty (lazy creation)
+	assert.Equal(t, 0, pool.Size())
 
-	// Acquire one tab
+	// Acquire one tab (creates it on-demand)
 	ctx := context.Background()
 	acquiredTab, err := pool.Acquire(ctx)
 	assert.NoError(t, err)
 	assert.NotNil(t, acquiredTab)
 
-	// Size should now be 4
-	assert.Equal(t, 4, pool.Size())
+	// Size should be 0 (tab is in use, not in pool)
+	assert.Equal(t, 0, pool.Size())
 
 	// Release the tab
 	pool.Release(acquiredTab)
 
-	// Size should be 5 again
-	assert.Equal(t, 5, pool.Size())
+	// Size should be 1 (one tab created and returned to pool)
+	assert.Equal(t, 1, pool.Size())
 }
 
 // TestTabPool_Size_MultipleAcquires tests Size with multiple acquires and releases
@@ -69,8 +69,8 @@ func TestTabPool_Size_MultipleAcquires(t *testing.T) {
 		t.Skip("Failed to get tab pool:", err)
 	}
 
-	// Initial size should be 5
-	assert.Equal(t, 5, pool.Size())
+	// Initial size should be 0 (lazy creation)
+	assert.Equal(t, 0, pool.Size())
 
 	// Acquire all tabs
 	ctx := context.Background()
@@ -82,7 +82,7 @@ func TestTabPool_Size_MultipleAcquires(t *testing.T) {
 		tabs[i] = tab
 	}
 
-	// Size should be 0 now
+	// Size should be 0 now (all tabs in use)
 	assert.Equal(t, 0, pool.Size())
 
 	// Release one tab
@@ -102,7 +102,7 @@ func TestTabPool_Size_MultipleAcquires(t *testing.T) {
 		pool.Release(tabs[i])
 	}
 
-	// Size should be 5 again
+	// Size should be 5 (all created tabs returned)
 	assert.Equal(t, 5, pool.Size())
 }
 
@@ -194,7 +194,7 @@ func TestNewTabPool_WithOptions(t *testing.T) {
 
 	// Verify custom options were applied
 	assert.Equal(t, 2, pool.MaxSize())
-	assert.Equal(t, 2, pool.Size()) // Should be initialized with 2 tabs
+	assert.Equal(t, 0, pool.Size()) // Lazy: no tabs created initially
 }
 
 // TestNewTabPool_DefaultOptions tests creating a new tab pool with default options
@@ -219,7 +219,7 @@ func TestNewTabPool_DefaultOptions(t *testing.T) {
 
 	// Verify default options were applied (MaxTabs = 5)
 	assert.Equal(t, 5, pool.MaxSize())
-	assert.Equal(t, 5, pool.Size()) // Should be initialized with 5 tabs
+	assert.Equal(t, 0, pool.Size()) // Lazy: no tabs created initially
 }
 
 // TestAcquire_Success tests acquiring a tab successfully
@@ -314,7 +314,7 @@ func TestRelease_Success(t *testing.T) {
 	assert.NoError(t, err)
 
 	pool.Release(page)
-	assert.Equal(t, 5, pool.Size()) // Tab returned to pool
+	assert.Equal(t, 1, pool.Size()) // Tab returned to pool
 }
 
 // TestRelease_Invalid tests releasing a tab to a closed pool
@@ -365,6 +365,20 @@ func TestClose_ClosesAllTabs(t *testing.T) {
 		t.Skip("Failed to get tab pool:", err)
 	}
 
+	// With lazy init, no tabs exist until acquired
+	assert.Equal(t, 0, pool.Size())
+
+	// Acquire tabs to create them
+	ctx := context.Background()
+	tabs := make([]*rod.Page, 3)
+	for i := 0; i < 3; i++ {
+		tab, _ := pool.Acquire(ctx)
+		tabs[i] = tab
+	}
+	// Release them back
+	for _, tab := range tabs {
+		pool.Release(tab)
+	}
 	assert.Equal(t, 3, pool.Size())
 
 	// Close pool
