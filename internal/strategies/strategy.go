@@ -296,11 +296,10 @@ func (d *Dependencies) SetSourceURL(url string) {
 }
 
 func (d *Dependencies) GetRenderer() (domain.Renderer, error) {
-	if d.Renderer != nil {
-		return d.Renderer, nil
-	}
-
 	d.rendererOnce.Do(func() {
+		if d.Renderer != nil {
+			return // already set externally
+		}
 		opts := d.rendererOpts
 		if opts.Timeout == 0 {
 			opts = renderer.DefaultRendererOptions()

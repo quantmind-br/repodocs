@@ -21,7 +21,6 @@ import (
 type GitHubPagesStrategy struct {
 	deps           *Dependencies
 	fetcher        domain.Fetcher
-	renderer       domain.Renderer
 	converter      *converter.Pipeline
 	markdownReader *converter.MarkdownReader
 	writer         *output.Writer
@@ -38,7 +37,6 @@ func NewGitHubPagesStrategy(deps *Dependencies) *GitHubPagesStrategy {
 	return &GitHubPagesStrategy{
 		deps:           deps,
 		fetcher:        deps.Fetcher,
-		renderer:       deps.Renderer,
 		converter:      deps.Converter,
 		markdownReader: converter.NewMarkdownReader(),
 		writer:         deps.Writer,
@@ -121,11 +119,10 @@ func (s *GitHubPagesStrategy) discoverURLs(ctx context.Context, baseURL string, 
 
 	s.logger.Debug().Err(err).Msg("HTTP discovery failed, falling back to browser crawl")
 
-	renderer, rendererErr := s.deps.GetRenderer()
-	if rendererErr != nil {
+	// Verify renderer is available before browser discovery
+	if _, rendererErr := s.deps.GetRenderer(); rendererErr != nil {
 		return nil, "", fmt.Errorf("no URLs found via HTTP probes and browser renderer failed: %w", rendererErr)
 	}
-	s.renderer = renderer
 
 	urls, err = s.discoverViaBrowser(ctx, baseURL, opts)
 	if err != nil {
@@ -333,13 +330,20 @@ func (s *GitHubPagesStrategy) extractLinksWithGoquery(html, baseURL string) ([]s
 	return links, nil
 }
 
-// renderPage renders a page using the browser
-func (s *GitHubPagesStrategy) renderPage(ctx context.Context, pageURL string) (string, error) {
-	return s.renderer.Render(ctx, pageURL, domain.RenderOptions{
+func (s *GitHubPagesStrategy) renderPageWithRenderer(ctx context.Context, pageURL string, r domain.Renderer) (string, error) {
+	return r.Render(ctx, pageURL, domain.RenderOptions{
 		Timeout:     90 * time.Second,
 		WaitStable:  3 * time.Second,
 		ScrollToEnd: true,
 	})
+}
+
+func (s *GitHubPagesStrategy) renderPage(ctx context.Context, pageURL string) (string, error) {
+	r, err := s.deps.GetRenderer()
+	if err != nil {
+		return "", fmt.Errorf("browser renderer not available: %w", err)
+	}
+	return s.renderPageWithRenderer(ctx, pageURL, r)
 }
 
 // filterURLs applies filter and exclude patterns
@@ -489,9 +493,8 @@ func (s *GitHubPagesStrategy) fetchOrRenderPage(ctx context.Context, pageURL str
 	if err != nil {
 		return "", false, fmt.Errorf("browser renderer not available: %w", err)
 	}
-	s.renderer = r
 
-	rendered, err := s.renderPage(ctx, pageURL)
+	rendered, err := s.renderPageWithRenderer(ctx, pageURL, r)
 	if err != nil {
 		return "", false, err
 	}
