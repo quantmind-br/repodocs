@@ -7,6 +7,7 @@ import (
 
 	md "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"golang.org/x/net/html"
 	"gopkg.in/yaml.v3"
 )
 
@@ -68,6 +69,34 @@ func (c *MarkdownConverter) Convert(html string) (string, error) {
 	markdown = c.cleanMarkdown(markdown)
 
 	return markdown, nil
+}
+
+// ConvertNode converts an HTML node directly to Markdown (avoids reparsing)
+// This is more efficient when you already have a parsed DOM tree.
+func (c *MarkdownConverter) ConvertNode(node *html.Node) (string, error) {
+	markdown, err := md.ConvertNode(node)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert HTML node to Markdown: %w", err)
+	}
+
+	return c.cleanMarkdown(string(markdown)), nil
+}
+
+// ConvertNodes converts multiple HTML nodes and concatenates the results
+func (c *MarkdownConverter) ConvertNodes(nodes []*html.Node) (string, error) {
+	var result strings.Builder
+	for i, node := range nodes {
+		markdown, err := md.ConvertNode(node)
+		if err != nil {
+			return "", fmt.Errorf("failed to convert HTML node to Markdown: %w", err)
+		}
+		if i > 0 {
+			result.WriteString("\n\n")
+		}
+		result.Write(markdown)
+	}
+
+	return c.cleanMarkdown(result.String()), nil
 }
 
 // cleanMarkdown cleans up the converted markdown

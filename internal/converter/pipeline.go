@@ -10,6 +10,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
+	htmlpkg "golang.org/x/net/html"
 )
 
 // Pipeline orchestrates the HTML to Markdown conversion process
@@ -105,8 +106,8 @@ func (p *Pipeline) Convert(ctx context.Context, html string, sourceURL string) (
 		return nil, ErrSelectorNotFound
 	}
 
-	// Step 4: Sanitize HTML
-	var sanitizedHTML string
+	// Step 4: Sanitize HTML and extract node for conversion
+	var contentNode *goquery.Selection
 	var headers map[string][]string
 	var links []string
 
@@ -120,11 +121,7 @@ func (p *Pipeline) Convert(ctx context.Context, html string, sourceURL string) (
 
 		headers = extractHeadersFromSelection(sanitizedSel)
 		links = extractLinksFromSelection(sanitizedSel, sourceURL)
-
-		sanitizedHTML, err = selectionHTML(sanitizedSel)
-		if err != nil {
-			return nil, err
-		}
+		contentNode = sanitizedSel
 	} else {
 		contentDoc, docErr := goquery.NewDocumentFromReader(strings.NewReader(contentHTML))
 		if docErr != nil {
@@ -138,17 +135,22 @@ func (p *Pipeline) Convert(ctx context.Context, html string, sourceURL string) (
 
 		headers = ExtractHeadersFromDoc(sanitizedDoc)
 		links = ExtractLinksFromDoc(sanitizedDoc, sourceURL)
+		contentNode = sanitizedDoc.Selection
+	}
 
-		sanitizedHTML, err = sanitizedDoc.Html()
+	// Step 5: Convert to Markdown using DOM node directly (avoids reparsing)
+	var markdown string
+	if contentNode != nil && contentNode.Length() > 0 {
+		nodes := make([]*htmlpkg.Node, 0, contentNode.Length())
+		contentNode.Each(func(_ int, s *goquery.Selection) {
+			if node := s.Get(0); node != nil {
+				nodes = append(nodes, node)
+			}
+		})
+		markdown, err = p.mdConverter.ConvertNodes(nodes)
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	// Step 5: Convert to Markdown
-	markdown, err := p.mdConverter.Convert(sanitizedHTML)
-	if err != nil {
-		return nil, err
 	}
 
 	// Step 6: Calculate statistics
@@ -233,25 +235,4 @@ func (p *Pipeline) removeExcludedFromSelection(sel *goquery.Selection) *goquery.
 
 	findWithRoot(sel, p.excludeSelector).Remove()
 	return sel
-}
-
-func selectionHTML(sel *goquery.Selection) (string, error) {
-	if sel == nil {
-		return "", nil
-	}
-
-	var combined strings.Builder
-	found := false
-	sel.Each(func(_ int, node *goquery.Selection) {
-		if html, err := node.Html(); err == nil {
-			combined.WriteString(html)
-			found = true
-		}
-	})
-
-	if !found {
-		return sel.Html()
-	}
-
-	return combined.String(), nil
 }

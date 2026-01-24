@@ -252,16 +252,12 @@ func TestMarkdownReader_DescriptionTruncation(t *testing.T) {
 	assert.LessOrEqual(t, len(doc.Description), 300)
 	assert.True(t, len(doc.Description) > 0)
 	if len(longParagraph) > 300 {
-		assert.True(t, strings.HasSuffix(doc.Description, "..."))
+		assert.True(t, hasSuffix(doc.Description, "..."))
 	}
 }
 
-var strings = struct {
-	HasSuffix func(s, suffix string) bool
-}{
-	HasSuffix: func(s, suffix string) bool {
-		return len(s) >= len(suffix) && s[len(s)-len(suffix):] == suffix
-	},
+func hasSuffix(s, suffix string) bool {
+	return len(s) >= len(suffix) && s[len(s)-len(suffix):] == suffix
 }
 
 func TestMarkdownReader_TildeCodeBlocks(t *testing.T) {
