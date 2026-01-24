@@ -52,6 +52,9 @@ const (
 	DefaultCircuitBreakerFailureThreshold         = 5
 	DefaultCircuitBreakerSuccessThresholdHalfOpen = 1
 	DefaultCircuitBreakerResetTimeout             = 30 * time.Second
+
+	// Git defaults
+	DefaultGitMaxFileSize = "10MB"
 )
 
 // Default exclude patterns
@@ -137,6 +140,9 @@ func Default() *Config {
 					ResetTimeout:             DefaultCircuitBreakerResetTimeout,
 				},
 			},
+		},
+		Git: GitConfig{
+			MaxFileSize: DefaultGitMaxFileSize,
 		},
 	}
 }

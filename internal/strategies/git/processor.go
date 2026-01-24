@@ -35,6 +35,7 @@ type ProcessOptions struct {
 	Concurrency  int
 	Limit        int
 	DryRun       bool
+	MaxFileSize  int64
 	WriteFunc    func(ctx context.Context, doc *domain.Document) error
 	StateManager *state.Manager
 }
@@ -114,7 +115,11 @@ func (p *Processor) ProcessFile(ctx context.Context, path, tmpDir string, opts P
 	if err != nil {
 		return err
 	}
-	if info.Size() > 10*1024*1024 {
+	maxSize := opts.MaxFileSize
+	if maxSize == 0 {
+		maxSize = 10 * 1024 * 1024
+	}
+	if maxSize > 0 && info.Size() > maxSize {
 		return nil
 	}
 

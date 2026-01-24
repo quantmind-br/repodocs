@@ -1,6 +1,11 @@
 package config
 
-import "time"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+)
 
 // Config represents the application configuration
 type Config struct {
@@ -12,6 +17,7 @@ type Config struct {
 	Exclude     []string          `mapstructure:"exclude" yaml:"exclude"`
 	Logging     LoggingConfig     `mapstructure:"logging" yaml:"logging"`
 	LLM         LLMConfig         `mapstructure:"llm" yaml:"llm"`
+	Git         GitConfig         `mapstructure:"git" yaml:"git"`
 }
 
 // LLMConfig contains LLM provider settings
@@ -90,6 +96,11 @@ type LoggingConfig struct {
 	Format string `mapstructure:"format" yaml:"format"`
 }
 
+// GitConfig contains git strategy settings
+type GitConfig struct {
+	MaxFileSize string `mapstructure:"max_file_size" yaml:"max_file_size"`
+}
+
 // Validate validates the configuration
 func (c *Config) Validate() error {
 	if c.Concurrency.Workers < 1 {
@@ -107,5 +118,47 @@ func (c *Config) Validate() error {
 	if c.Rendering.JSTimeout < time.Second {
 		c.Rendering.JSTimeout = DefaultJSTimeout
 	}
+	if c.Git.MaxFileSize == "" {
+		c.Git.MaxFileSize = DefaultGitMaxFileSize
+	} else {
+		if _, err := ParseSize(c.Git.MaxFileSize); err != nil {
+			return fmt.Errorf("invalid git.max_file_size: %w", err)
+		}
+	}
 	return nil
+}
+
+func ParseSize(s string) (int64, error) {
+	s = strings.ToUpper(strings.TrimSpace(s))
+	if s == "" {
+		return 0, fmt.Errorf("empty size string")
+	}
+
+	var multiplier int64 = 1
+	if strings.HasSuffix(s, "GB") {
+		multiplier = 1024 * 1024 * 1024
+		s = strings.TrimSuffix(s, "GB")
+	} else if strings.HasSuffix(s, "MB") {
+		multiplier = 1024 * 1024
+		s = strings.TrimSuffix(s, "MB")
+	} else if strings.HasSuffix(s, "KB") {
+		multiplier = 1024
+		s = strings.TrimSuffix(s, "KB")
+	}
+
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, fmt.Errorf("no numeric value in size string")
+	}
+
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid numeric value: %w", err)
+	}
+
+	if n < 0 {
+		return 0, fmt.Errorf("negative size not allowed")
+	}
+
+	return n * multiplier, nil
 }
