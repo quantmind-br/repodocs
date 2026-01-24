@@ -110,13 +110,17 @@ func (p *Processor) ProcessFiles(ctx context.Context, files []string, tmpDir str
 }
 
 func (p *Processor) ProcessFile(ctx context.Context, path, tmpDir string, opts ProcessOptions) error {
-	content, err := os.ReadFile(path)
+	info, err := os.Stat(path)
 	if err != nil {
 		return err
 	}
-
-	if len(content) > 10*1024*1024 {
+	if info.Size() > 10*1024*1024 {
 		return nil
+	}
+
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return err
 	}
 
 	relPath, _ := filepath.Rel(tmpDir, path)
