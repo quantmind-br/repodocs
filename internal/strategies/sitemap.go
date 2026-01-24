@@ -107,13 +107,13 @@ func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options)
 	return s.processURLs(ctx, urls, opts)
 }
 
-// processSitemapIndex processes a sitemap index file by collecting all URLs first,
-// then processing them with a single progress bar for consistent display.
+// processSitemapIndex processes a sitemap index file batch-by-batch.
+// Each nested sitemap's URLs are processed immediately before fetching the next sitemap.
 func (s *SitemapStrategy) processSitemapIndex(ctx context.Context, sitemap *domain.Sitemap, opts Options) error {
 	s.logger.Info().Int("count", len(sitemap.Sitemaps)).Msg("Processing sitemap index")
 
-	// Collect all URLs from nested sitemaps first
-	var allURLs []domain.SitemapURL
+	// Process each nested sitemap batch-by-batch
+	totalProcessed := 0
 	for _, sitemapURL := range sitemap.Sitemaps {
 		select {
 		case <-ctx.Done():
@@ -126,26 +126,36 @@ func (s *SitemapStrategy) processSitemapIndex(ctx context.Context, sitemap *doma
 			s.logger.Warn().Err(err).Str("url", sitemapURL).Msg("Failed to fetch nested sitemap")
 			continue
 		}
-		allURLs = append(allURLs, urls...)
+
+		if len(urls) == 0 {
+			continue
+		}
+
+		// Apply remaining limit for this batch
+		if opts.Limit > 0 {
+			remaining := opts.Limit - totalProcessed
+			if remaining <= 0 {
+				break
+			}
+			if len(urls) > remaining {
+				urls = urls[:remaining]
+			}
+		}
+
+		s.logger.Info().Int("count", len(urls)).Str("sitemap", sitemapURL).Msg("Processing URLs from nested sitemap")
+
+		// Process immediately
+		if err := s.processURLs(ctx, urls, opts); err != nil {
+			return err
+		}
+		totalProcessed += len(urls)
 	}
 
-	if len(allURLs) == 0 {
+	if totalProcessed == 0 {
 		s.logger.Warn().Msg("No URLs found in sitemap index")
-		return nil
 	}
 
-	// Sort by lastmod (most recent first)
-	sortURLsByLastMod(allURLs)
-
-	// Apply limit
-	if opts.Limit > 0 && len(allURLs) > opts.Limit {
-		allURLs = allURLs[:opts.Limit]
-	}
-
-	s.logger.Info().Int("count", len(allURLs)).Msg("Processing URLs from sitemap index")
-
-	// Process all URLs with a single progress bar
-	return s.processURLs(ctx, allURLs, opts)
+	return nil
 }
 
 // collectURLsFromSitemap fetches and parses a sitemap, returning its URLs.
