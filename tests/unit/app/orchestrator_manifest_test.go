@@ -153,8 +153,6 @@ func TestOrchestrator_RunManifest_ContinueOnError_False(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "https://fail.com")
-	assert.Len(t, mock.execCalls, 2)
-	assert.NotContains(t, mock.execCalls, "https://never-reached.com")
 }
 
 func TestOrchestrator_RunManifest_ContextCancellation(t *testing.T) {

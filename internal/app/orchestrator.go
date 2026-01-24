@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/config"
@@ -257,21 +258,57 @@ func (o *Orchestrator) RunManifest(
 		Str("output", manifestCfg.Options.Output).
 		Msg("Starting manifest execution")
 
-	var results []ManifestResult
+	if totalSources == 0 {
+		o.logger.Info().
+			Dur("total_duration", time.Since(startTime)).
+			Int("total", 0).
+			Int("success", 0).
+			Int("failed", 0).
+			Msg("Manifest execution completed")
+		return nil
+	}
+
+	concurrency := baseOpts.Config.Concurrency.Workers
+	if concurrency <= 0 {
+		concurrency = 5
+	}
+	if concurrency > 3 {
+		concurrency = 3
+	}
+
+	results := make([]ManifestResult, totalSources)
+	var resultsMu sync.Mutex
 	var firstError error
+	var firstErrorMu sync.Mutex
 
+	var cancelCtx context.Context
+	var cancel context.CancelFunc
+	if manifestCfg.Options.ContinueOnError {
+		cancelCtx = ctx
+	} else {
+		cancelCtx, cancel = context.WithCancel(ctx)
+		defer cancel()
+	}
+
+	type sourceWithIndex struct {
+		source manifest.Source
+		index  int
+	}
+
+	sourcesWithIndex := make([]sourceWithIndex, totalSources)
 	for i, source := range manifestCfg.Sources {
-		if ctx.Err() != nil {
-			o.logger.Warn().Msg("Manifest execution cancelled")
-			return ctx.Err()
-		}
+		sourcesWithIndex[i] = sourceWithIndex{source: source, index: i}
+	}
 
+	errs := utils.ParallelForEach(cancelCtx, sourcesWithIndex, concurrency, func(ctx context.Context, item sourceWithIndex) error {
 		sourceStart := time.Now()
+		source := item.source
+		idx := item.index
 
 		o.logger.Info().
-			Int("source", i+1).
+			Int("source_idx", idx).
+			Str("source_url", source.URL).
 			Int("total", totalSources).
-			Str("url", source.URL).
 			Str("strategy", source.Strategy).
 			Msg("Processing source")
 
@@ -280,34 +317,62 @@ func (o *Orchestrator) RunManifest(
 		err := o.Run(ctx, source.URL, opts)
 		sourceDuration := time.Since(sourceStart)
 
-		result := ManifestResult{
+		resultsMu.Lock()
+		results[idx] = ManifestResult{
 			Source:   source,
 			Error:    err,
 			Duration: sourceDuration,
 		}
-		results = append(results, result)
+		resultsMu.Unlock()
 
 		if err != nil {
 			o.logger.Error().
 				Err(err).
-				Str("url", source.URL).
+				Int("source_idx", idx).
+				Str("source_url", source.URL).
 				Dur("duration", sourceDuration).
 				Msg("Source extraction failed")
 
+			if !manifestCfg.Options.ContinueOnError {
+				firstErrorMu.Lock()
+				if firstError == nil {
+					firstError = fmt.Errorf("source %s failed: %w", source.URL, err)
+				}
+				firstErrorMu.Unlock()
+				if cancel != nil {
+					cancel()
+				}
+				return err
+			}
+
+			firstErrorMu.Lock()
 			if firstError == nil {
 				firstError = err
 			}
-
-			if !manifestCfg.Options.ContinueOnError {
-				o.logger.Warn().Msg("Stopping execution (continue_on_error=false)")
-				return fmt.Errorf("source %s failed: %w", source.URL, err)
-			}
+			firstErrorMu.Unlock()
 		} else {
 			o.logger.Info().
-				Str("url", source.URL).
+				Int("source_idx", idx).
+				Str("source_url", source.URL).
 				Dur("duration", sourceDuration).
 				Msg("Source extraction completed")
 		}
+
+		return nil
+	})
+
+	if ctx.Err() != nil {
+		o.logger.Warn().Msg("Manifest execution cancelled")
+		return ctx.Err()
+	}
+
+	if !manifestCfg.Options.ContinueOnError && firstError != nil {
+		o.logger.Warn().Msg("Stopping execution (continue_on_error=false)")
+		return firstError
+	}
+
+	if err := utils.FirstError(errs); err != nil && firstError == nil {
+		firstError = err
 	}
 
 	duration := time.Since(startTime)
