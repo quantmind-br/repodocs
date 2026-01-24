@@ -135,46 +135,71 @@ func (s *GitHubPagesStrategy) discoverURLs(ctx context.Context, baseURL string, 
 	return urls, "browser-crawl", nil
 }
 
-// discoverViaHTTPProbes tries all HTTP-based discovery methods
+// discoverViaHTTPProbes tries all HTTP-based discovery methods in parallel
 func (s *GitHubPagesStrategy) discoverViaHTTPProbes(ctx context.Context, baseURL string) ([]string, string, error) {
 	probes := GetDiscoveryProbes()
 
-	for _, probe := range probes {
-		select {
-		case <-ctx.Done():
-			return nil, "", ctx.Err()
-		default:
-		}
+	type probeResult struct {
+		priority int
+		name     string
+		urls     []string
+	}
 
-		probeURL := strings.TrimSuffix(baseURL, "/") + probe.Path
+	results := make(chan probeResult, len(probes))
+	var wg sync.WaitGroup
 
-		resp, err := s.fetcher.Get(ctx, probeURL)
-		if err != nil {
-			s.logger.Debug().Str("probe", probe.Name).Str("url", probeURL).Err(err).Msg("Probe failed")
-			continue
-		}
+	for i, probe := range probes {
+		wg.Add(1)
+		go func(priority int, p DiscoveryProbe) {
+			defer wg.Done()
 
-		if resp.StatusCode != 200 {
-			s.logger.Debug().Str("probe", probe.Name).Int("status", resp.StatusCode).Msg("Probe returned non-200")
-			continue
-		}
+			probeURL := strings.TrimSuffix(baseURL, "/") + p.Path
 
-		urls, err := probe.Parser(resp.Body, baseURL)
-		if err != nil {
-			s.logger.Debug().Str("probe", probe.Name).Err(err).Msg("Failed to parse probe response")
-			continue
-		}
+			resp, err := s.fetcher.Get(ctx, probeURL)
+			if err != nil {
+				s.logger.Debug().Str("probe", p.Name).Str("url", probeURL).Err(err).Msg("Probe failed")
+				return
+			}
 
-		if len(urls) > 0 {
-			s.logger.Info().
-				Str("probe", probe.Name).
-				Int("urls", len(urls)).
-				Msg("Discovery probe succeeded")
-			return urls, probe.Name, nil
+			if resp.StatusCode != 200 {
+				s.logger.Debug().Str("probe", p.Name).Int("status", resp.StatusCode).Msg("Probe returned non-200")
+				return
+			}
+
+			urls, err := p.Parser(resp.Body, baseURL)
+			if err != nil {
+				s.logger.Debug().Str("probe", p.Name).Err(err).Msg("Failed to parse probe response")
+				return
+			}
+
+			if len(urls) > 0 {
+				results <- probeResult{priority: priority, name: p.Name, urls: urls}
+			}
+		}(i, probe)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var best *probeResult
+	for r := range results {
+		if best == nil || r.priority < best.priority {
+			best = &r
 		}
 	}
 
-	return nil, "", fmt.Errorf("all HTTP probes failed")
+	if best == nil {
+		return nil, "", fmt.Errorf("all HTTP probes failed")
+	}
+
+	s.logger.Info().
+		Str("probe", best.name).
+		Int("urls", len(best.urls)).
+		Msg("Discovery probe succeeded")
+
+	return best.urls, best.name, nil
 }
 
 // discoverViaBrowser uses browser rendering to crawl and discover URLs
