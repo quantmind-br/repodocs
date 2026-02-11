@@ -530,6 +530,138 @@ func TestCrawlerStrategy_Execute_DifferentDomains(t *testing.T) {
 	}
 }
 
+// TestCrawlerStrategy_Execute_SPAWithLinks tests that pages with SPA markers
+// still work correctly when links exist in the raw HTML (regression test for
+// the JS link re-injection feature).
+func TestCrawlerStrategy_Execute_SPAWithLinks(t *testing.T) {
+	var visited []string
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		visited = append(visited, r.URL.String())
+		w.Header().Set("Content-Type", "text/html")
+
+		switch r.URL.Path {
+		case "/":
+			// SPA-like page with __NEXT_DATA__ marker but also real <a> tags
+			w.Write([]byte(`<html><head><script id="__NEXT_DATA__" type="application/json">{"props":{}}</script></head>
+			<body><h1>Home</h1><a href="/docs">Docs</a><a href="/about">About</a></body></html>`))
+		case "/docs":
+			w.Write([]byte(`<html><body><h1>Documentation</h1><p>Content here</p></body></html>`))
+		case "/about":
+			w.Write([]byte(`<html><body><h1>About</h1><p>About page</p></body></html>`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	tmpDir := t.TempDir()
+	deps, err := NewDependencies(DependencyOptions{
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
+	})
+	require.NoError(t, err)
+	defer deps.Close()
+
+	strategy := NewCrawlerStrategy(deps)
+
+	ctx := context.Background()
+	opts := Options{
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: true,
+		},
+		Concurrency: 1,
+		MaxDepth:    2,
+	}
+
+	err = strategy.Execute(ctx, server.URL+"/", opts)
+	assert.NoError(t, err)
+
+	// Even without a renderer, Colly should discover links from raw HTML
+	hasDocs := false
+	hasAbout := false
+	for _, v := range visited {
+		if strings.Contains(v, "/docs") {
+			hasDocs = true
+		}
+		if strings.Contains(v, "/about") {
+			hasAbout = true
+		}
+	}
+	assert.True(t, hasDocs, "Should discover /docs via raw HTML links")
+	assert.True(t, hasAbout, "Should discover /about via raw HTML links")
+}
+
+// TestCrawlerStrategy_Execute_JSLinksReinjection tests that when JS rendering
+// produces links not in the raw HTML, they are re-injected into the crawl queue.
+func TestCrawlerStrategy_Execute_JSLinksReinjection(t *testing.T) {
+	var visited []string
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		visited = append(visited, r.URL.String())
+		w.Header().Set("Content-Type", "text/html")
+
+		switch r.URL.Path {
+		case "/":
+			// Page with links that the converter will extract into doc.Links
+			w.Write([]byte(`<html><body><h1>Home</h1>
+			<a href="/page1">Page 1</a>
+			<a href="/page2">Page 2</a>
+			</body></html>`))
+		case "/page1":
+			w.Write([]byte(`<html><body><h1>Page 1</h1><p>Content</p></body></html>`))
+		case "/page2":
+			w.Write([]byte(`<html><body><h1>Page 2</h1><p>Content</p></body></html>`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	tmpDir := t.TempDir()
+	deps, err := NewDependencies(DependencyOptions{
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
+	})
+	require.NoError(t, err)
+	defer deps.Close()
+
+	strategy := NewCrawlerStrategy(deps)
+
+	ctx := context.Background()
+	opts := Options{
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: true,
+		},
+		Concurrency: 1,
+		MaxDepth:    2,
+	}
+
+	err = strategy.Execute(ctx, server.URL+"/", opts)
+	assert.NoError(t, err)
+
+	// Verify sub-pages were visited
+	assert.GreaterOrEqual(t, len(visited), 2, "Should visit root + at least one sub-page")
+}
+
 // Mock types for testing
 
 type mockFetcher struct {

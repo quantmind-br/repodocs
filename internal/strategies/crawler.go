@@ -39,6 +39,7 @@ type crawlContext struct {
 	bar            *progressbar.ProgressBar
 	barMu          *sync.Mutex
 	excludeRegexps []*regexp.Regexp
+	collector      *colly.Collector // for re-injecting JS-discovered links
 }
 
 func newCrawlContext(ctx context.Context, baseURL string, opts Options) *crawlContext {
@@ -108,6 +109,7 @@ func (s *CrawlerStrategy) processMarkdownResponse(body []byte, url string) (*dom
 func (s *CrawlerStrategy) processHTMLResponse(ctx context.Context, body []byte, url string, opts Options) (*domain.Document, error) {
 	html := string(body)
 
+	renderedWithJS := false
 	if opts.RenderJS || renderer.NeedsJSRendering(html) {
 		if r, err := s.deps.GetRenderer(); err == nil {
 			s.renderer = r
@@ -118,6 +120,7 @@ func (s *CrawlerStrategy) processHTMLResponse(ctx context.Context, body []byte, 
 			})
 			if err == nil {
 				html = rendered
+				renderedWithJS = true
 			}
 		}
 	}
@@ -127,6 +130,8 @@ func (s *CrawlerStrategy) processHTMLResponse(ctx context.Context, body []byte, 
 		s.logger.Warn().Err(err).Str("url", url).Msg("Failed to convert page")
 		return nil, err
 	}
+
+	doc.RenderedWithJS = renderedWithJS
 
 	return doc, nil
 }
@@ -174,6 +179,24 @@ func (s *CrawlerStrategy) processResponse(ctx context.Context, r *colly.Response
 
 	if err != nil || doc == nil {
 		return
+	}
+
+	if doc.RenderedWithJS && cctx.collector != nil && len(doc.Links) > 0 {
+		var queued int
+		for _, link := range doc.Links {
+			if s.shouldProcessURL(link, cctx.baseURL, cctx) {
+				if err := cctx.collector.Visit(link); err == nil {
+					queued++
+				}
+			}
+		}
+		if queued > 0 {
+			s.logger.Debug().
+				Int("queued", queued).
+				Int("total", len(doc.Links)).
+				Str("url", currentURL).
+				Msg("Re-injected JS-rendered links into crawl queue")
+		}
 	}
 
 	doc.SourceStrategy = s.Name()
@@ -238,6 +261,8 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 		colly.Async(true),
 		colly.MaxDepth(opts.MaxDepth),
 	)
+
+	cctx.collector = c
 
 	c.WithTransport(s.fetcher.Transport())
 

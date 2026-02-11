@@ -110,6 +110,14 @@ func TestNewCrawlContext_EmptyOptions(t *testing.T) {
 	assert.Equal(t, 0, *cctx.processedCount)
 }
 
+func TestNewCrawlContext_CollectorNilByDefault(t *testing.T) {
+	ctx := context.Background()
+	cctx := newCrawlContext(ctx, "https://example.com", DefaultOptions())
+
+	require.NotNil(t, cctx)
+	assert.Nil(t, cctx.collector)
+}
+
 func TestNewCrawlContext_OptsPreserved(t *testing.T) {
 	ctx := context.Background()
 	opts := Options{
