@@ -55,7 +55,7 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "timeout below minimum defaults to 30s",
+			name: "timeout below minimum defaults to 90s",
 			cfg:  &Config{},
 			modify: func(c *Config) {
 				c.Concurrency.Timeout = 100 * time.Millisecond

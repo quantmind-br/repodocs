@@ -101,6 +101,7 @@ func URLToFilename(rawURL string) string {
 	path = strings.TrimSuffix(path, ".html")
 	path = strings.TrimSuffix(path, ".htm")
 	path = strings.TrimSuffix(path, ".php")
+	path = strings.TrimSuffix(path, ".mdx")
 
 	// Sanitize and add .md extension
 	filename := SanitizeFilename(path)
@@ -128,6 +129,7 @@ func URLToPath(rawURL string) string {
 	path = strings.TrimSuffix(path, ".html")
 	path = strings.TrimSuffix(path, ".htm")
 	path = strings.TrimSuffix(path, ".php")
+	path = strings.TrimSuffix(path, ".mdx")
 
 	// Split path and sanitize each component
 	parts := strings.Split(path, "/")
@@ -188,11 +190,18 @@ func GeneratePathFromRelative(baseDir, relPath string, flat bool) string {
 	}
 
 	// For nested mode, preserve directory structure
-	// Ensure path uses OS-specific separators
 	relPath = filepath.FromSlash(relPath)
 
-	// Sanitize each component
 	parts := strings.Split(relPath, string(filepath.Separator))
+	if len(parts) > 0 {
+		lastPart := parts[len(parts)-1]
+		ext := filepath.Ext(lastPart)
+		if ext == ".md" || ext == ".mdx" {
+			lastPart = strings.TrimSuffix(lastPart, ext)
+			parts[len(parts)-1] = lastPart
+		}
+	}
+
 	for i, part := range parts {
 		parts[i] = SanitizeFilename(part)
 	}

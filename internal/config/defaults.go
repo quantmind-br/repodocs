@@ -13,7 +13,7 @@ const (
 
 	// Concurrency defaults
 	DefaultWorkers  = 5
-	DefaultTimeout  = 30 * time.Second
+	DefaultTimeout  = 90 * time.Second
 	DefaultMaxDepth = 3
 
 	// Cache defaults

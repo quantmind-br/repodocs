@@ -20,7 +20,7 @@ func TestDefaultConstants_Output(t *testing.T) {
 
 func TestDefaultConstants_Concurrency(t *testing.T) {
 	assert.Equal(t, 5, config.DefaultWorkers)
-	assert.Equal(t, 30*time.Second, config.DefaultTimeout)
+	assert.Equal(t, 90*time.Second, config.DefaultTimeout)
 	assert.Equal(t, 3, config.DefaultMaxDepth)
 }
 

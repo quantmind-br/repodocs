@@ -112,6 +112,11 @@ func TestURLToFilename(t *testing.T) {
 			expected: "page.md",
 		},
 		{
+			name:     "URL with MDX extension",
+			url:      "https://example.com/docs/quickstart.mdx",
+			expected: "docs-quickstart.md",
+		},
+		{
 			name:     "root URL",
 			url:      "https://example.com/",
 			expected: "index.md",
@@ -168,6 +173,11 @@ func TestURLToPath(t *testing.T) {
 			name:     "URL with HTML extension",
 			url:      "https://example.com/docs/page.html",
 			expected: "docs/page.md",
+		},
+		{
+			name:     "URL with MDX extension",
+			url:      "https://example.com/docs/quickstart.mdx",
+			expected: "docs/quickstart.md",
 		},
 		{
 			name:     "invalid URL",

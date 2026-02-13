@@ -38,7 +38,7 @@ type ClientOptions struct {
 // DefaultClientOptions returns default client options
 func DefaultClientOptions() ClientOptions {
 	return ClientOptions{
-		Timeout:     30 * time.Second,
+		Timeout:     90 * time.Second,
 		MaxRetries:  3,
 		EnableCache: true,
 		CacheTTL:    24 * time.Hour,
@@ -50,7 +50,7 @@ func DefaultClientOptions() ClientOptions {
 // NewClient creates a new stealth HTTP client
 func NewClient(opts ClientOptions) (*Client, error) {
 	if opts.Timeout <= 0 {
-		opts.Timeout = 30 * time.Second
+		opts.Timeout = 90 * time.Second
 	}
 
 	// TLS client options

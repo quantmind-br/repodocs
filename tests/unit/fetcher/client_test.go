@@ -61,7 +61,7 @@ func TestNewClient_Success(t *testing.T) {
 		}
 	})
 
-	t.Run("zero timeout defaults to 30 seconds", func(t *testing.T) {
+	t.Run("zero timeout defaults to 90 seconds", func(t *testing.T) {
 		// Execute: Create client with zero timeout
 		opts := fetcher.ClientOptions{
 			Timeout:     0,

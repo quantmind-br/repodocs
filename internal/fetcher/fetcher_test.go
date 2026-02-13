@@ -16,7 +16,7 @@ import (
 func TestDefaultClientOptions(t *testing.T) {
 	opts := DefaultClientOptions()
 
-	assert.Equal(t, 30*time.Second, opts.Timeout)
+	assert.Equal(t, 90*time.Second, opts.Timeout)
 	assert.Equal(t, 3, opts.MaxRetries)
 	assert.True(t, opts.EnableCache)
 	assert.Equal(t, 24*time.Hour, opts.CacheTTL)
@@ -42,7 +42,7 @@ func TestNewClient(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "with zero timeout defaults to 30s",
+			name: "with zero timeout defaults to 90s",
 			opts: ClientOptions{
 				Timeout: 0,
 			},

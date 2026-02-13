@@ -304,7 +304,7 @@ func TestDefaultClientOptions(t *testing.T) {
 
 	// Verify: All default values are set correctly
 	t.Run("default timeout", func(t *testing.T) {
-		assert.Equal(t, 30*time.Second, opts.Timeout)
+		assert.Equal(t, 90*time.Second, opts.Timeout)
 	})
 
 	t.Run("default max retries", func(t *testing.T) {

@@ -75,7 +75,7 @@ func init() {
 
 	// Rendering flags
 	rootCmd.PersistentFlags().Bool("render-js", false, "Force JS rendering")
-	rootCmd.PersistentFlags().Duration("timeout", 30*time.Second, "Request timeout")
+	rootCmd.PersistentFlags().Duration("timeout", 90*time.Second, "Request timeout")
 
 	// Output flags
 	rootCmd.PersistentFlags().Bool("json-meta", false, "Generate JSON metadata files")
