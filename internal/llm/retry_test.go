@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -163,6 +164,40 @@ func TestRetrier_Execute_MaxRetries(t *testing.T) {
 	assert.Equal(t, 3, calls) // initial + 2 retries
 }
 
+// TestRetrier_Execute_HTTPClientTimeout tests that HTTP client timeouts are retried
+func TestRetrier_Execute_HTTPClientTimeout(t *testing.T) {
+	cfg := RetryConfig{
+		MaxRetries:      2,
+		InitialInterval: 10 * time.Millisecond,
+		MaxInterval:     100 * time.Millisecond,
+		Multiplier:      2.0,
+		JitterFactor:    0.0,
+	}
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	r := NewRetrier(cfg, logger)
+	ctx := context.Background()
+
+	calls := 0
+	err := r.Execute(ctx, func() error {
+		calls++
+		if calls < 3 {
+			return &domain.LLMError{
+				Provider: "openai",
+				Message:  "request failed",
+				Err: &url.Error{
+					Op:  "Post",
+					URL: "https://api.example.com/v1/chat/completions",
+					Err: context.DeadlineExceeded,
+				},
+			}
+		}
+		return nil
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, 3, calls)
+}
+
 // TestRetrier_Execute_ContextCancellation tests context cancellation
 func TestRetrier_Execute_ContextCancellation(t *testing.T) {
 	cfg := RetryConfig{
@@ -258,6 +293,28 @@ func TestIsRetryableError(t *testing.T) {
 		{
 			name:     "context deadline exceeded",
 			err:      context.DeadlineExceeded,
+			expected: false,
+		},
+		{
+			name: "http client timeout is retryable",
+			err: &domain.LLMError{
+				Provider: "openai",
+				Message:  "request failed",
+				Err: &url.Error{
+					Op:  "Post",
+					URL: "https://api.example.com/v1/chat/completions",
+					Err: context.DeadlineExceeded,
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "url error non-timeout is not retryable",
+			err: &url.Error{
+				Op:  "Get",
+				URL: "https://api.example.com",
+				Err: errors.New("connection refused"),
+			},
 			expected: false,
 		},
 		{

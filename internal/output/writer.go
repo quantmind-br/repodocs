@@ -45,38 +45,38 @@ func NewWriter(opts WriterOptions) *Writer {
 
 // Write saves a document to the output directory
 func (w *Writer) Write(ctx context.Context, doc *domain.Document) error {
-	// Generate path
 	var path string
-	if doc.RelativePath != "" {
-		// For Git-sourced files, use the relative path directly
+	if doc.IsRawFile && doc.RelativePath != "" {
+		path = utils.GenerateRawPathFromRelative(w.baseDir, doc.RelativePath, w.flat)
+	} else if doc.RelativePath != "" {
 		path = utils.GeneratePathFromRelative(w.baseDir, doc.RelativePath, w.flat)
 	} else {
-		// For other sources, generate path from URL
 		path = utils.GeneratePath(w.baseDir, doc.URL, w.flat)
 	}
 
-	// Check if file exists
 	if !w.force {
 		if _, err := os.Stat(path); err == nil {
-			// File exists, skip
 			return nil
 		}
 	}
 
-	// Dry run - just return
 	if w.dryRun {
 		return nil
 	}
 
-	// Ensure directory exists
 	if err := utils.EnsureDir(path); err != nil {
 		return err
 	}
 
-	// Add frontmatter
-	content, err := converter.AddFrontmatter(doc.Content, doc)
-	if err != nil {
-		return err
+	var content string
+	if doc.IsRawFile {
+		content = doc.Content
+	} else {
+		var err error
+		content, err = converter.AddFrontmatter(doc.Content, doc)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {

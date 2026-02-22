@@ -91,6 +91,19 @@ func (s *LLMSStrategy) Execute(ctx context.Context, url string, opts Options) er
 	}
 
 	links := parseLLMSLinks(string(resp.Body))
+
+	// Resolve relative URLs against the base URL of the llms.txt file
+	for i := range links {
+		if !strings.HasPrefix(links[i].URL, "http://") && !strings.HasPrefix(links[i].URL, "https://") {
+			resolved, err := utils.ResolveURL(url, links[i].URL)
+			if err != nil {
+				s.logger.Warn().Err(err).Str("url", links[i].URL).Msg("Failed to resolve relative URL")
+				continue
+			}
+			links[i].URL = resolved
+		}
+	}
+
 	s.logger.Info().Int("count", len(links)).Msg("Found links in llms.txt")
 
 	if opts.FilterURL != "" {

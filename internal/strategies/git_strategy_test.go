@@ -154,13 +154,11 @@ func TestDetectDefaultBranch_Master(t *testing.T) {
 	err = os.MkdirAll(repoDir, 0755)
 	require.NoError(t, err)
 
-	// Initialize git repo
-	cmd := exec.Command("git", "init")
+	cmd := exec.Command("git", "init", "-b", "master")
 	cmd.Dir = repoDir
 	err = cmd.Run()
 	require.NoError(t, err)
 
-	// Create a file and commit
 	readmePath := filepath.Join(repoDir, "README.md")
 	err = os.WriteFile(readmePath, []byte("# Test"), 0644)
 	require.NoError(t, err)
@@ -175,8 +173,6 @@ func TestDetectDefaultBranch_Master(t *testing.T) {
 	err = cmd.Run()
 	require.NoError(t, err)
 
-	// Keep master branch (default)
-	// Test detection
 	ctx := context.Background()
 	branch, err := strategy.detectDefaultBranch(ctx, "file://"+repoDir)
 	require.NoError(t, err)

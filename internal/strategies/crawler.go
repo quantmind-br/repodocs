@@ -2,6 +2,7 @@ package strategies
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 	"sync"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/quantmind-br/repodocs-go/internal/converter"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs-go/internal/fetcher"
 	"github.com/quantmind-br/repodocs-go/internal/output"
 	"github.com/quantmind-br/repodocs-go/internal/renderer"
 	"github.com/quantmind-br/repodocs-go/internal/utils"
@@ -248,6 +250,29 @@ func (s *CrawlerStrategy) SetFetcher(f domain.Fetcher) {
 	s.fetcher = f
 }
 
+func (s *CrawlerStrategy) makeRendererFallback() fetcher.RendererFallback {
+	return func(ctx context.Context, url string) (string, error) {
+		r, err := s.deps.GetRenderer()
+		if err != nil {
+			return "", fmt.Errorf("renderer unavailable: %w", err)
+		}
+
+		cookies := s.fetcher.GetCookies(url)
+
+		html, err := r.Render(ctx, url, domain.RenderOptions{
+			Timeout:     30 * time.Second,
+			WaitStable:  15 * time.Second,
+			ScrollToEnd: false,
+			Cookies:     cookies,
+		})
+		if err != nil {
+			return "", fmt.Errorf("renderer fallback failed: %w", err)
+		}
+
+		return html, nil
+	}
+}
+
 func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options) error {
 	s.logger.Info().Str("url", url).Msg("Starting web crawl")
 
@@ -264,7 +289,14 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 
 	cctx.collector = c
 
-	c.WithTransport(s.fetcher.Transport())
+	if fetcherClient, ok := s.fetcher.(*fetcher.Client); ok {
+		c.WithTransport(fetcherClient.TransportWithOptions(fetcher.StealthTransportOptions{
+			RendererFallback: s.makeRendererFallback(),
+			Logger:           s.logger,
+		}))
+	} else {
+		c.WithTransport(s.fetcher.Transport())
+	}
 
 	_ = c.Limit(&colly.LimitRule{
 		DomainGlob:  "*",

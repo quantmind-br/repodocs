@@ -215,6 +215,33 @@ func GeneratePathFromRelative(baseDir, relPath string, flat bool) string {
 	return filepath.Join(baseDir, result)
 }
 
+// GenerateRawPathFromRelative generates the output path preserving the original file extension.
+// Used for config files (.json, .yaml, .yml, .toml, .env) that should not be converted to markdown.
+func GenerateRawPathFromRelative(baseDir, relPath string, flat bool) string {
+	ext := filepath.Ext(relPath)
+
+	if flat {
+		normalized := filepath.ToSlash(relPath)
+		withoutExt := strings.TrimSuffix(normalized, ext)
+		flatName := strings.ReplaceAll(withoutExt, "/", "-")
+		flatName = SanitizeFilename(flatName)
+		return filepath.Join(baseDir, flatName+ext)
+	}
+
+	relPath = filepath.FromSlash(relPath)
+	parts := strings.Split(relPath, string(filepath.Separator))
+	for i, part := range parts {
+		if i == len(parts)-1 {
+			withoutExt := strings.TrimSuffix(part, ext)
+			parts[i] = SanitizeFilename(withoutExt) + ext
+		} else {
+			parts[i] = SanitizeFilename(part)
+		}
+	}
+
+	return filepath.Join(baseDir, filepath.Join(parts...))
+}
+
 // JSONPath returns the corresponding JSON metadata path for a markdown file
 func JSONPath(mdPath string) string {
 	return strings.TrimSuffix(mdPath, ".md") + ".json"

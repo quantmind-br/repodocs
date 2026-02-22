@@ -18,7 +18,8 @@ type Document struct {
 	RenderedWithJS bool                `json:"rendered_with_js"`
 	SourceStrategy string              `json:"source_strategy"`
 	CacheHit       bool                `json:"cache_hit"`
-	RelativePath   string              `json:"-"` // Relative path for Git-sourced files (used for output structure)
+	RelativePath   string              `json:"-"`
+	IsRawFile      bool                `json:"-"`
 
 	// LLM-enhanced metadata fields
 	Summary  string   `json:"summary,omitempty"`  // AI-generated summary

@@ -41,6 +41,15 @@ var DocumentExtensions = map[string]bool{
 	".mdx": true,
 }
 
+// ConfigExtensions are configuration file extensions to include as raw files
+var ConfigExtensions = map[string]bool{
+	".json": true,
+	".yaml": true,
+	".yml":  true,
+	".toml": true,
+	".env":  true,
+}
+
 // IgnoreDirs are directories to skip during file discovery
 var IgnoreDirs = map[string]bool{
 	".git":         true,

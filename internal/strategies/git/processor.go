@@ -76,7 +76,7 @@ func (p *Processor) FindDocumentationFiles(dir string, filterPath string) ([]str
 		}
 
 		ext := strings.ToLower(filepath.Ext(path))
-		if DocumentExtensions[ext] {
+		if DocumentExtensions[ext] || ConfigExtensions[ext] {
 			files = append(files, path)
 		}
 
@@ -147,7 +147,9 @@ func (p *Processor) ProcessFile(ctx context.Context, path, tmpDir string, opts P
 	}
 
 	ext := strings.ToLower(filepath.Ext(path))
-	if ext != ".md" && ext != ".mdx" {
+	if ConfigExtensions[ext] {
+		doc.IsRawFile = true
+	} else if ext != ".md" && ext != ".mdx" {
 		doc.Content = "```\n" + string(content) + "\n```"
 	}
 

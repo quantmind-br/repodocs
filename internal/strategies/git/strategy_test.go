@@ -957,6 +957,33 @@ func TestProcessor_FindDocumentationFiles_FilterPathNotDir(t *testing.T) {
 	assert.Contains(t, err.Error(), "filter path is not a directory")
 }
 
+func TestProcessor_FindDocumentationFiles_IncludesConfigFiles(t *testing.T) {
+	processor := gitstrat.NewProcessor(gitstrat.ProcessorOptions{})
+
+	tmpDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("# Readme"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "config.yaml"), []byte("key: value"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "settings.json"), []byte("{}"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "app.toml"), []byte("[app]"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".env"), []byte("VAR=value"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte("package main"), 0644))
+
+	files, err := processor.FindDocumentationFiles(tmpDir, "")
+	require.NoError(t, err)
+
+	filenames := make(map[string]bool)
+	for _, f := range files {
+		filenames[filepath.Base(f)] = true
+	}
+
+	assert.True(t, filenames["README.md"])
+	assert.True(t, filenames["config.yaml"])
+	assert.True(t, filenames["settings.json"])
+	assert.True(t, filenames["app.toml"])
+	assert.True(t, filenames[".env"])
+	assert.False(t, filenames["main.go"])
+}
+
 func TestExtractTitleFromPath_SimpleFile(t *testing.T) {
 	title := gitstrat.ExtractTitleFromPath("readme.md")
 	assert.Equal(t, "Readme", title)
@@ -2131,6 +2158,17 @@ func TestDocumentExtensions(t *testing.T) {
 	assert.False(t, gitstrat.DocumentExtensions[".go"])
 }
 
+func TestConfigExtensions(t *testing.T) {
+	assert.True(t, gitstrat.ConfigExtensions[".json"])
+	assert.True(t, gitstrat.ConfigExtensions[".yaml"])
+	assert.True(t, gitstrat.ConfigExtensions[".yml"])
+	assert.True(t, gitstrat.ConfigExtensions[".toml"])
+	assert.True(t, gitstrat.ConfigExtensions[".env"])
+	assert.False(t, gitstrat.ConfigExtensions[".go"])
+	assert.False(t, gitstrat.ConfigExtensions[".txt"])
+	assert.False(t, gitstrat.ConfigExtensions[".py"])
+}
+
 func TestIgnoreDirs(t *testing.T) {
 	assert.True(t, gitstrat.IgnoreDirs[".git"])
 	assert.True(t, gitstrat.IgnoreDirs["node_modules"])
@@ -2176,6 +2214,34 @@ func TestProcessor_ProcessFile_MdxExtension(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, capturedDoc)
 	assert.Contains(t, capturedDoc.Content, "# MDX Content")
+}
+
+func TestProcessor_ProcessFile_ConfigFile(t *testing.T) {
+	processor := gitstrat.NewProcessor(gitstrat.ProcessorOptions{})
+
+	tmpDir := t.TempDir()
+	yamlPath := filepath.Join(tmpDir, "config.yaml")
+	configContent := "key: value\nnested:\n  item: true"
+	require.NoError(t, os.WriteFile(yamlPath, []byte(configContent), 0644))
+
+	var capturedDoc *domain.Document
+	writeFunc := func(ctx context.Context, doc *domain.Document) error {
+		capturedDoc = doc
+		return nil
+	}
+
+	opts := gitstrat.ProcessOptions{
+		RepoURL:   "https://github.com/user/repo",
+		Branch:    "main",
+		WriteFunc: writeFunc,
+	}
+
+	err := processor.ProcessFile(context.Background(), yamlPath, tmpDir, opts)
+	require.NoError(t, err)
+	require.NotNil(t, capturedDoc)
+	assert.Equal(t, configContent, capturedDoc.Content)
+	assert.True(t, capturedDoc.IsRawFile)
+	assert.Equal(t, "git", capturedDoc.SourceStrategy)
 }
 
 func TestExecuteOptions_Fields(t *testing.T) {

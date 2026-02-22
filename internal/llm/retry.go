@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/domain"
@@ -134,6 +135,13 @@ func (r *Retrier) calculateBackoff(attempt int) time.Duration {
 func IsRetryableError(err error) bool {
 	if err == nil {
 		return false
+	}
+
+	// HTTP client timeouts (e.g. http.Client.Timeout) are retryable.
+	// Must check BEFORE context.DeadlineExceeded since *url.Error wraps it.
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) && urlErr.Timeout() {
+		return true
 	}
 
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {

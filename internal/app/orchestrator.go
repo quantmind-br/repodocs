@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -145,6 +146,38 @@ func (o *Orchestrator) Run(ctx context.Context, url string, opts OrchestratorOpt
 
 		if strategyType == StrategyUnknown {
 			return fmt.Errorf("unable to determine strategy for URL: %s", url)
+		}
+	}
+
+	// Sitemap auto-discovery: when Crawler is selected and no strategy override,
+	// probe for sitemaps before falling back to crawling
+	if strategyType == StrategyCrawler && opts.StrategyOverride == "" {
+		discovery, discoverErr := strategies.DiscoverSitemap(ctx, o.deps.Fetcher, url, o.logger)
+		if discoverErr != nil {
+			o.logger.Debug().Err(discoverErr).Msg("Sitemap discovery failed, continuing with crawler")
+		} else if discovery != nil {
+			o.logger.Info().
+				Str("sitemap_url", discovery.SitemapURL).
+				Str("method", discovery.Method).
+				Msg("Discovered sitemap, switching from crawler to sitemap strategy")
+			strategyType = StrategySitemap
+			url = discovery.SitemapURL
+		}
+	}
+
+	// Content-based sitemap detection for .xml URLs not caught by URL patterns
+	if strategyType == StrategyCrawler && opts.StrategyOverride == "" {
+		pathEnd := strings.ToLower(url)
+		if idx := strings.IndexAny(pathEnd, "?#"); idx >= 0 {
+			pathEnd = pathEnd[:idx]
+		}
+		if strings.HasSuffix(pathEnd, ".xml") {
+			resp, fetchErr := o.deps.Fetcher.Get(ctx, url)
+			if fetchErr == nil && resp.StatusCode == 200 && strategies.IsSitemapContent(resp.Body) {
+				o.logger.Info().Str("url", url).
+					Msg("Content detected as sitemap XML, switching to sitemap strategy")
+				strategyType = StrategySitemap
+			}
 		}
 	}
 

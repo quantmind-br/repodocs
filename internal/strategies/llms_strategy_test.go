@@ -533,6 +533,64 @@ func TestFilterLLMSLinks(t *testing.T) {
 	}
 }
 
+// TestLLMSStrategy_Execute_RelativeURLs tests that relative URLs in llms.txt are resolved against the base URL
+func TestLLMSStrategy_Execute_RelativeURLs(t *testing.T) {
+	var fetchedPaths []string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "llms.txt") {
+			llmsContent := `# Documentation
+
+[Introduction](/docs/get-started/introduction.md): Getting started guide.
+[Installation](/docs/get-started/installation.md): Install instructions.
+[API Reference](/docs/api/reference.md): Full API docs.
+`
+			w.Header().Set("Content-Type", "text/plain")
+			w.Write([]byte(llmsContent))
+		} else {
+			fetchedPaths = append(fetchedPaths, r.URL.Path)
+			w.Header().Set("Content-Type", "text/markdown")
+			w.Write([]byte("# Test Page\n\nContent here."))
+		}
+	}))
+	defer server.Close()
+
+	tmpDir := t.TempDir()
+	deps, err := NewDependencies(DependencyOptions{
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    1,
+		OutputDir:      tmpDir,
+		Flat:           true,
+		JSONMetadata:   false,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
+	})
+	require.NoError(t, err)
+	defer deps.Close()
+
+	strategy := NewLLMSStrategy(deps)
+
+	ctx := context.Background()
+	opts := Options{
+		CommonOptions: domain.CommonOptions{
+			Limit:  10,
+			DryRun: true,
+		},
+		Concurrency: 1,
+	}
+
+	err = strategy.Execute(ctx, server.URL+"/docs/llms.txt", opts)
+	assert.NoError(t, err)
+	assert.Len(t, fetchedPaths, 3, "All 3 relative URLs should have been resolved and fetched")
+
+	for _, p := range fetchedPaths {
+		assert.True(t, strings.HasPrefix(p, "/docs/"), "Fetched path should start with /docs/: %s", p)
+	}
+}
+
 // TestLLMSStrategy_Execute_TitleFallback tests using llms.txt title when page has no title
 func TestLLMSStrategy_Execute_TitleFallback(t *testing.T) {
 	llmsContent := `[Custom Title](https://example.com/page)

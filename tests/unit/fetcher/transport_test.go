@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -453,5 +454,161 @@ func TestClient_Transport(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, testResponseBody, string(body))
 		resp.Body.Close()
+	})
+}
+
+func TestStealthTransport_CloudflareFallback(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("403 with renderer fallback succeeds", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(403)
+			w.Write([]byte("Forbidden"))
+		}))
+		defer server.Close()
+
+		client, err := fetcher.NewClient(fetcher.ClientOptions{
+			EnableCache: false,
+			MaxRetries:  0,
+		})
+		require.NoError(t, err)
+
+		renderedHTML := "<html><body>Rendered by browser</body></html>"
+		fallbackCalled := false
+		transport := fetcher.NewStealthTransportWithOptions(client, fetcher.StealthTransportOptions{
+			RendererFallback: func(ctx context.Context, url string) (string, error) {
+				fallbackCalled = true
+				return renderedHTML, nil
+			},
+		})
+
+		req, err := http.NewRequestWithContext(ctx, "GET", server.URL, nil)
+		require.NoError(t, err)
+
+		resp, err := transport.RoundTrip(req)
+
+		require.NoError(t, err)
+		assert.True(t, fallbackCalled)
+		assert.Equal(t, 200, resp.StatusCode)
+		assert.Equal(t, "text/html; charset=utf-8", resp.Header.Get("Content-Type"))
+
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		assert.Equal(t, renderedHTML, string(body))
+	})
+
+	t.Run("403 without renderer fallback returns error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(403)
+			w.Write([]byte("Forbidden"))
+		}))
+		defer server.Close()
+
+		client, err := fetcher.NewClient(fetcher.ClientOptions{
+			EnableCache: false,
+			MaxRetries:  0,
+		})
+		require.NoError(t, err)
+
+		transport := fetcher.NewStealthTransport(client)
+
+		req, err := http.NewRequestWithContext(ctx, "GET", server.URL, nil)
+		require.NoError(t, err)
+
+		resp, err := transport.RoundTrip(req)
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("403 with failing renderer fallback returns original error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(403)
+			w.Write([]byte("Forbidden"))
+		}))
+		defer server.Close()
+
+		client, err := fetcher.NewClient(fetcher.ClientOptions{
+			EnableCache: false,
+			MaxRetries:  0,
+		})
+		require.NoError(t, err)
+
+		transport := fetcher.NewStealthTransportWithOptions(client, fetcher.StealthTransportOptions{
+			RendererFallback: func(ctx context.Context, url string) (string, error) {
+				return "", errors.New("browser crashed")
+			},
+		})
+
+		req, err := http.NewRequestWithContext(ctx, "GET", server.URL, nil)
+		require.NoError(t, err)
+
+		resp, err := transport.RoundTrip(req)
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "403")
+	})
+
+	t.Run("non-403 error skips fallback", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(500)
+			w.Write([]byte("Internal Server Error"))
+		}))
+		defer server.Close()
+
+		client, err := fetcher.NewClient(fetcher.ClientOptions{
+			EnableCache: false,
+			MaxRetries:  0,
+		})
+		require.NoError(t, err)
+
+		fallbackCalled := false
+		transport := fetcher.NewStealthTransportWithOptions(client, fetcher.StealthTransportOptions{
+			RendererFallback: func(ctx context.Context, url string) (string, error) {
+				fallbackCalled = true
+				return "<html>rendered</html>", nil
+			},
+		})
+
+		req, err := http.NewRequestWithContext(ctx, "GET", server.URL, nil)
+		require.NoError(t, err)
+
+		resp, err := transport.RoundTrip(req)
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.False(t, fallbackCalled)
+	})
+
+	t.Run("404 error skips fallback", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(404)
+			w.Write([]byte("Not Found"))
+		}))
+		defer server.Close()
+
+		client, err := fetcher.NewClient(fetcher.ClientOptions{
+			EnableCache: false,
+			MaxRetries:  0,
+		})
+		require.NoError(t, err)
+
+		fallbackCalled := false
+		transport := fetcher.NewStealthTransportWithOptions(client, fetcher.StealthTransportOptions{
+			RendererFallback: func(ctx context.Context, url string) (string, error) {
+				fallbackCalled = true
+				return "<html>rendered</html>", nil
+			},
+		})
+
+		req, err := http.NewRequestWithContext(ctx, "GET", server.URL, nil)
+		require.NoError(t, err)
+
+		resp, err := transport.RoundTrip(req)
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.False(t, fallbackCalled)
 	})
 }

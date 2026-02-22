@@ -53,9 +53,13 @@ func NewClient(opts ClientOptions) (*Client, error) {
 		opts.Timeout = 90 * time.Second
 	}
 
-	// TLS client options
+	tlsTimeout := opts.Timeout * 3
+	if tlsTimeout < 3*time.Minute {
+		tlsTimeout = 3 * time.Minute
+	}
+
 	tlsOpts := []tls_client.HttpClientOption{
-		tls_client.WithTimeoutSeconds(int(opts.Timeout.Seconds())),
+		tls_client.WithTimeoutSeconds(int(tlsTimeout.Seconds())),
 		tls_client.WithClientProfile(profiles.Chrome_131),
 		tls_client.WithRandomTLSExtensionOrder(),
 		tls_client.WithNotFollowRedirects(),

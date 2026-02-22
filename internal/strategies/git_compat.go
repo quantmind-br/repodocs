@@ -9,6 +9,7 @@ import (
 )
 
 var DocumentExtensions = git.DocumentExtensions
+var ConfigExtensions = git.ConfigExtensions
 var IgnoreDirs = git.IgnoreDirs
 
 type repoInfo = git.RepoInfo

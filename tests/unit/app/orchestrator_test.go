@@ -701,3 +701,139 @@ func TestOrchestrator_StrategyFactoryDefault(t *testing.T) {
 	// Just verify it doesn't panic and uses some strategy
 	_ = err
 }
+
+func TestOrchestrator_Run_SitemapDiscoveryViaRobotsTxt(t *testing.T) {
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/robots.txt":
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(200)
+			fmt.Fprintf(w, "User-agent: *\nDisallow: /private/\nSitemap: %s/sitemap.xml\n", server.URL)
+		case "/sitemap.xml":
+			w.Header().Set("Content-Type", "application/xml")
+			w.WriteHeader(200)
+			fmt.Fprintf(w, `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<url><loc>%s/page1</loc></url>
+</urlset>`, server.URL)
+		case "/page1":
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(200)
+			w.Write([]byte(`<html><head><title>Page 1</title></head><body><h1>Page 1</h1><p>Content here.</p></body></html>`))
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer server.Close()
+
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+
+	var capturedType app.StrategyType
+	mockStrategy := &testStrategy{name: "sitemap", canHandle: true}
+
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			capturedType = st
+			return mockStrategy
+		},
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	err = orchestrator.Run(context.Background(), server.URL, opts)
+
+	require.NoError(t, err)
+	assert.Equal(t, app.StrategySitemap, capturedType,
+		"Should switch from crawler to sitemap after discovering sitemap via robots.txt")
+}
+
+func TestOrchestrator_Run_ContentBasedSitemapDetection(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/data.xml":
+			w.Header().Set("Content-Type", "application/xml")
+			w.WriteHeader(200)
+			w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<url><loc>https://example.com/page1</loc></url>
+	<url><loc>https://example.com/page2</loc></url>
+</urlset>`))
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer server.Close()
+
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+
+	var capturedType app.StrategyType
+	mockStrategy := &testStrategy{name: "sitemap", canHandle: true}
+
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			capturedType = st
+			return mockStrategy
+		},
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	err = orchestrator.Run(context.Background(), server.URL+"/data.xml", opts)
+
+	require.NoError(t, err)
+	assert.Equal(t, app.StrategySitemap, capturedType,
+		"Should detect sitemap XML content and switch from crawler to sitemap strategy")
+}
+
+func TestOrchestrator_Run_NoSitemapFallbackToCrawler(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(200)
+			w.Write([]byte(`<html><body><h1>Home</h1></body></html>`))
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer server.Close()
+
+	tmpDir := t.TempDir()
+	cfg := config.Default()
+	cfg.Output.Directory = tmpDir
+	cfg.Cache.Enabled = false
+
+	var capturedType app.StrategyType
+	mockStrategy := &testStrategy{name: "crawler", canHandle: true}
+
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			capturedType = st
+			return mockStrategy
+		},
+	}
+
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	err = orchestrator.Run(context.Background(), server.URL, opts)
+
+	require.NoError(t, err)
+	assert.Equal(t, app.StrategyCrawler, capturedType,
+		"Should remain crawler when no sitemap is discovered")
+}

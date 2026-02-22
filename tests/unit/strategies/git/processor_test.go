@@ -360,8 +360,8 @@ func TestProcessFile_DryRun(t *testing.T) {
 
 func TestProcessFile_NonMarkdownFile(t *testing.T) {
 	tmpDir := t.TempDir()
-	filePath := filepath.Join(tmpDir, "config.yaml")
-	content := "key: value\n"
+	filePath := filepath.Join(tmpDir, "script.sh")
+	content := "#!/bin/bash\necho hello\n"
 	os.WriteFile(filePath, []byte(content), 0644)
 
 	var processedDoc *domain.Document
@@ -383,6 +383,35 @@ func TestProcessFile_NonMarkdownFile(t *testing.T) {
 	assert.NotNil(t, processedDoc)
 	assert.Contains(t, processedDoc.Content, "```")
 	assert.Contains(t, processedDoc.Content, content)
+	assert.False(t, processedDoc.IsRawFile)
+}
+
+func TestProcessFile_ConfigFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "config.yaml")
+	content := "key: value\n"
+	os.WriteFile(filePath, []byte(content), 0644)
+
+	var processedDoc *domain.Document
+	writeFunc := func(ctx context.Context, doc *domain.Document) error {
+		processedDoc = doc
+		return nil
+	}
+
+	opts := git.ProcessOptions{
+		RepoURL:   "https://github.com/owner/repo",
+		Branch:    "main",
+		WriteFunc: writeFunc,
+	}
+
+	p := git.NewProcessor(git.ProcessorOptions{})
+	err := p.ProcessFile(context.Background(), filePath, tmpDir, opts)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, processedDoc)
+	assert.Equal(t, content, processedDoc.Content)
+	assert.True(t, processedDoc.IsRawFile)
+	assert.NotContains(t, processedDoc.Content, "```")
 }
 
 func TestProcessFile_ReadError(t *testing.T) {

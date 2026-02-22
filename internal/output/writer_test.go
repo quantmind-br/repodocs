@@ -517,3 +517,47 @@ func TestWriter_Integration(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+// TestWriter_Write_RawFile tests writing raw config files
+func TestWriter_Write_RawFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	w := NewWriter(WriterOptions{BaseDir: tmpDir})
+
+	doc := &domain.Document{
+		URL:          "https://github.com/user/repo",
+		RelativePath: "config/settings.yaml",
+		Content:      "key: value",
+		IsRawFile:    true,
+	}
+
+	ctx := context.Background()
+	err := w.Write(ctx, doc)
+	require.NoError(t, err)
+
+	expectedPath := filepath.Join(tmpDir, "config", "settings.yaml")
+	content, err := os.ReadFile(expectedPath)
+	require.NoError(t, err)
+	assert.Equal(t, "key: value", string(content))
+}
+
+// TestWriter_Write_RawFile_FlatMode tests writing raw config files in flat mode
+func TestWriter_Write_RawFile_FlatMode(t *testing.T) {
+	tmpDir := t.TempDir()
+	w := NewWriter(WriterOptions{BaseDir: tmpDir, Flat: true})
+
+	doc := &domain.Document{
+		URL:          "https://github.com/user/repo",
+		RelativePath: "config/settings.yaml",
+		Content:      "key: value",
+		IsRawFile:    true,
+	}
+
+	ctx := context.Background()
+	err := w.Write(ctx, doc)
+	require.NoError(t, err)
+
+	expectedPath := filepath.Join(tmpDir, "config-settings.yaml")
+	content, err := os.ReadFile(expectedPath)
+	require.NoError(t, err)
+	assert.Equal(t, "key: value", string(content))
+}
