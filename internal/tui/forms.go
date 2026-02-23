@@ -199,6 +199,7 @@ func CreateLLMForm(values *ConfigValues) *huh.Form {
 					huh.NewOption("OpenAI", "openai"),
 					huh.NewOption("Anthropic", "anthropic"),
 					huh.NewOption("Google", "google"),
+					huh.NewOption("Ollama", "ollama"),
 				).
 				Value(&values.LLMProvider),
 

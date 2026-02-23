@@ -94,6 +94,23 @@ func TestNewProviderFromConfig(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name: "valid ollama config",
+			cfg: &config.LLMConfig{
+				Provider: "ollama",
+				BaseURL:  "http://localhost:11434",
+				Model:    "llama2",
+			},
+			wantErr: nil,
+		},
+		{
+			name: "ollama without api key",
+			cfg: &config.LLMConfig{
+				Provider: "ollama",
+				Model:    "llama2",
+			},
+			wantErr: nil,
+		},
+		{
 			name: "missing base url for unknown provider",
 			cfg: &config.LLMConfig{
 				Provider: "unknown",
@@ -177,6 +194,15 @@ func TestNewProvider(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "valid ollama",
+			cfg: ProviderConfig{
+				Provider: "ollama",
+				BaseURL:  "http://localhost:11434",
+				Model:    "llama2",
+			},
+			wantErr: false,
+		},
+		{
 			name: "invalid provider",
 			cfg: ProviderConfig{
 				Provider: "invalid",
@@ -248,6 +274,7 @@ func TestDefaultBaseURL(t *testing.T) {
 		{"openai", DefaultOpenAIBaseURL},
 		{"anthropic", DefaultAnthropicBaseURL},
 		{"google", DefaultGoogleBaseURL},
+		{"ollama", DefaultOllamaBaseURL},
 		{"unknown", ""},
 		{"", ""},
 	}

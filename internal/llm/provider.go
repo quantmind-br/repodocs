@@ -14,6 +14,7 @@ const (
 	DefaultOpenAIBaseURL    = "https://api.openai.com/v1"
 	DefaultAnthropicBaseURL = "https://api.anthropic.com/v1"
 	DefaultGoogleBaseURL    = "https://generativelanguage.googleapis.com"
+	DefaultOllamaBaseURL    = "http://localhost:11434"
 )
 
 type ProviderConfig struct {
@@ -38,6 +39,8 @@ func DefaultBaseURL(provider string) string {
 		return DefaultAnthropicBaseURL
 	case "google":
 		return DefaultGoogleBaseURL
+	case "ollama":
+		return DefaultOllamaBaseURL
 	default:
 		return ""
 	}
@@ -47,7 +50,7 @@ func NewProviderFromConfig(cfg *config.LLMConfig) (domain.LLMProvider, error) {
 	if cfg.Provider == "" {
 		return nil, domain.ErrLLMNotConfigured
 	}
-	if cfg.APIKey == "" {
+	if cfg.APIKey == "" && cfg.Provider != "ollama" {
 		return nil, domain.ErrLLMMissingAPIKey
 	}
 	if cfg.Model == "" {
@@ -94,6 +97,8 @@ func NewProvider(cfg ProviderConfig) (domain.LLMProvider, error) {
 		return NewAnthropicProvider(cfg, httpClient)
 	case "google":
 		return NewGoogleProvider(cfg, httpClient)
+	case "ollama":
+		return NewOllamaProvider(cfg, httpClient)
 	default:
 		return nil, fmt.Errorf("%w: %s", domain.ErrLLMInvalidProvider, cfg.Provider)
 	}
