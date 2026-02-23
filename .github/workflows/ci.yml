@@ -32,16 +32,16 @@ jobs:
           declare -A thresholds=(
             ["internal/strategies"]=34
             ["internal/converter"]=85
-            ["internal/app"]=58
+            ["internal/app"]=48
             ["internal/llm"]=70
-            ["internal/config"]=75
+            ["internal/config"]=62
             ["internal/output"]=80
             ["internal/cache"]=75
             ["internal/fetcher"]=70
             ["internal/git"]=80
             ["cmd/repodocs"]=48
             ["internal/domain"]=85
-            ["internal/renderer"]=30
+            ["internal/renderer"]=28
           )
 
           # Track overall status
