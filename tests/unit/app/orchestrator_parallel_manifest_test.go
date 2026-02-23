@@ -96,6 +96,9 @@ func createParallelTestOrchestrator(t *testing.T, strategy strategies.Strategy) 
 // run concurrently rather than sequentially. With 3 sources each taking 100ms,
 // parallel execution should complete in ~100ms, not 300ms.
 func TestRunManifest_Parallel_ExecutesConcurrently(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping parallel manifest test in short mode (makes network calls via Orchestrator)")
+	}
 	delay := 100 * time.Millisecond
 	mock := newParallelTestStrategy("mock", delay)
 	orchestrator := createParallelTestOrchestrator(t, mock)
@@ -142,6 +145,9 @@ func TestRunManifest_Parallel_ExecutesConcurrently(t *testing.T) {
 // TestRunManifest_Parallel_ContinueOnError_True verifies that with ContinueOnError=true,
 // all sources are processed and the first error is returned.
 func TestRunManifest_Parallel_ContinueOnError_True(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping parallel manifest test in short mode (makes network calls via Orchestrator)")
+	}
 	var processedCount atomic.Int32
 	mock := newParallelTestStrategy("mock", 50*time.Millisecond)
 	mock.execFunc = func(ctx context.Context, url string, opts strategies.Options) error {
@@ -184,6 +190,9 @@ func TestRunManifest_Parallel_ContinueOnError_True(t *testing.T) {
 // TestRunManifest_Parallel_ContinueOnError_False verifies that with ContinueOnError=false,
 // the first error cancels remaining sources.
 func TestRunManifest_Parallel_ContinueOnError_False(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping parallel manifest test in short mode (makes network calls via Orchestrator)")
+	}
 	var processedCount atomic.Int32
 	var completedCount atomic.Int32
 
@@ -239,6 +248,9 @@ func TestRunManifest_Parallel_ContinueOnError_False(t *testing.T) {
 // TestRunManifest_Parallel_ContextCancellation verifies that context cancellation
 // stops all sources gracefully.
 func TestRunManifest_Parallel_ContextCancellation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping parallel manifest test in short mode (makes network calls via Orchestrator)")
+	}
 	var startedCount atomic.Int32
 
 	mock := newParallelTestStrategy("mock", 0)
@@ -288,6 +300,9 @@ func TestRunManifest_Parallel_ContextCancellation(t *testing.T) {
 // TestRunManifest_Parallel_ResultsPreserveOrder verifies that results maintain
 // correct association with their source index despite parallel execution.
 func TestRunManifest_Parallel_ResultsPreserveOrder(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping parallel manifest test in short mode (makes network calls via Orchestrator)")
+	}
 	var urlOrder []string
 	var mu sync.Mutex
 
@@ -345,6 +360,9 @@ func TestRunManifest_Parallel_ResultsPreserveOrder(t *testing.T) {
 // TestRunManifest_Parallel_ConcurrencyCap verifies that manifest processing
 // respects the concurrency cap (min of workers and 3).
 func TestRunManifest_Parallel_ConcurrencyCap(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping parallel manifest test in short mode (makes network calls via Orchestrator)")
+	}
 	var maxConcurrent atomic.Int32
 	var currentConcurrent atomic.Int32
 

@@ -21,7 +21,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           set -euo pipefail
-          go test ./... -coverprofile=coverage.out -covermode=atomic
+          go test -short ./... -coverprofile=coverage.out -covermode=atomic
 
       - name: Generate coverage reports per package
         run: |
@@ -52,7 +52,7 @@ jobs:
             threshold=${thresholds[$pkg]}
 
             # Generate coverage for this package
-            if go test -coverprofile="coverage-reports/${pkg//\//_}.out" -covermode=atomic "./${pkg}/..." 2>/dev/null; then
+            if go test -short -coverprofile="coverage-reports/${pkg//\//_}.out" -covermode=atomic "./${pkg}/..." 2>/dev/null; then
               # Extract coverage percentage
               coverage=$(go tool cover -func="coverage-reports/${pkg//\//_}.out" 2>/dev/null | grep total: | awk '{print $3}' | sed 's/%//')
 
