@@ -68,6 +68,15 @@ func (p *Pipeline) Convert(ctx context.Context, html string, sourceURL string) (
 		return nil, err
 	}
 
+	// Step 2.5: Preserve code language info before Readability can strip it
+	PreserveCodeLanguages(origDoc.Selection)
+
+	// Re-serialize for Readability (which expects a string)
+	preservedHTML, err := origDoc.Html()
+	if err != nil {
+		preservedHTML = html
+	}
+
 	// Step 3: Extract main content
 	var contentHTML string
 	var title string
@@ -78,7 +87,7 @@ func (p *Pipeline) Convert(ctx context.Context, html string, sourceURL string) (
 		contentHTML, title, err = p.extractor.ExtractFromDocument(origDoc, sourceURL)
 		if err != nil {
 			if errors.Is(err, ErrSelectorNotFound) {
-				contentHTML, title, err = p.extractor.extractWithReadability(html, sourceURL)
+				contentHTML, title, err = p.extractor.extractWithReadability(preservedHTML, sourceURL)
 			} else {
 				return nil, err
 			}
@@ -87,7 +96,7 @@ func (p *Pipeline) Convert(ctx context.Context, html string, sourceURL string) (
 			contentSel = origDoc.Find(p.extractor.selector)
 		}
 	} else {
-		contentHTML, title, err = p.extractor.extractWithReadability(html, sourceURL)
+		contentHTML, title, err = p.extractor.extractWithReadability(preservedHTML, sourceURL)
 	}
 	if err != nil {
 		return nil, err
@@ -114,6 +123,11 @@ func (p *Pipeline) Convert(ctx context.Context, html string, sourceURL string) (
 	description := ExtractDescription(origDoc)
 
 	if usedSelector {
+		// Pre-process code blocks before sanitization
+		RestoreCodeLanguages(contentSel)
+		NormalizeCodeLanguages(contentSel)
+		StripLineNumbers(contentSel)
+
 		sanitizedSel, selErr := p.sanitizer.SanitizeSelection(contentSel)
 		if selErr != nil {
 			return nil, selErr
@@ -127,6 +141,11 @@ func (p *Pipeline) Convert(ctx context.Context, html string, sourceURL string) (
 		if docErr != nil {
 			return nil, docErr
 		}
+
+		// Pre-process code blocks before sanitization
+		RestoreCodeLanguages(contentDoc.Selection)
+		NormalizeCodeLanguages(contentDoc.Selection)
+		StripLineNumbers(contentDoc.Selection)
 
 		sanitizedDoc, docErr := p.sanitizer.SanitizeDocument(contentDoc)
 		if docErr != nil {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	md "github.com/JohannesKaufmann/html-to-markdown/v2"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
 	"github.com/quantmind-br/repodocs-go/internal/domain"
 	"golang.org/x/net/html"
 	"gopkg.in/yaml.v3"
@@ -30,7 +31,8 @@ var (
 
 // MarkdownConverter converts HTML to Markdown
 type MarkdownConverter struct {
-	domain string
+	domain  string
+	convOpt []converter.ConvertOptionFunc
 }
 
 // MarkdownOptions contains options for Markdown conversion
@@ -52,29 +54,32 @@ func DefaultMarkdownOptions() MarkdownOptions {
 
 // NewMarkdownConverter creates a new Markdown converter
 func NewMarkdownConverter(opts MarkdownOptions) *MarkdownConverter {
+	var convOpts []converter.ConvertOptionFunc
+	if opts.Domain != "" {
+		convOpts = append(convOpts, converter.WithDomain(opts.Domain))
+	}
+
 	return &MarkdownConverter{
-		domain: opts.Domain,
+		domain:  opts.Domain,
+		convOpt: convOpts,
 	}
 }
 
 // Convert converts HTML to Markdown
-func (c *MarkdownConverter) Convert(html string) (string, error) {
-	// html-to-markdown v2 uses ConvertString directly
-	markdown, err := md.ConvertString(html)
+func (c *MarkdownConverter) Convert(htmlStr string) (string, error) {
+	markdown, err := md.ConvertString(htmlStr, c.convOpt...)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert HTML to Markdown: %w", err)
 	}
 
-	// Clean up the markdown
 	markdown = c.cleanMarkdown(markdown)
-
 	return markdown, nil
 }
 
 // ConvertNode converts an HTML node directly to Markdown (avoids reparsing)
 // This is more efficient when you already have a parsed DOM tree.
 func (c *MarkdownConverter) ConvertNode(node *html.Node) (string, error) {
-	markdown, err := md.ConvertNode(node)
+	markdown, err := md.ConvertNode(node, c.convOpt...)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert HTML node to Markdown: %w", err)
 	}
@@ -86,7 +91,7 @@ func (c *MarkdownConverter) ConvertNode(node *html.Node) (string, error) {
 func (c *MarkdownConverter) ConvertNodes(nodes []*html.Node) (string, error) {
 	var result strings.Builder
 	for i, node := range nodes {
-		markdown, err := md.ConvertNode(node)
+		markdown, err := md.ConvertNode(node, c.convOpt...)
 		if err != nil {
 			return "", fmt.Errorf("failed to convert HTML node to Markdown: %w", err)
 		}
@@ -101,6 +106,9 @@ func (c *MarkdownConverter) ConvertNodes(nodes []*html.Node) (string, error) {
 
 // cleanMarkdown cleans up the converted markdown
 func (c *MarkdownConverter) cleanMarkdown(markdown string) string {
+	// Remove empty fenced code blocks
+	markdown = CleanEmptyCodeBlocks(markdown)
+
 	// Remove excessive blank lines (more than 2 consecutive)
 	for strings.Contains(markdown, "\n\n\n\n") {
 		markdown = strings.ReplaceAll(markdown, "\n\n\n\n", "\n\n\n")

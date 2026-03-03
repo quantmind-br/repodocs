@@ -125,24 +125,24 @@ func (s *Sanitizer) SanitizeSelection(sel *goquery.Selection) (*goquery.Selectio
 }
 
 func (s *Sanitizer) sanitizeSelection(sel *goquery.Selection) {
-	// Remove unwanted tags
+	// Remove unwanted tags (preserving code blocks)
 	for _, tag := range TagsToRemove {
-		findWithRoot(sel, tag).Remove()
+		s.removePreservingCode(sel, tag)
 	}
 
 	// Remove elements by class
 	if s.removeNavigation {
 		for _, class := range ClassesToRemove {
-			findWithRoot(sel, "."+class).Remove()
-			findWithRoot(sel, "[class*='"+class+"']").Remove()
+			s.removePreservingCode(sel, "."+class)
+			s.removePreservingCode(sel, "[class*='"+class+"']")
 		}
 
 		// Remove elements by ID
 		for _, id := range IDsToRemove {
-			findWithRoot(sel, "#"+id).Remove()
+			s.removePreservingCode(sel, "#"+id)
 		}
 
-		findWithRoot(sel, "nav").Remove()
+		s.removePreservingCode(sel, "nav")
 	}
 
 	// Remove hidden elements
@@ -157,6 +157,19 @@ func (s *Sanitizer) sanitizeSelection(sel *goquery.Selection) {
 
 	// Remove empty paragraphs and divs
 	s.removeEmptyElementsFromSelection(sel)
+}
+
+// removePreservingCode removes elements matching the query but first
+// re-parents any <pre> code blocks they contain, preventing silent loss
+// of code examples nested inside structural elements like footer/aside/header.
+func (s *Sanitizer) removePreservingCode(sel *goquery.Selection, query string) {
+	matches := findWithRoot(sel, query)
+	if matches.Length() == 0 {
+		return
+	}
+	// Re-parent code blocks before removal
+	ReparentCodeBlocks(matches)
+	matches.Remove()
 }
 
 // normalizeURLs converts relative URLs to absolute URLs
