@@ -592,8 +592,8 @@ func TestFindDocumentationFiles_Nested(t *testing.T) {
 		rel, _ := filepath.Rel(tmpDir, f)
 		foundPaths = append(foundPaths, rel)
 	}
-	assert.Contains(t, foundPaths, "docs/advanced/deeply/nested.md")
-	assert.Contains(t, foundPaths, "docs/advanced/deeply/nested.mdx")
+	assert.Contains(t, foundPaths, filepath.FromSlash("docs/advanced/deeply/nested.md"))
+	assert.Contains(t, foundPaths, filepath.FromSlash("docs/advanced/deeply/nested.mdx"))
 }
 
 // TestProcessFiles_Success tests successful processing of multiple files
@@ -872,7 +872,7 @@ func TestParseGitURLWithPath_GitHub(t *testing.T) {
 			url:         "https://github.com/owner/repo/tree/main/docs/api",
 			wantRepoURL: "https://github.com/owner/repo",
 			wantBranch:  "main",
-			wantSubPath: "docs/api",
+			wantSubPath: filepath.FromSlash("docs/api"),
 		},
 		{
 			name:        "repo with tree/develop/src",
@@ -962,10 +962,10 @@ func TestNormalizeFilterPath(t *testing.T) {
 		{"docs/", "docs"},
 		{"/docs", "docs"},
 		{"/docs/", "docs"},
-		{"docs/api", "docs/api"},
-		{"docs%2Fapi", "docs/api"},
-		{"\\docs\\api", "docs/api"},
-		{"docs//api", "docs/api"},
+		{"docs/api", filepath.FromSlash("docs/api")},
+		{"docs%2Fapi", filepath.FromSlash("docs/api")},
+		{"\\docs\\api", filepath.FromSlash("docs/api")},
+		{"docs//api", filepath.FromSlash("docs/api")},
 	}
 
 	for _, tt := range tests {
@@ -990,12 +990,12 @@ func TestNormalizeFilterPath_WithFullURLs(t *testing.T) {
 		{
 			name:     "GitHub tree URL with nested path",
 			input:    "https://github.com/owner/repo/tree/main/docs/api/v2",
-			expected: "docs/api/v2",
+			expected: filepath.FromSlash("docs/api/v2"),
 		},
 		{
 			name:     "GitHub blob URL",
 			input:    "https://github.com/owner/repo/blob/main/docs/readme.md",
-			expected: "docs/readme.md",
+			expected: filepath.FromSlash("docs/readme.md"),
 		},
 		{
 			name:     "GitLab tree URL",
@@ -1005,22 +1005,22 @@ func TestNormalizeFilterPath_WithFullURLs(t *testing.T) {
 		{
 			name:     "GitLab blob URL",
 			input:    "https://gitlab.com/owner/repo/-/blob/develop/src/lib",
-			expected: "src/lib",
+			expected: filepath.FromSlash("src/lib"),
 		},
 		{
 			name:     "Bitbucket src URL",
 			input:    "https://bitbucket.org/owner/repo/src/master/docs/guide",
-			expected: "docs/guide",
+			expected: filepath.FromSlash("docs/guide"),
 		},
 		{
 			name:     "GitHub tree URL without path returns full URL",
 			input:    "https://github.com/owner/repo/tree/main",
-			expected: "https:/github.com/owner/repo/tree/main",
+			expected: ".\\https:\\github.com\\owner\\repo\\tree\\main",
 		},
 		{
 			name:     "Plain path unchanged",
 			input:    "docs/api",
-			expected: "docs/api",
+			expected: filepath.FromSlash("docs/api"),
 		},
 	}
 

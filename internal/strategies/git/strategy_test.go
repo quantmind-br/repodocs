@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -337,6 +338,9 @@ func TestExecute_ContextCancelled(t *testing.T) {
 }
 
 func TestExecute_TempDirError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix file permissions not supported on Windows")
+	}
 	oldPerm := os.FileMode(0755)
 	tmpDir, err := os.MkdirTemp("", "repodocs-test-*")
 	require.NoError(t, err)
@@ -1154,7 +1158,7 @@ func TestParser_ParseURLWithPath_GitHub(t *testing.T) {
 			url:      "https://github.com/user/repo/tree/develop/docs/api",
 			repoURL:  "https://github.com/user/repo",
 			branch:   "develop",
-			subPath:  "docs/api",
+			subPath:  filepath.FromSlash("docs/api"),
 			platform: gitstrat.PlatformGitHub,
 		},
 	}
@@ -1303,8 +1307,8 @@ func TestNormalizeFilterPath_Simple(t *testing.T) {
 		{"docs/", "docs"},
 		{"/docs", "docs"},
 		{"/docs/", "docs"},
-		{"docs/api", "docs/api"},
-		{"docs\\api", "docs/api"},
+		{"docs/api", filepath.FromSlash("docs/api")},
+		{"docs\\api", filepath.FromSlash("docs/api")},
 		{"", ""},
 	}
 
@@ -1318,12 +1322,12 @@ func TestNormalizeFilterPath_Simple(t *testing.T) {
 
 func TestNormalizeFilterPath_URLDecoding(t *testing.T) {
 	result := gitstrat.NormalizeFilterPath("docs%2Fapi")
-	assert.Equal(t, "docs/api", result)
+	assert.Equal(t, filepath.FromSlash("docs/api"), result)
 }
 
 func TestNormalizeFilterPath_FromTreeURL(t *testing.T) {
 	result := gitstrat.NormalizeFilterPath("https://github.com/user/repo/tree/main/docs/api")
-	assert.Equal(t, "docs/api", result)
+	assert.Equal(t, filepath.FromSlash("docs/api"), result)
 }
 
 func TestExtractPathFromTreeURL_GitHub(t *testing.T) {
@@ -1936,6 +1940,9 @@ func TestProcessor_ProcessFiles_WithError(t *testing.T) {
 }
 
 func TestProcessor_FindDocumentationFiles_WalkError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix file permissions not supported on Windows")
+	}
 	processor := gitstrat.NewProcessor(gitstrat.ProcessorOptions{})
 
 	tmpDir := t.TempDir()

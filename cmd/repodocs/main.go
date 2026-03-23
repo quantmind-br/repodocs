@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -167,7 +169,7 @@ func run(cmd *cobra.Command, args []string) error {
 
 	// Handle graceful shutdown
 	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		<-sigCh
@@ -245,7 +247,7 @@ func runManifest(cmd *cobra.Command, cfg *config.Config) error {
 	defer cancel()
 
 	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		<-sigCh
@@ -395,6 +397,18 @@ func checkChrome() string {
 		"chromium.exe",
 	}
 
+	// Add Windows standard installation paths
+	if runtime.GOOS == "windows" {
+		windowsPaths := []string{
+			filepath.Join(os.Getenv("PROGRAMFILES"), "Google", "Chrome", "Application", "chrome.exe"),
+			filepath.Join(os.Getenv("PROGRAMFILES(X86)"), "Google", "Chrome", "Application", "chrome.exe"),
+			filepath.Join(os.Getenv("LOCALAPPDATA"), "Google", "Chrome", "Application", "chrome.exe"),
+			filepath.Join(os.Getenv("PROGRAMFILES"), "Chromium", "Application", "chrome.exe"),
+		}
+		// Prepend Windows paths so they're checked first on Windows
+		paths = append(windowsPaths, paths...)
+	}
+
 	for _, path := range paths {
 		if _, err := osStat(path); err == nil {
 			return path
@@ -402,14 +416,10 @@ func checkChrome() string {
 	}
 
 	// Try to find via which/where command
-	if path, err := execLookPath("google-chrome"); err == nil {
-		return path
-	}
-	if path, err := execLookPath("chromium"); err == nil {
-		return path
-	}
-	if path, err := execLookPath("chromium-browser"); err == nil {
-		return path
+	for _, name := range []string{"google-chrome", "chrome", "chromium", "chromium-browser"} {
+		if path, err := execLookPath(name); err == nil {
+			return path
+		}
 	}
 
 	return ""

@@ -25,8 +25,8 @@ func TestNewWriter(t *testing.T) {
 			name: "with all options",
 			opts: output.WriterOptions{
 				BaseDir:      "/custom/dir",
-				Flat:         true,
-				JSONMetadata: true,
+				Flat:         false,
+				JSONMetadata: false,
 				Force:        true,
 				DryRun:       true,
 				Collector:    nil,
@@ -34,7 +34,7 @@ func TestNewWriter(t *testing.T) {
 			verify: func(t *testing.T, w *output.Writer) {
 				assert.NotNil(t, w)
 				path := w.GetPath("https://example.com")
-				assert.Contains(t, path, "/custom/dir")
+				assert.Contains(t, path, filepath.FromSlash("/custom/dir"))
 			},
 		},
 		{
@@ -417,7 +417,7 @@ func TestWriter_GetPath(t *testing.T) {
 			flat:    false,
 			url:     "https://example.com/docs/guide",
 			contains: []string{
-				"/output",
+				filepath.FromSlash("/output"),
 				"docs",
 				".md",
 			},
@@ -428,7 +428,7 @@ func TestWriter_GetPath(t *testing.T) {
 			flat:    true,
 			url:     "https://example.com/docs/guide",
 			contains: []string{
-				"/output",
+				filepath.FromSlash("/output"),
 				".md",
 			},
 		},

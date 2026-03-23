@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -27,7 +28,7 @@ func TestNewWriter(t *testing.T) {
 
 	writer := output.NewWriter(opts)
 	path := writer.GetPath("https://example.com")
-	assert.Contains(t, path, "/custom/dir")
+	assert.Contains(t, path, filepath.FromSlash("/custom/dir"))
 	assert.Contains(t, path, ".md")
 }
 
@@ -165,6 +166,9 @@ func TestWrite_InvalidPath(t *testing.T) {
 
 // TestWrite_WriteFileError tests error handling when WriteFile fails
 func TestWrite_WriteFileError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix file permissions not supported on Windows")
+	}
 	tmpDir := t.TempDir()
 
 	// Create a read-only directory to cause WriteFile to fail
@@ -524,6 +528,9 @@ func TestStats_WithNonMarkdownFiles(t *testing.T) {
 
 // TestStats_WithWalkError tests Stats error handling when Walk fails
 func TestStats_WithWalkError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix file permissions not supported on Windows")
+	}
 	tmpDir := t.TempDir()
 
 	writer := output.NewWriter(output.WriterOptions{

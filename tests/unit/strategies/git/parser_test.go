@@ -1,6 +1,7 @@
 package git_test
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -291,7 +292,7 @@ func TestParser_ParseURLWithPath(t *testing.T) {
 				Owner:    "owner",
 				Repo:     "repo",
 				Branch:   "main",
-				SubPath:  "docs/api/v2",
+				SubPath:  filepath.FromSlash("docs/api/v2"),
 			},
 			wantErr: false,
 		},
@@ -354,22 +355,22 @@ func TestNormalizeFilterPath(t *testing.T) {
 		{
 			name:     "nested path",
 			path:     "docs/api/v1",
-			expected: "docs/api/v1",
+			expected: filepath.FromSlash("docs/api/v1"),
 		},
 		{
 			name:     "URL encoded",
 			path:     "docs%2Fapi",
-			expected: "docs/api",
+			expected: filepath.FromSlash("docs/api"),
 		},
 		{
 			name:     "backslashes to forward slashes",
 			path:     "docs\\api\\v1",
-			expected: "docs/api/v1",
+			expected: filepath.FromSlash("docs/api/v1"),
 		},
 		{
 			name:     "leading and trailing slashes",
 			path:     "/docs/api/",
-			expected: "docs/api",
+			expected: filepath.FromSlash("docs/api"),
 		},
 		{
 			name:     "with dots",
@@ -379,7 +380,7 @@ func TestNormalizeFilterPath(t *testing.T) {
 		{
 			name:     "with current dir dot",
 			path:     "./docs/api",
-			expected: "docs/api",
+			expected: filepath.FromSlash("docs/api"),
 		},
 		{
 			name:     "tree URL",

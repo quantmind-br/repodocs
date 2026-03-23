@@ -106,8 +106,35 @@ jobs:
             coverage-reports/
             coverage.out
 
+  test-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Run tests
+        run: go test -short ./...
+
+  comment-pr:
+    runs-on: ubuntu-latest
+    needs: [test, test-windows]
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download coverage reports
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-reports
+          path: coverage-reports
+
       - name: Comment PR with coverage
-        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |

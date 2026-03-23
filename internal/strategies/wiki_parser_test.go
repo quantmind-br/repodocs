@@ -1,6 +1,7 @@
 package strategies
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -431,7 +432,7 @@ func TestBuildRelativePath(t *testing.T) {
 
 		result := BuildRelativePath(page, structure, false)
 
-		assert.Equal(t, "api-reference/api.md", result)
+		assert.Equal(t, filepath.FromSlash("api-reference/api.md"), result)
 	})
 
 	t.Run("no sections flat", func(t *testing.T) {
@@ -451,7 +452,7 @@ func TestBuildRelativePath(t *testing.T) {
 
 		result := BuildRelativePath(page, structure, false)
 
-		assert.Equal(t, "getting-started/tutorial.md", result)
+		assert.Equal(t, filepath.FromSlash("getting-started/tutorial.md"), result)
 	})
 
 	t.Run("mixed case filename", func(t *testing.T) {
@@ -462,7 +463,7 @@ func TestBuildRelativePath(t *testing.T) {
 
 		result := BuildRelativePath(page, structure, false)
 
-		assert.Equal(t, "api/api_guide.md", result)
+		assert.Equal(t, filepath.FromSlash("api/api_guide.md"), result)
 	})
 }
 

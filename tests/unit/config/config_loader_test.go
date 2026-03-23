@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/quantmind-br/repodocs-go/internal/config"
+	"github.com/quantmind-br/repodocs-go/tests/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -138,10 +139,8 @@ func TestLoad_WithoutConfigFile(t *testing.T) {
 
 	require.NoError(t, os.Chdir(tmpDir))
 
-	// Override HOME to prevent LoadWithViper from reading ~/.repodocs/config.yaml
-	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", originalHome)
+	// Override home directory to prevent LoadWithViper from reading ~/.repodocs/config.yaml
+	testutil.SetTestHome(t, tmpDir)
 
 	// Clean environment variables
 	os.Unsetenv("REPODOCS_OUTPUT_DIRECTORY")
@@ -238,9 +237,7 @@ func TestLoadWithViper_FileNotFound(t *testing.T) {
 
 	require.NoError(t, os.Chdir(tmpDir))
 
-	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", originalHome)
+	testutil.SetTestHome(t, tmpDir)
 
 	cfg, v, err := config.LoadWithViper()
 	require.NoError(t, err)
@@ -725,10 +722,8 @@ output:
 
 	require.NoError(t, os.Chdir(tmpDir))
 
-	// Temporarily set HOME to user config directory
-	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", filepath.Join(tmpDir, "user"))
-	defer os.Setenv("HOME", oldHome)
+	// Override home directory to user config directory
+	testutil.SetTestHome(t, filepath.Join(tmpDir, "user"))
 
 	os.Unsetenv("REPODOCS_OUTPUT_DIRECTORY")
 

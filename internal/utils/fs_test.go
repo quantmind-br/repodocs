@@ -157,12 +157,12 @@ func TestURLToPath(t *testing.T) {
 		{
 			name:     "simple path",
 			url:      "https://example.com/docs/api",
-			expected: "docs/api.md",
+			expected: filepath.FromSlash("docs/api.md"),
 		},
 		{
 			name:     "nested path",
 			url:      "https://example.com/docs/api/v1/endpoints",
-			expected: "docs/api/v1/endpoints.md",
+			expected: filepath.FromSlash("docs/api/v1/endpoints.md"),
 		},
 		{
 			name:     "root URL",
@@ -172,12 +172,12 @@ func TestURLToPath(t *testing.T) {
 		{
 			name:     "URL with HTML extension",
 			url:      "https://example.com/docs/page.html",
-			expected: "docs/page.md",
+			expected: filepath.FromSlash("docs/page.md"),
 		},
 		{
 			name:     "URL with MDX extension",
 			url:      "https://example.com/docs/quickstart.mdx",
-			expected: "docs/quickstart.md",
+			expected: filepath.FromSlash("docs/quickstart.md"),
 		},
 		{
 			name:     "invalid URL",
@@ -209,28 +209,28 @@ func TestGeneratePath(t *testing.T) {
 			baseDir:  "/output",
 			url:      "https://example.com/docs/api",
 			flat:     true,
-			expected: "/output/docs-api.md",
+			expected: filepath.FromSlash("/output/docs-api.md"),
 		},
 		{
 			name:     "nested mode",
 			baseDir:  "/output",
 			url:      "https://example.com/docs/api",
 			flat:     false,
-			expected: "/output/docs/api.md",
+			expected: filepath.FromSlash("/output/docs/api.md"),
 		},
 		{
 			name:     "root URL flat",
 			baseDir:  "/output",
 			url:      "https://example.com/",
 			flat:     true,
-			expected: "/output/index.md",
+			expected: filepath.FromSlash("/output/index.md"),
 		},
 		{
 			name:     "root URL nested",
 			baseDir:  "/output",
 			url:      "https://example.com/",
 			flat:     false,
-			expected: "/output/index.md",
+			expected: filepath.FromSlash("/output/index.md"),
 		},
 	}
 
@@ -257,56 +257,56 @@ func TestGeneratePathFromRelative(t *testing.T) {
 			baseDir:  "/output",
 			relPath:  "docs/api.md",
 			flat:     true,
-			expected: "/output/docs-api.md",
+			expected: filepath.FromSlash("/output/docs-api.md"),
 		},
 		{
 			name:     "nested mode",
 			baseDir:  "/output",
 			relPath:  "docs/api.md",
 			flat:     false,
-			expected: "/output/docs/api.md",
+			expected: filepath.FromSlash("/output/docs/api.md"),
 		},
 		{
 			name:     "flat mode without extension",
 			baseDir:  "/output",
 			relPath:  "docs/api",
 			flat:     true,
-			expected: "/output/docs-api.md",
+			expected: filepath.FromSlash("/output/docs-api.md"),
 		},
 		{
 			name:     "nested mode with subdirs",
 			baseDir:  "/output",
 			relPath:  "src/docs/api/v1.md",
 			flat:     false,
-			expected: "/output/src/docs/api/v1.md",
+			expected: filepath.FromSlash("/output/src/docs/api/v1.md"),
 		},
 		{
 			name:     "flat mode with special chars",
 			baseDir:  "/output",
 			relPath:  "docs/my file name.md",
 			flat:     true,
-			expected: "/output/docs-my-file-name.md",
+			expected: filepath.FromSlash("/output/docs-my-file-name.md"),
 		},
 		{
 			name:     "flat mode deep path",
 			baseDir:  "/output",
 			relPath:  "docs/developers/tools/memory.md",
 			flat:     true,
-			expected: "/output/docs-developers-tools-memory.md",
+			expected: filepath.FromSlash("/output/docs-developers-tools-memory.md"),
 		},
 		{
 			name:     "flat mode root file",
 			baseDir:  "/output",
 			relPath:  "README.md",
 			flat:     true,
-			expected: "/output/README.md",
+			expected: filepath.FromSlash("/output/README.md"),
 		},
 		{
 			name:     "flat mode with mdx extension",
 			baseDir:  "/output",
 			relPath:  "docs/guide/intro.mdx",
 			flat:     true,
-			expected: "/output/docs-guide-intro.md",
+			expected: filepath.FromSlash("/output/docs-guide-intro.md"),
 		},
 	}
 
@@ -438,6 +438,14 @@ func TestEnsureDir(t *testing.T) {
 	})
 }
 
+func mustUserHomeDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return home
+}
+
 func TestExpandPath(t *testing.T) {
 	t.Parallel()
 
@@ -449,12 +457,17 @@ func TestExpandPath(t *testing.T) {
 		{
 			name:     "home directory with slash",
 			input:    "~/test",
-			expected: filepath.Join(os.Getenv("HOME"), "test"),
+			expected: filepath.Join(mustUserHomeDir(), "test"),
+		},
+		{
+			name:     "home directory with backslash",
+			input:    `~\test`,
+			expected: filepath.Join(mustUserHomeDir(), "test"),
 		},
 		{
 			name:     "home directory only",
 			input:    "~",
-			expected: os.Getenv("HOME"),
+			expected: mustUserHomeDir(),
 		},
 		{
 			name:     "regular path",

@@ -3,6 +3,8 @@ package cache
 import (
 	"context"
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -272,15 +274,11 @@ func TestNewBadgerCache(t *testing.T) {
 	t.Run("creates file-based cache in default location", func(t *testing.T) {
 		// Create a temp home directory
 		tmpDir := t.TempDir()
-		originalHome := os.Getenv("HOME")
-		defer func() {
-			if originalHome != "" {
-				os.Setenv("HOME", originalHome)
-			} else {
-				os.Unsetenv("HOME")
-			}
-		}()
-		os.Setenv("HOME", tmpDir)
+		if runtime.GOOS == "windows" {
+			t.Setenv("USERPROFILE", tmpDir)
+		} else {
+			t.Setenv("HOME", tmpDir)
+		}
 
 		cache, err := NewBadgerCache(Options{
 			Directory: "",
@@ -290,7 +288,7 @@ func TestNewBadgerCache(t *testing.T) {
 		cache.Close()
 
 		// Check directory was created
-		cacheDir := tmpDir + "/.repodocs/cache"
+		cacheDir := filepath.Join(tmpDir, ".repodocs", "cache")
 		_, err = os.Stat(cacheDir)
 		assert.NoError(t, err)
 	})

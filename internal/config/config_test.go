@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -174,7 +175,7 @@ func TestCacheDir(t *testing.T) {
 	assert.NotEmpty(t, dir)
 
 	// Should end with cache
-	assert.True(t, strings.HasSuffix(dir, "cache") || strings.Contains(dir, "/cache"))
+	assert.True(t, strings.HasSuffix(dir, "cache"))
 }
 
 // TestConfigFilePath tests config file path
@@ -207,20 +208,14 @@ func TestDefaultExcludePatterns(t *testing.T) {
 func TestEnsureConfigDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Mock the home directory
-	originalHome := os.Getenv("HOME")
-	defer func() {
-		if originalHome != "" {
-			os.Setenv("HOME", originalHome)
-		} else {
-			os.Unsetenv("HOME")
-		}
-	}()
-
 	// Create a temporary home directory
 	testHome := filepath.Join(tmpDir, "testuser")
 	require.NoError(t, os.MkdirAll(testHome, 0755))
-	os.Setenv("HOME", testHome)
+	if runtime.GOOS == "windows" {
+		t.Setenv("USERPROFILE", testHome)
+	} else {
+		t.Setenv("HOME", testHome)
+	}
 
 	// ConfigDir should now point to temp directory
 	configDir := ConfigDir()
@@ -238,20 +233,14 @@ func TestEnsureConfigDir(t *testing.T) {
 func TestEnsureCacheDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Mock the home directory
-	originalHome := os.Getenv("HOME")
-	defer func() {
-		if originalHome != "" {
-			os.Setenv("HOME", originalHome)
-		} else {
-			os.Unsetenv("HOME")
-		}
-	}()
-
 	// Create a temporary home directory
 	testHome := filepath.Join(tmpDir, "testuser")
 	require.NoError(t, os.MkdirAll(testHome, 0755))
-	os.Setenv("HOME", testHome)
+	if runtime.GOOS == "windows" {
+		t.Setenv("USERPROFILE", testHome)
+	} else {
+		t.Setenv("HOME", testHome)
+	}
 
 	cacheDir := CacheDir()
 

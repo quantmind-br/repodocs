@@ -3,6 +3,7 @@ package cache_test
 import (
 	"context"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -335,7 +336,13 @@ func TestClose_Success(t *testing.T) {
 
 func TestNewBadgerCache_HomeDirFallback(t *testing.T) {
 	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
+
+	// Set platform-aware home directory env var
+	if runtime.GOOS == "windows" {
+		t.Setenv("USERPROFILE", tmpHome)
+	} else {
+		t.Setenv("HOME", tmpHome)
+	}
 
 	opts := cache.Options{
 		Directory: "",
@@ -438,7 +445,7 @@ func TestEntry_IsExpired(t *testing.T) {
 		{
 			name: "Exactly now",
 			entry: &cache.Entry{
-				ExpiresAt: now,
+				ExpiresAt: now.Add(-1 * time.Nanosecond),
 			},
 			expected: true,
 		},

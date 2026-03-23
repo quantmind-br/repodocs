@@ -592,7 +592,7 @@ func TestWikiStrategy_BuildRelativePathEdgeCases(t *testing.T) {
 		page.Section = "API Reference"
 		structure.Sections = []WikiSection{{Name: "API Reference"}}
 		result := BuildRelativePath(page, structure, false)
-		assert.Equal(t, "api-reference/api_guide.md", result)
+		assert.Equal(t, filepath.FromSlash("api-reference/api_guide.md"), result)
 	})
 }
 
