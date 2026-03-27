@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/config"
-	"github.com/quantmind-br/repodocs-go/tests/testutil"
+	"github.com/quantmind-br/repodocs/internal/config"
+	"github.com/quantmind-br/repodocs/tests/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

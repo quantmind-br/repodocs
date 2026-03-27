@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/quantmind-br/repodocs-go/internal/domain"
-	"github.com/quantmind-br/repodocs-go/internal/output"
-	"github.com/quantmind-br/repodocs-go/internal/strategies"
-	"github.com/quantmind-br/repodocs-go/internal/utils"
-	"github.com/quantmind-br/repodocs-go/tests/helpers"
+	"github.com/quantmind-br/repodocs/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/output"
+	"github.com/quantmind-br/repodocs/internal/strategies"
+	"github.com/quantmind-br/repodocs/internal/utils"
+	"github.com/quantmind-br/repodocs/tests/helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

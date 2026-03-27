@@ -4,7 +4,7 @@ BINARY_NAME=repodocs
 VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_TIME=$(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-LDFLAGS=-ldflags "-X github.com/quantmind-br/repodocs-go/pkg/version.Version=$(VERSION) -X github.com/quantmind-br/repodocs-go/pkg/version.BuildTime=$(BUILD_TIME) -X github.com/quantmind-br/repodocs-go/pkg/version.Commit=$(COMMIT) -s -w"
+LDFLAGS=-ldflags "-X github.com/quantmind-br/repodocs/pkg/version.Version=$(VERSION) -X github.com/quantmind-br/repodocs/pkg/version.BuildTime=$(BUILD_TIME) -X github.com/quantmind-br/repodocs/pkg/version.Commit=$(COMMIT) -s -w"
 
 BUILD_DIR=./build
 INSTALL_DIR=$(HOME)/.local/bin

@@ -3,7 +3,7 @@ package testutil
 import (
 	"testing"
 
-	"github.com/quantmind-br/repodocs-go/internal/converter"
+	"github.com/quantmind-br/repodocs/internal/converter"
 )
 
 // NewHTMLConverter returns a converter pipeline suitable for unit tests.

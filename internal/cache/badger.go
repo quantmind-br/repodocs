@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
-	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/domain"
 )
 
 // BadgerCache is a cache implementation using BadgerDB

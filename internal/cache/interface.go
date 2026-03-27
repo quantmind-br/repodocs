@@ -3,7 +3,7 @@ package cache
 import (
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/domain"
 )
 
 // Ensure BadgerCache implements domain.Cache

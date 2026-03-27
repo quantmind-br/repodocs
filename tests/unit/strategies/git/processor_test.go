@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/quantmind-br/repodocs-go/internal/domain"
-	"github.com/quantmind-br/repodocs-go/internal/state"
-	"github.com/quantmind-br/repodocs-go/internal/strategies/git"
+	"github.com/quantmind-br/repodocs/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/state"
+	"github.com/quantmind-br/repodocs/internal/strategies/git"
 )
 
 func TestNewProcessor(t *testing.T) {

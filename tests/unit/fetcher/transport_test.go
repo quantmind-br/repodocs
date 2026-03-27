@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/fetcher"
+	"github.com/quantmind-br/repodocs/internal/fetcher"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

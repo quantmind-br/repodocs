@@ -7,8 +7,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/quantmind-br/repodocs-go/internal/domain"
-	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
 // RendererFallback renders a URL using a headless browser, returning HTML or error.

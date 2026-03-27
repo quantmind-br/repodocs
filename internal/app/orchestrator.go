@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/config"
-	"github.com/quantmind-br/repodocs-go/internal/domain"
-	"github.com/quantmind-br/repodocs-go/internal/manifest"
-	"github.com/quantmind-br/repodocs-go/internal/strategies"
-	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs/internal/config"
+	"github.com/quantmind-br/repodocs/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/manifest"
+	"github.com/quantmind-br/repodocs/internal/strategies"
+	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
 // Orchestrator coordinates the documentation extraction process

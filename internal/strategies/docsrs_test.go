@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/quantmind-br/repodocs-go/internal/output"
-	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs/internal/output"
+	"github.com/quantmind-br/repodocs/internal/utils"
 	"github.com/stretchr/testify/assert"
 )
 

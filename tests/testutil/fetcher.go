@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/domain"
 )
 
 // SimpleFetcher provides deterministic responses for tests without real network access.

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/domain"
 )
 
 type ollamaRequest struct {

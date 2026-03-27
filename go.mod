@@ -1,4 +1,4 @@
-module github.com/quantmind-br/repodocs-go
+module github.com/quantmind-br/repodocs
 
 go 1.24.1
 

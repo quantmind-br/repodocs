@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/domain"
 )
 
 // MockRenderer is a mock implementation of the Browser/Renderer interface

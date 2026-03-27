@@ -17,7 +17,7 @@ import (
 	reflect "reflect"
 	time "time"
 
-	domain "github.com/quantmind-br/repodocs-go/internal/domain"
+	domain "github.com/quantmind-br/repodocs/internal/domain"
 	gomock "go.uber.org/mock/gomock"
 )
 

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/config"
-	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/config"
+	"github.com/quantmind-br/repodocs/internal/domain"
 )
 
 // Default base URLs for each provider

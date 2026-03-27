@@ -19,7 +19,7 @@ $BuildTime = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 $Commit = git rev-parse --short HEAD 2>$null
 if (-not $Commit) { $Commit = "unknown" }
 
-$LDFlags = "-X github.com/quantmind-br/repodocs-go/pkg/version.Version=$Version -X github.com/quantmind-br/repodocs-go/pkg/version.BuildTime=$BuildTime -X github.com/quantmind-br/repodocs-go/pkg/version.Commit=$Commit -s -w"
+$LDFlags = "-X github.com/quantmind-br/repodocs/pkg/version.Version=$Version -X github.com/quantmind-br/repodocs/pkg/version.BuildTime=$BuildTime -X github.com/quantmind-br/repodocs/pkg/version.Commit=$Commit -s -w"
 
 function Invoke-Build {
     Write-Host "Building $BinaryName..." -ForegroundColor Cyan

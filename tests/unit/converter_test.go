@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/quantmind-br/repodocs-go/internal/converter"
+	"github.com/quantmind-br/repodocs/internal/converter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

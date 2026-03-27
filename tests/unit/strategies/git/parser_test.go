@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/quantmind-br/repodocs-go/internal/strategies/git"
+	"github.com/quantmind-br/repodocs/internal/strategies/git"
 )
 
 func TestNewParser(t *testing.T) {

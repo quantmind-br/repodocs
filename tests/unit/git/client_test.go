@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	gogit "github.com/go-git/go-git/v5"
-	"github.com/quantmind-br/repodocs-go/internal/git"
-	"github.com/quantmind-br/repodocs-go/tests/mocks"
+	"github.com/quantmind-br/repodocs/internal/git"
+	"github.com/quantmind-br/repodocs/tests/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

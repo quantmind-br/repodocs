@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/quantmind-br/repodocs-go/internal/domain"
-	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
 // TestIsGitHubPagesURL tests GitHub Pages URL detection

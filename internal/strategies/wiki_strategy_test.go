@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	gogit "github.com/go-git/go-git/v5"
-	"github.com/quantmind-br/repodocs-go/internal/domain"
-	"github.com/quantmind-br/repodocs-go/internal/output"
-	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/output"
+	"github.com/quantmind-br/repodocs/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

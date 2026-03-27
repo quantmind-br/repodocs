@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
 

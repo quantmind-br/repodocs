@@ -11,12 +11,12 @@ import (
 	"github.com/gocolly/colly/v2"
 	"github.com/schollz/progressbar/v3"
 
-	"github.com/quantmind-br/repodocs-go/internal/converter"
-	"github.com/quantmind-br/repodocs-go/internal/domain"
-	"github.com/quantmind-br/repodocs-go/internal/fetcher"
-	"github.com/quantmind-br/repodocs-go/internal/output"
-	"github.com/quantmind-br/repodocs-go/internal/renderer"
-	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs/internal/converter"
+	"github.com/quantmind-br/repodocs/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/fetcher"
+	"github.com/quantmind-br/repodocs/internal/output"
+	"github.com/quantmind-br/repodocs/internal/renderer"
+	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
 // CrawlerStrategy crawls websites to extract documentation

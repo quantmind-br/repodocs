@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/config"
+	"github.com/quantmind-br/repodocs/internal/config"
 )
 
 // ConfigValues holds form values that map to Config struct.

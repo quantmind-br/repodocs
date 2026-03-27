@@ -1,6 +1,6 @@
 # Testing Guide
 
-This document provides comprehensive information about testing practices in the repodocs-go project.
+This document provides comprehensive information about testing practices in the repodocs project.
 
 ## Test Coverage Overview
 
@@ -199,7 +199,7 @@ package mypackage_test
 import (
     "testing"
     "github.com/stretchr/testify/assert"
-    "github.com/quantmind-br/repodocs-go/internal/mypackage"
+    "github.com/quantmind-br/repodocs/internal/mypackage"
 )
 
 // 3. Write test

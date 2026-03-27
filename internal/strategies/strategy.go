@@ -9,16 +9,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/cache"
-	"github.com/quantmind-br/repodocs-go/internal/config"
-	"github.com/quantmind-br/repodocs-go/internal/converter"
-	"github.com/quantmind-br/repodocs-go/internal/domain"
-	"github.com/quantmind-br/repodocs-go/internal/fetcher"
-	"github.com/quantmind-br/repodocs-go/internal/llm"
-	"github.com/quantmind-br/repodocs-go/internal/output"
-	"github.com/quantmind-br/repodocs-go/internal/renderer"
-	"github.com/quantmind-br/repodocs-go/internal/state"
-	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs/internal/cache"
+	"github.com/quantmind-br/repodocs/internal/config"
+	"github.com/quantmind-br/repodocs/internal/converter"
+	"github.com/quantmind-br/repodocs/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/fetcher"
+	"github.com/quantmind-br/repodocs/internal/llm"
+	"github.com/quantmind-br/repodocs/internal/output"
+	"github.com/quantmind-br/repodocs/internal/renderer"
+	"github.com/quantmind-br/repodocs/internal/state"
+	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
 // Strategy defines the interface for documentation extraction strategies

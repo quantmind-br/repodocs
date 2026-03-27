@@ -25,9 +25,9 @@ builds:
         goarch: arm64
     ldflags:
       - -s -w
-      - -X github.com/quantmind-br/repodocs-go/pkg/version.Version={{.Version}}
-      - -X github.com/quantmind-br/repodocs-go/pkg/version.BuildTime={{.Date}}
-      - -X github.com/quantmind-br/repodocs-go/pkg/version.Commit={{.ShortCommit}}
+      - -X github.com/quantmind-br/repodocs/pkg/version.Version={{.Version}}
+      - -X github.com/quantmind-br/repodocs/pkg/version.BuildTime={{.Date}}
+      - -X github.com/quantmind-br/repodocs/pkg/version.Commit={{.ShortCommit}}
 
 archives:
   - id: default
@@ -47,7 +47,7 @@ nfpms:
   - id: packages
     package_name: repodocs
     vendor: Quantmind
-    homepage: https://github.com/quantmind-br/repodocs-go
+    homepage: https://github.com/quantmind-br/repodocs
     maintainer: Quantmind <contact@quantmind.com>
     description: Documentation extraction CLI tool for LLMs
     license: MIT
@@ -66,7 +66,7 @@ brews:
       owner: quantmind-br
       name: homebrew-tap
     directory: Formula
-    homepage: https://github.com/quantmind-br/repodocs-go
+    homepage: https://github.com/quantmind-br/repodocs
     description: Documentation extraction CLI tool for LLMs
     license: MIT
     skip_upload: true
@@ -107,7 +107,7 @@ changelog:
 release:
   github:
     owner: quantmind-br
-    name: repodocs-go
+    name: repodocs
   draft: false
   prerelease: auto
   mode: replace
@@ -136,8 +136,8 @@ release:
     
     ### From Source
     ```bash
-    go install github.com/quantmind-br/repodocs-go/cmd/repodocs@v{{.Version}}
+    go install github.com/quantmind-br/repodocs/cmd/repodocs@v{{.Version}}
     ```
     
     ---
-    **Full Changelog**: https://github.com/quantmind-br/repodocs-go/compare/{{.PreviousTag}}...{{.Tag}}
+    **Full Changelog**: https://github.com/quantmind-br/repodocs/compare/{{.PreviousTag}}...{{.Tag}}

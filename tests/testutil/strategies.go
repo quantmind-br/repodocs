@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/converter"
-	"github.com/quantmind-br/repodocs-go/internal/fetcher"
-	"github.com/quantmind-br/repodocs-go/internal/output"
-	"github.com/quantmind-br/repodocs-go/internal/strategies"
-	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs/internal/converter"
+	"github.com/quantmind-br/repodocs/internal/fetcher"
+	"github.com/quantmind-br/repodocs/internal/output"
+	"github.com/quantmind-br/repodocs/internal/strategies"
+	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
 // NewTestDependencies creates minimal dependencies for testing strategies

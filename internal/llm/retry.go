@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/domain"
-	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
 // RetryConfig holds retry configuration

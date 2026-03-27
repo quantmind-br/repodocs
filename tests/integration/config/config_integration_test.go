@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/quantmind-br/repodocs-go/internal/config"
+	"github.com/quantmind-br/repodocs/internal/config"
 )
 
 func TestConfigSaveAndLoad(t *testing.T) {

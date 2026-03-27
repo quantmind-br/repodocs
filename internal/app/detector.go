@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/quantmind-br/repodocs-go/internal/strategies"
+	"github.com/quantmind-br/repodocs/internal/strategies"
 )
 
 // StrategyType represents the type of extraction strategy

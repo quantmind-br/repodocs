@@ -10,10 +10,10 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/quantmind-br/repodocs-go/internal/domain"
-	internalgit "github.com/quantmind-br/repodocs-go/internal/git"
-	"github.com/quantmind-br/repodocs-go/internal/output"
-	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs/internal/domain"
+	internalgit "github.com/quantmind-br/repodocs/internal/git"
+	"github.com/quantmind-br/repodocs/internal/output"
+	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
 // WikiStrategy extracts documentation from GitHub wiki repositories

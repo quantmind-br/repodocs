@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/domain"
 )
 
 type PlainTextReader struct{}

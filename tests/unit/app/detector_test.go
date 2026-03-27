@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/quantmind-br/repodocs-go/internal/app"
-	"github.com/quantmind-br/repodocs-go/tests/testutil"
+	"github.com/quantmind-br/repodocs/internal/app"
+	"github.com/quantmind-br/repodocs/tests/testutil"
 )
 
 // TestDetectStrategy_EdgeCases tests edge cases for strategy detection

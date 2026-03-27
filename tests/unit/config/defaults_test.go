@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/config"
+	"github.com/quantmind-br/repodocs/internal/config"
 	"github.com/stretchr/testify/assert"
 )
 

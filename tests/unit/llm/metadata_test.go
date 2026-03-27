@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/quantmind-br/repodocs-go/internal/domain"
-	"github.com/quantmind-br/repodocs-go/internal/llm"
-	"github.com/quantmind-br/repodocs-go/tests/mocks"
+	"github.com/quantmind-br/repodocs/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/llm"
+	"github.com/quantmind-br/repodocs/tests/mocks"
 )
 
 func TestMetadataEnhancer_Enhance_SuccessFirstAttempt(t *testing.T) {

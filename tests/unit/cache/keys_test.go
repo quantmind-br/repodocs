@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/quantmind-br/repodocs-go/internal/cache"
+	"github.com/quantmind-br/repodocs/internal/cache"
 	"github.com/stretchr/testify/assert"
 )
 

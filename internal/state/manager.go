@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
 const StateFileName = ".repodocs-state.json"

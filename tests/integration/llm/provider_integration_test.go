@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/quantmind-br/repodocs-go/internal/config"
-	"github.com/quantmind-br/repodocs-go/internal/domain"
-	"github.com/quantmind-br/repodocs-go/internal/llm"
+	"github.com/quantmind-br/repodocs/internal/config"
+	"github.com/quantmind-br/repodocs/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/llm"
 )
 
 // TestProviderFromConfig_Integration tests creating providers from configuration

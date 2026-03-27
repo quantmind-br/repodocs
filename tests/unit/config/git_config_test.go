@@ -3,7 +3,7 @@ package config_test
 import (
 	"testing"
 
-	"github.com/quantmind-br/repodocs-go/internal/config"
+	"github.com/quantmind-br/repodocs/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

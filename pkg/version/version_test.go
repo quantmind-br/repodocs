@@ -3,7 +3,7 @@ package version_test
 import (
 	"testing"
 
-	"github.com/quantmind-br/repodocs-go/pkg/version"
+	"github.com/quantmind-br/repodocs/pkg/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

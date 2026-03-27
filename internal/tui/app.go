@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/quantmind-br/repodocs-go/internal/config"
+	"github.com/quantmind-br/repodocs/internal/config"
 )
 
 type state int

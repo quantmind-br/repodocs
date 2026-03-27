@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/quantmind-br/repodocs-go/internal/strategies/git"
+	"github.com/quantmind-br/repodocs/internal/strategies/git"
 )
 
 var DocumentExtensions = git.DocumentExtensions

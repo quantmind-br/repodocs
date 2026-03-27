@@ -1,6 +1,6 @@
 # Test Utilities Package
 
-Este pacote contém utilitários e helpers para testes na aplicação repodocs-go.
+Este pacote contém utilitários e helpers para testes na aplicação repodocs.
 
 ## Componentes
 
@@ -78,7 +78,7 @@ package unit
 
 import (
     "testing"
-    "github.com/quantmind-br/repodocs-go/tests/testutil"
+    "github.com/quantmind-br/repodocs/tests/testutil"
 )
 
 func TestMyFunction(t *testing.T) {

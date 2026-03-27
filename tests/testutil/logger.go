@@ -4,7 +4,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs/internal/utils"
 	"github.com/rs/zerolog"
 )
 

@@ -35,7 +35,7 @@ Contains testify/mock for Git client (kept for backward compatibility):
 import (
     "testing"
     "go.uber.org/mock/gomock"
-    "github.com/quantmind-br/repodocs-go/tests/mocks"
+    "github.com/quantmind-br/repodocs/tests/mocks"
 )
 
 func TestSomething(t *testing.T) {
@@ -54,7 +54,7 @@ func TestSomething(t *testing.T) {
 
 ```go
 import (
-    "github.com/quantmind-br/repodocs-go/tests/mocks"
+    "github.com/quantmind-br/repodocs/tests/mocks"
 )
 
 func TestSomething(t *testing.T) {

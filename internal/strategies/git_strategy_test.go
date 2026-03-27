@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/domain"
-	"github.com/quantmind-br/repodocs-go/internal/output"
-	"github.com/quantmind-br/repodocs-go/internal/utils"
+	"github.com/quantmind-br/repodocs/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/output"
+	"github.com/quantmind-br/repodocs/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1335,7 +1335,7 @@ func TestTryArchiveDownload_MainToMasterFallback(t *testing.T) {
 
 	// Use a real GitHub repo but with an invalid branch name
 	// The strategy will detect main, fail to download main, then try master
-	branch, method, err := strategy.tryArchiveDownload(ctx, "https://github.com/quantmind-br/repodocs-go", tmpDir)
+	branch, method, err := strategy.tryArchiveDownload(ctx, "https://github.com/quantmind-br/repodocs", tmpDir)
 
 	// We don't care about the result, just that the fallback path was executed
 	// This test ensures lines 182-187 are covered

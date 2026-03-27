@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/go-rod/rod"
-	"github.com/quantmind-br/repodocs-go/internal/renderer"
+	"github.com/quantmind-br/repodocs/internal/renderer"
 	"github.com/stretchr/testify/assert"
 )
 

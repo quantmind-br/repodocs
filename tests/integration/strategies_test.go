@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/quantmind-br/repodocs-go/internal/app"
+	"github.com/quantmind-br/repodocs/internal/app"
 	"github.com/stretchr/testify/assert"
 )
 

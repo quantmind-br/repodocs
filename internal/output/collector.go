@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/domain"
 )
 
 type MetadataCollector struct {

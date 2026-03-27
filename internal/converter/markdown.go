@@ -7,7 +7,7 @@ import (
 
 	md "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
-	"github.com/quantmind-br/repodocs-go/internal/domain"
+	"github.com/quantmind-br/repodocs/internal/domain"
 	"golang.org/x/net/html"
 	"gopkg.in/yaml.v3"
 )
