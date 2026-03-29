@@ -13,6 +13,7 @@
 .vscode/
 .cursor/
 .claude/
+.omc/
 .serena/
 
 # OS files
