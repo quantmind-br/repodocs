@@ -789,3 +789,188 @@ func TestParseLastMod_Invalid(t *testing.T) {
 		})
 	}
 }
+
+// TestFilterSitemapURLs tests the filterSitemapURLs function
+func TestFilterSitemapURLs(t *testing.T) {
+	urls := []domain.SitemapURL{
+		{Loc: "https://example.com/docs/guide"},
+		{Loc: "https://example.com/docs/api"},
+		{Loc: "https://example.com/blog/post1"},
+		{Loc: "https://example.com/docs/tutorials/intro"},
+		{Loc: "https://other.com/page"},
+		{Loc: "https://example.com/"},
+	}
+
+	t.Run("filter with exact match", func(t *testing.T) {
+		// https://example.com/docs matches docs/guide, docs/api, AND docs/tutorials/intro
+		// because HasPrefix is a prefix match, not a path segment match
+		result := filterSitemapURLs(urls, "https://example.com/docs")
+		assert.Len(t, result, 3)
+		assert.Equal(t, "https://example.com/docs/guide", result[0].Loc)
+		assert.Equal(t, "https://example.com/docs/api", result[1].Loc)
+		assert.Equal(t, "https://example.com/docs/tutorials/intro", result[2].Loc)
+	})
+
+	t.Run("filter with trailing slash", func(t *testing.T) {
+		result := filterSitemapURLs(urls, "https://example.com/docs/")
+		assert.Len(t, result, 3)
+	})
+
+	t.Run("filter with root URL", func(t *testing.T) {
+		result := filterSitemapURLs(urls, "https://example.com/")
+		// Should match all example.com URLs including the root
+		assert.Len(t, result, 5)
+	})
+
+	t.Run("filter with non-matching URL", func(t *testing.T) {
+		result := filterSitemapURLs(urls, "https://notfound.com/")
+		assert.Len(t, result, 0)
+	})
+
+	t.Run("filter with empty filter", func(t *testing.T) {
+		result := filterSitemapURLs(urls, "")
+		assert.Len(t, result, len(urls))
+	})
+
+	t.Run("filter with empty urls", func(t *testing.T) {
+		result := filterSitemapURLs([]domain.SitemapURL{}, "https://example.com/")
+		assert.Len(t, result, 0)
+	})
+
+	t.Run("filter with partial prefix match", func(t *testing.T) {
+		// https://example.com/doc matches only docs/* URLs (prefix match)
+		result := filterSitemapURLs(urls, "https://example.com/doc")
+		assert.Len(t, result, 3) // docs/guide, docs/api, docs/tutorials/intro
+	})
+
+	t.Run("filter specific subpath", func(t *testing.T) {
+		// Filter only blog posts
+		result := filterSitemapURLs(urls, "https://example.com/blog")
+		assert.Len(t, result, 1)
+		assert.Equal(t, "https://example.com/blog/post1", result[0].Loc)
+	})
+}
+
+// TestSitemapStrategy_Execute_WithFilter tests sitemap execution with URL filter
+func TestSitemapStrategy_Execute_WithFilter(t *testing.T) {
+	ctx := context.Background()
+
+	// Create HTTP server with multiple sections
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/sitemap.xml":
+			w.Header().Set("Content-Type", "application/xml")
+			w.WriteHeader(200)
+			w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<url><loc>` + server.URL + `/docs/guide</loc></url>
+	<url><loc>` + server.URL + `/docs/api</loc></url>
+	<url><loc>` + server.URL + `/blog/post1</loc></url>
+	<url><loc>` + server.URL + `/blog/post2</loc></url>
+	<url><loc>` + server.URL + `/docs/tutorials/intro</loc></url>
+</urlset>`))
+		case "/docs/guide", "/docs/api", "/docs/tutorials/intro":
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(200)
+			w.Write([]byte(`<html><body><h1>Doc Page</h1></body></html>`))
+		case "/blog/post1", "/blog/post2":
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(200)
+			w.Write([]byte(`<html><body><h1>Blog Post</h1></body></html>`))
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer server.Close()
+
+	deps, err := NewDependencies(DependencyOptions{
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    2,
+		OutputDir:      t.TempDir(),
+		Flat:           true,
+		JSONMetadata:   false,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
+	})
+	require.NoError(t, err)
+	defer deps.Close()
+
+	strategy := NewSitemapStrategy(deps)
+
+	// Execute with filter for docs section only
+	err = strategy.Execute(ctx, server.URL+"/sitemap.xml", Options{
+		CommonOptions: domain.CommonOptions{
+			Limit: 10,
+		},
+		FilterURL:   server.URL + "/docs",
+		Concurrency: 2,
+	})
+
+	require.NoError(t, err)
+}
+
+// TestSitemapStrategy_Execute_WithFilter_AndLimit tests sitemap execution with both filter and limit
+func TestSitemapStrategy_Execute_WithFilter_AndLimit(t *testing.T) {
+	ctx := context.Background()
+
+	// Create HTTP server with multiple sections
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/sitemap.xml":
+			w.Header().Set("Content-Type", "application/xml")
+			w.WriteHeader(200)
+			w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<url><loc>` + server.URL + `/docs/guide1</loc></url>
+	<url><loc>` + server.URL + `/docs/guide2</loc></url>
+	<url><loc>` + server.URL + `/docs/guide3</loc></url>
+	<url><loc>` + server.URL + `/docs/api1</loc></url>
+	<url><loc>` + server.URL + `/blog/post1</loc></url>
+</urlset>`))
+		case "/docs/guide1", "/docs/guide2", "/docs/guide3", "/docs/api1":
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(200)
+			w.Write([]byte(`<html><body><h1>Doc Page</h1></body></html>`))
+		case "/blog/post1":
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(200)
+			w.Write([]byte(`<html><body><h1>Blog Post</h1></body></html>`))
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer server.Close()
+
+	deps, err := NewDependencies(DependencyOptions{
+		Timeout:        5 * time.Second,
+		EnableCache:    false,
+		EnableRenderer: false,
+		Concurrency:    2,
+		OutputDir:      t.TempDir(),
+		Flat:           true,
+		JSONMetadata:   false,
+		CommonOptions: domain.CommonOptions{
+			DryRun: true,
+		},
+	})
+	require.NoError(t, err)
+	defer deps.Close()
+
+	strategy := NewSitemapStrategy(deps)
+
+	// Execute with filter for docs AND limit
+	err = strategy.Execute(ctx, server.URL+"/sitemap.xml", Options{
+		CommonOptions: domain.CommonOptions{
+			Limit: 2,
+		},
+		FilterURL:   server.URL + "/docs",
+		Concurrency: 2,
+	})
+
+	require.NoError(t, err)
+}

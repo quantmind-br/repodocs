@@ -102,6 +102,12 @@ func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options)
 		urls = urls[:opts.Limit]
 	}
 
+	// Apply URL filter
+	if opts.FilterURL != "" {
+		urls = filterSitemapURLs(urls, opts.FilterURL)
+		s.logger.Info().Str("filter", opts.FilterURL).Int("filtered_count", len(urls)).Msg("URLs after filter")
+	}
+
 	s.logger.Info().Int("count", len(urls)).Msg("Processing URLs from sitemap")
 
 	return s.processURLs(ctx, urls, opts)
@@ -112,6 +118,11 @@ func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options)
 func (s *SitemapStrategy) processSitemapIndex(ctx context.Context, sitemap *domain.Sitemap, opts Options) error {
 	s.logger.Info().Int("count", len(sitemap.Sitemaps)).Msg("Processing sitemap index")
 
+	// Log filter if set
+	if opts.FilterURL != "" {
+		s.logger.Info().Str("filter", opts.FilterURL).Msg("URL filter active - only processing URLs under this path")
+	}
+
 	// Process each nested sitemap batch-by-batch
 	totalProcessed := 0
 	for _, sitemapURL := range sitemap.Sitemaps {
@@ -121,7 +132,7 @@ func (s *SitemapStrategy) processSitemapIndex(ctx context.Context, sitemap *doma
 		default:
 		}
 
-		urls, err := s.collectURLsFromSitemap(ctx, sitemapURL)
+		urls, err := s.collectURLsFromSitemap(ctx, sitemapURL, opts.FilterURL)
 		if err != nil {
 			s.logger.Warn().Err(err).Str("url", sitemapURL).Msg("Failed to fetch nested sitemap")
 			continue
@@ -160,7 +171,7 @@ func (s *SitemapStrategy) processSitemapIndex(ctx context.Context, sitemap *doma
 
 // collectURLsFromSitemap fetches and parses a sitemap, returning its URLs.
 // For sitemap indexes, it recursively collects URLs from all nested sitemaps.
-func (s *SitemapStrategy) collectURLsFromSitemap(ctx context.Context, url string) ([]domain.SitemapURL, error) {
+func (s *SitemapStrategy) collectURLsFromSitemap(ctx context.Context, url string, filterURL string) ([]domain.SitemapURL, error) {
 	resp, err := s.fetcher.Get(ctx, url)
 	if err != nil {
 		return nil, err
@@ -191,14 +202,23 @@ func (s *SitemapStrategy) collectURLsFromSitemap(ctx context.Context, url string
 			default:
 			}
 
-			urls, err := s.collectURLsFromSitemap(ctx, nestedURL)
+			urls, err := s.collectURLsFromSitemap(ctx, nestedURL, filterURL)
 			if err != nil {
 				s.logger.Warn().Err(err).Str("url", nestedURL).Msg("Failed to fetch nested sitemap")
 				continue
 			}
 			allURLs = append(allURLs, urls...)
 		}
+		// Apply filter after collecting from all nested sitemaps
+		if filterURL != "" {
+			allURLs = filterSitemapURLs(allURLs, filterURL)
+		}
 		return allURLs, nil
+	}
+
+	// Apply filter to URLs from this sitemap
+	if filterURL != "" {
+		sitemap.URLs = filterSitemapURLs(sitemap.URLs, filterURL)
 	}
 
 	return sitemap.URLs, nil
@@ -371,4 +391,20 @@ func decompressGzip(data []byte) ([]byte, error) {
 	defer reader.Close()
 
 	return io.ReadAll(reader)
+}
+
+// filterSitemapURLs filters URLs based on the provided filter URL.
+// Only URLs that have the filter URL as a prefix are included.
+func filterSitemapURLs(urls []domain.SitemapURL, filterURL string) []domain.SitemapURL {
+	if filterURL == "" {
+		return urls
+	}
+
+	var filtered []domain.SitemapURL
+	for _, u := range urls {
+		if strings.HasPrefix(u.Loc, filterURL) {
+			filtered = append(filtered, u)
+		}
+	}
+	return filtered
 }
