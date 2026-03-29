@@ -43,6 +43,7 @@ type RateLimitConfig struct {
 	InitialDelay      time.Duration        `mapstructure:"initial_delay" yaml:"initial_delay"`
 	MaxDelay          time.Duration        `mapstructure:"max_delay" yaml:"max_delay"`
 	Multiplier        float64              `mapstructure:"multiplier" yaml:"multiplier"`
+	JitterFactor      float64              `mapstructure:"jitter_factor" yaml:"jitter_factor"`
 	CircuitBreaker    CircuitBreakerConfig `mapstructure:"circuit_breaker" yaml:"circuit_breaker"`
 }
 
@@ -125,6 +126,47 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("invalid git.max_file_size: %w", err)
 		}
 	}
+
+	// Validate rate limit configuration
+	rl := &c.LLM.RateLimit
+	if rl.Enabled {
+		if rl.RequestsPerMinute < 0 {
+			return fmt.Errorf("invalid llm.rate_limit.requests_per_minute: must be >= 0, got %d", rl.RequestsPerMinute)
+		}
+		if rl.BurstSize < 0 {
+			return fmt.Errorf("invalid llm.rate_limit.burst_size: must be >= 0, got %d", rl.BurstSize)
+		}
+		if rl.MaxRetries < 0 {
+			return fmt.Errorf("invalid llm.rate_limit.max_retries: must be >= 0, got %d", rl.MaxRetries)
+		}
+		if rl.InitialDelay < 0 {
+			return fmt.Errorf("invalid llm.rate_limit.initial_delay: must be >= 0, got %s", rl.InitialDelay)
+		}
+		if rl.MaxDelay < 0 {
+			return fmt.Errorf("invalid llm.rate_limit.max_delay: must be >= 0, got %s", rl.MaxDelay)
+		}
+		if rl.Multiplier < 0 {
+			return fmt.Errorf("invalid llm.rate_limit.multiplier: must be >= 0, got %f", rl.Multiplier)
+		}
+		if rl.JitterFactor < 0 || rl.JitterFactor > 1.0 {
+			return fmt.Errorf("invalid llm.rate_limit.jitter_factor: must be between 0.0 and 1.0, got %f", rl.JitterFactor)
+		}
+
+		// Validate circuit breaker configuration
+		cb := &rl.CircuitBreaker
+		if cb.Enabled {
+			if cb.FailureThreshold < 1 {
+				return fmt.Errorf("invalid llm.rate_limit.circuit_breaker.failure_threshold: must be >= 1, got %d", cb.FailureThreshold)
+			}
+			if cb.SuccessThresholdHalfOpen < 1 {
+				return fmt.Errorf("invalid llm.rate_limit.circuit_breaker.success_threshold_half_open: must be >= 1, got %d", cb.SuccessThresholdHalfOpen)
+			}
+			if cb.ResetTimeout < time.Second {
+				return fmt.Errorf("invalid llm.rate_limit.circuit_breaker.reset_timeout: must be >= 1s, got %s", cb.ResetTimeout)
+			}
+		}
+	}
+
 	return nil
 }
 

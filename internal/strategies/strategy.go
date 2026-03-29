@@ -172,6 +172,7 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 						InitialDelay:             opts.LLMConfig.RateLimit.InitialDelay,
 						MaxDelay:                 opts.LLMConfig.RateLimit.MaxDelay,
 						Multiplier:               opts.LLMConfig.RateLimit.Multiplier,
+						JitterFactor:             opts.LLMConfig.RateLimit.JitterFactor,
 						CircuitBreakerEnabled:    opts.LLMConfig.RateLimit.CircuitBreaker.Enabled,
 						FailureThreshold:         opts.LLMConfig.RateLimit.CircuitBreaker.FailureThreshold,
 						SuccessThresholdHalfOpen: opts.LLMConfig.RateLimit.CircuitBreaker.SuccessThresholdHalfOpen,

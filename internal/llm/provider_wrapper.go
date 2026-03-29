@@ -98,16 +98,8 @@ func (p *RateLimitedProvider) Name() string {
 
 // Complete executes the request with rate limiting, retry, and circuit breaker
 func (p *RateLimitedProvider) Complete(ctx context.Context, req *domain.LLMRequest) (*domain.LLMResponse, error) {
-	if p.logger != nil {
-		p.logger.Debug().
-			Float64("tokens_available", p.rateLimiter.Available()).
-			Msg("Waiting for rate limit token")
-	}
-
-	if err := p.rateLimiter.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("rate limit wait cancelled: %w", err)
-	}
-
+	// Check circuit breaker FIRST, before consuming a rate limit token.
+	// If the breaker is open, we must not drain the token bucket.
 	if !p.circuitBreaker.Allow() {
 		if p.logger != nil {
 			p.logger.Warn().
@@ -119,6 +111,18 @@ func (p *RateLimitedProvider) Complete(ctx context.Context, req *domain.LLMReque
 
 	var response *domain.LLMResponse
 	err := p.retrier.Execute(ctx, func() error {
+		// Consume a rate limit token for EVERY attempt (including retries)
+		// so that retries count against the configured rate limit.
+		if p.logger != nil {
+			p.logger.Debug().
+				Float64("tokens_available", p.rateLimiter.Available()).
+				Msg("Waiting for rate limit token")
+		}
+
+		if err := p.rateLimiter.Wait(ctx); err != nil {
+			return fmt.Errorf("rate limit wait cancelled: %w", err)
+		}
+
 		var err error
 		response, err = p.provider.Complete(ctx, req)
 		return err

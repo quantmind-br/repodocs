@@ -2,6 +2,7 @@ package fetcher
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -72,21 +73,50 @@ func (r *Retrier) newBackoff() backoff.BackOff {
 // Retry executes an operation with exponential backoff
 func (r *Retrier) Retry(ctx context.Context, operation func() error) error {
 	b := r.newBackoff()
-	b = backoff.WithContext(b, ctx)
 
-	return backoff.Retry(func() error {
-		err := operation()
-		if err == nil {
+	var lastErr error
+	for attempt := 0; ; attempt++ {
+		select {
+		case <-ctx.Done():
+			if lastErr != nil {
+				return lastErr
+			}
+			return ctx.Err()
+		default:
+		}
+
+		lastErr = operation()
+		if lastErr == nil {
 			return nil
 		}
 
 		// Check if error is retryable
-		if !domain.IsRetryable(err) {
-			return backoff.Permanent(err)
+		if !domain.IsRetryable(lastErr) {
+			return lastErr
 		}
 
-		return err
-	}, b)
+		// Calculate next backoff
+		waitDuration := b.NextBackOff()
+		if waitDuration == backoff.Stop {
+			return lastErr
+		}
+
+		// If the error carries a Retry-After hint, ensure we wait at least that long
+		var retryableErr *domain.RetryableError
+		if errors.As(lastErr, &retryableErr) && retryableErr.RetryAfter > 0 {
+			retryAfterDuration := time.Duration(retryableErr.RetryAfter) * time.Second
+			if retryAfterDuration > waitDuration {
+				waitDuration = retryAfterDuration
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return lastErr
+		case <-time.After(waitDuration):
+			continue
+		}
+	}
 }
 
 // RetryWithValue executes an operation with exponential backoff and returns a value
@@ -95,30 +125,52 @@ func RetryWithValue[T any](ctx context.Context, r *Retrier, operation func() (T,
 	var lastErr error
 
 	b := r.newBackoff()
-	b = backoff.WithContext(b, ctx)
 
-	err := backoff.Retry(func() error {
+	for attempt := 0; ; attempt++ {
+		select {
+		case <-ctx.Done():
+			if lastErr != nil {
+				return result, lastErr
+			}
+			return result, ctx.Err()
+		default:
+		}
+
 		var err error
 		result, err = operation()
 		if err == nil {
-			return nil
+			return result, nil
 		}
 
 		lastErr = err
 
 		// Check if error is retryable
 		if !domain.IsRetryable(err) {
-			return backoff.Permanent(err)
+			return result, err
 		}
 
-		return err
-	}, b)
+		// Calculate next backoff
+		waitDuration := b.NextBackOff()
+		if waitDuration == backoff.Stop {
+			return result, lastErr
+		}
 
-	if err != nil {
-		return result, lastErr
+		// If the error carries a Retry-After hint, ensure we wait at least that long
+		var retryableErr *domain.RetryableError
+		if errors.As(err, &retryableErr) && retryableErr.RetryAfter > 0 {
+			retryAfterDuration := time.Duration(retryableErr.RetryAfter) * time.Second
+			if retryAfterDuration > waitDuration {
+				waitDuration = retryAfterDuration
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return result, lastErr
+		case <-time.After(waitDuration):
+			continue
+		}
 	}
-
-	return result, nil
 }
 
 // ShouldRetryStatus returns true if the HTTP status code should be retried

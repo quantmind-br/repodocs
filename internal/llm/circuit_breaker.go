@@ -56,6 +56,7 @@ type circuitBreaker struct {
 	state           CircuitState
 	failures        int
 	successes       int
+	halfOpenAllowed int
 	lastStateChange time.Time
 	mu              sync.RWMutex
 }
@@ -94,7 +95,13 @@ func (cb *circuitBreaker) Allow() bool {
 		}
 		return false
 	case StateHalfOpen:
-		return true
+		// Allow only up to SuccessThresholdHalfOpen concurrent probe requests.
+		// Additional requests are rejected to avoid overwhelming a recovering service.
+		if cb.halfOpenAllowed < cb.config.SuccessThresholdHalfOpen {
+			cb.halfOpenAllowed++
+			return true
+		}
+		return false
 	default:
 		return false
 	}
@@ -148,6 +155,7 @@ func (cb *circuitBreaker) transitionTo(newState CircuitState) {
 	cb.lastStateChange = time.Now()
 	cb.failures = 0
 	cb.successes = 0
+	cb.halfOpenAllowed = 0
 }
 
 // NoOpCircuitBreaker always allows requests

@@ -46,6 +46,7 @@ const (
 	DefaultRateLimitInitialDelay      = 1 * time.Second
 	DefaultRateLimitMaxDelay          = 60 * time.Second
 	DefaultRateLimitMultiplier        = 2.0
+	DefaultRateLimitJitterFactor      = 0.1
 
 	// Circuit breaker defaults
 	DefaultCircuitBreakerEnabled                  = true
@@ -133,6 +134,7 @@ func Default() *Config {
 				InitialDelay:      DefaultRateLimitInitialDelay,
 				MaxDelay:          DefaultRateLimitMaxDelay,
 				Multiplier:        DefaultRateLimitMultiplier,
+				JitterFactor:      DefaultRateLimitJitterFactor,
 				CircuitBreaker: CircuitBreakerConfig{
 					Enabled:                  DefaultCircuitBreakerEnabled,
 					FailureThreshold:         DefaultCircuitBreakerFailureThreshold,
