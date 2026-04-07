@@ -195,7 +195,7 @@ func TestValidateLogFormat(t *testing.T) {
 }
 
 func TestValidateLLMProvider(t *testing.T) {
-	validProviders := []string{"openai", "anthropic", "google", ""}
+	validProviders := []string{"openai", "anthropic", "google", "lmstudio", ""}
 	for _, provider := range validProviders {
 		name := provider
 		if name == "" {
