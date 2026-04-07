@@ -136,9 +136,10 @@ func ValidateLLMProvider(s string) error {
 		"openai":    true,
 		"anthropic": true,
 		"google":    true,
+		"lmstudio":  true,
 	}
 	if !validProviders[strings.ToLower(s)] {
-		return fmt.Errorf("invalid LLM provider: must be openai, anthropic, or google")
+		return fmt.Errorf("invalid LLM provider: must be openai, anthropic, google, or lmstudio")
 	}
 	return nil
 }
