@@ -41,6 +41,11 @@ func TestProviderFromConfig_Integration(t *testing.T) {
 			provider: "google",
 			model:    "gemini-pro",
 		},
+		{
+			name:     "lmstudio_provider",
+			provider: "lmstudio",
+			model:    "local-model",
+		},
 	}
 
 	for _, tt := range tests {
@@ -58,6 +63,64 @@ func TestProviderFromConfig_Integration(t *testing.T) {
 			assert.NoError(t, provider.Close())
 		})
 	}
+}
+
+// TestLMStudioProvider_Integration tests the full LM Studio provider lifecycle
+// through the public NewProviderFromConfig API using a mock server.
+func TestLMStudioProvider_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/chat/completions", r.URL.Path)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		// LM Studio does not require auth by default
+		assert.Empty(t, r.Header.Get("Authorization"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{
+			"id": "chatcmpl-test",
+			"model": "test-local-model",
+			"choices": [
+				{
+					"message": {"role": "assistant", "content": "This is a documentation summary."},
+					"finish_reason": "stop"
+				}
+			],
+			"usage": {"prompt_tokens": 20, "completion_tokens": 10, "total_tokens": 30}
+		}`))
+	}))
+	defer server.Close()
+
+	cfg := &config.LLMConfig{
+		Provider: "lmstudio",
+		BaseURL:  server.URL,
+		Model:    "test-local-model",
+		// No APIKey -- that's the lmstudio default
+	}
+
+	provider, err := llm.NewProviderFromConfig(cfg)
+	require.NoError(t, err)
+	assert.Equal(t, "lmstudio", provider.Name())
+
+	resp, err := provider.Complete(context.Background(), &domain.LLMRequest{
+		Messages: []domain.LLMMessage{
+			{Role: domain.RoleSystem, Content: "You summarize documentation."},
+			{Role: domain.RoleUser, Content: "Summarize this page about Go testing."},
+		},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "This is a documentation summary.", resp.Content)
+	assert.Equal(t, "test-local-model", resp.Model)
+	assert.Equal(t, "stop", resp.FinishReason)
+	assert.Equal(t, 20, resp.Usage.PromptTokens)
+	assert.Equal(t, 10, resp.Usage.CompletionTokens)
+	assert.Equal(t, 30, resp.Usage.TotalTokens)
+
+	assert.NoError(t, provider.Close())
 }
 
 // TestCircuitBreakerWithProvider_Integration tests circuit breaker with real provider calls
