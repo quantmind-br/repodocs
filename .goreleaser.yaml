@@ -47,7 +47,7 @@ nfpms:
   - id: packages
     package_name: repodocs
     vendor: Quantmind
-    homepage: https://github.com/quantmind-br/repodocs
+    homepage: https://github.com/quantmind-br/repodocs-go
     maintainer: Quantmind <contact@quantmind.com>
     description: Documentation extraction CLI tool for LLMs
     license: MIT
@@ -66,7 +66,7 @@ brews:
       owner: quantmind-br
       name: homebrew-tap
     directory: Formula
-    homepage: https://github.com/quantmind-br/repodocs
+    homepage: https://github.com/quantmind-br/repodocs-go
     description: Documentation extraction CLI tool for LLMs
     license: MIT
     skip_upload: true
@@ -107,7 +107,7 @@ changelog:
 release:
   github:
     owner: quantmind-br
-    name: repodocs
+    name: repodocs-go
   draft: false
   prerelease: auto
   mode: replace
@@ -140,4 +140,4 @@ release:
     ```
     
     ---
-    **Full Changelog**: https://github.com/quantmind-br/repodocs/compare/{{.PreviousTag}}...{{.Tag}}
+    **Full Changelog**: https://github.com/quantmind-br/repodocs-go/compare/{{.PreviousTag}}...{{.Tag}}

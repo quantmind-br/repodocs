@@ -1015,7 +1015,7 @@ func TestNormalizeFilterPath_WithFullURLs(t *testing.T) {
 		{
 			name:     "GitHub tree URL without path returns full URL",
 			input:    "https://github.com/owner/repo/tree/main",
-			expected: ".\\https:\\github.com\\owner\\repo\\tree\\main",
+			expected: filepath.Clean("https://github.com/owner/repo/tree/main"),
 		},
 		{
 			name:     "Plain path unchanged",
