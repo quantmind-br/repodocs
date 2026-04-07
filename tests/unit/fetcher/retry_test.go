@@ -625,3 +625,40 @@ func TestParseRetryAfter(t *testing.T) {
 		}
 	})
 }
+
+func TestRetrier_RespectsRetryAfterHeader(t *testing.T) {
+	t.Run("retry extends wait beyond calculated backoff", func(t *testing.T) {
+		opts := fetcher.RetrierOptions{
+			MaxRetries:      2,
+			InitialInterval: 10 * time.Millisecond,
+			MaxInterval:     100 * time.Millisecond,
+			Multiplier:      2.0,
+		}
+		retrier := fetcher.NewRetrier(opts)
+
+		attempts := 0
+		operation := func() error {
+			attempts++
+			if attempts == 1 {
+				return &domain.RetryableError{
+					Err:        errors.New("server says slow down"),
+					RetryAfter: 3,
+				}
+			}
+			return nil
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		start := time.Now()
+		err := retrier.Retry(ctx, operation)
+		elapsed := time.Since(start)
+
+		assert.Error(t, err)
+		assert.GreaterOrEqual(t, elapsed, 1*time.Second,
+			"wait should be extended by RetryAfter, not just the short backoff")
+		assert.Equal(t, 1, attempts,
+			"should not have retried yet - still waiting for RetryAfter duration")
+	})
+}

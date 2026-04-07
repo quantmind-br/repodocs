@@ -297,6 +297,37 @@ func TestCircuitBreaker_ConcurrentAccess(t *testing.T) {
 	assert.True(t, state == StateClosed || state == StateOpen || state == StateHalfOpen)
 }
 
+// TestCircuitBreaker_HalfOpenLimitsRequests verifies Bug 3 fix:
+// In half-open state, requests are limited by the halfOpenAllowed counter.
+// Without the fix, half-open would allow unlimited requests (just `return true`).
+func TestCircuitBreaker_HalfOpenLimitsRequests(t *testing.T) {
+	cfg := CircuitBreakerConfig{
+		FailureThreshold:         2,
+		SuccessThresholdHalfOpen: 1,
+		ResetTimeout:             50 * time.Millisecond,
+	}
+	cb := NewCircuitBreaker(cfg)
+
+	// Trip the breaker: record 2 failures
+	cb.RecordFailure()
+	cb.RecordFailure()
+	assert.Equal(t, StateOpen, cb.State())
+
+	// Wait for reset timeout to allow transition to half-open
+	time.Sleep(75 * time.Millisecond)
+
+	// 1st call: allowed (transitions Open→HalfOpen, returns true immediately)
+	assert.True(t, cb.Allow(), "1st probe (transition) should be allowed")
+	assert.Equal(t, StateHalfOpen, cb.State())
+
+	// 2nd call: allowed (counter 0→1, equals SuccessThresholdHalfOpen=1)
+	assert.True(t, cb.Allow(), "2nd probe (counter=1) should be allowed")
+
+	// 3rd and 4th: REJECTED (counter at threshold)
+	assert.False(t, cb.Allow(), "3rd call should be rejected")
+	assert.False(t, cb.Allow(), "4th call should also be rejected")
+}
+
 // TestNoOpCircuitBreaker tests the no-op circuit breaker
 func TestNoOpCircuitBreaker(t *testing.T) {
 	cb := &NoOpCircuitBreaker{}

@@ -409,6 +409,7 @@ func TestCalculateBackoff(t *testing.T) {
 		InitialInterval: 100 * time.Millisecond,
 		MaxInterval:     1 * time.Second,
 		Multiplier:      2.0,
+		JitterFactor:    0.1,
 	}
 
 	tests := []struct {
@@ -513,4 +514,100 @@ func TestRetrier_calculateBackoff(t *testing.T) {
 			assert.LessOrEqual(t, backoff, tt.maxExpected)
 		})
 	}
+}
+
+func TestRetrier_JitterFactorFromConfig(t *testing.T) {
+	t.Run("zero jitter produces deterministic backoff", func(t *testing.T) {
+		cfg := RetryConfig{
+			InitialInterval: 100 * time.Millisecond,
+			MaxInterval:     1 * time.Second,
+			Multiplier:      2.0,
+			JitterFactor:    0.0,
+		}
+		r := NewRetrier(cfg, nil)
+
+		results := make(map[time.Duration]bool)
+		for range 50 {
+			backoff := r.calculateBackoff(2)
+			results[backoff] = true
+		}
+		assert.Len(t, results, 1, "JitterFactor=0 should produce deterministic results")
+		for d := range results {
+			assert.Equal(t, 400*time.Millisecond, d)
+		}
+	})
+
+	t.Run("positive jitter produces varied backoff", func(t *testing.T) {
+		cfg := RetryConfig{
+			InitialInterval: 100 * time.Millisecond,
+			MaxInterval:     1 * time.Second,
+			Multiplier:      2.0,
+			JitterFactor:    0.5,
+		}
+		r := NewRetrier(cfg, nil)
+
+		results := make(map[time.Duration]bool)
+		for range 100 {
+			backoff := r.calculateBackoff(2)
+			results[backoff] = true
+		}
+		assert.Greater(t, len(results), 1, "JitterFactor=0.5 should produce varied backoff values")
+		for d := range results {
+			assert.GreaterOrEqual(t, d, 200*time.Millisecond)
+			assert.LessOrEqual(t, d, 600*time.Millisecond)
+		}
+	})
+}
+
+func TestCalculateBackoff_UsesConfigJitter(t *testing.T) {
+	t.Run("zero JitterFactor produces deterministic output", func(t *testing.T) {
+		cfg := RetryConfig{
+			InitialInterval: 100 * time.Millisecond,
+			MaxInterval:     1 * time.Second,
+			Multiplier:      2.0,
+			JitterFactor:    0.0,
+		}
+
+		results := make(map[time.Duration]bool)
+		for range 50 {
+			backoff := CalculateBackoff(1, cfg)
+			results[backoff] = true
+		}
+		assert.Len(t, results, 1, "JitterFactor=0 should produce deterministic results from CalculateBackoff")
+		for d := range results {
+			assert.Equal(t, 200*time.Millisecond, d, "100ms * 2^1 = 200ms with no jitter")
+		}
+	})
+
+	t.Run("positive JitterFactor produces varied output", func(t *testing.T) {
+		cfg := RetryConfig{
+			InitialInterval: 100 * time.Millisecond,
+			MaxInterval:     1 * time.Second,
+			Multiplier:      2.0,
+			JitterFactor:    0.3,
+		}
+
+		results := make(map[time.Duration]bool)
+		for range 100 {
+			backoff := CalculateBackoff(1, cfg)
+			results[backoff] = true
+		}
+		assert.Greater(t, len(results), 1, "JitterFactor=0.3 should produce varied results from CalculateBackoff")
+	})
+
+	t.Run("negative JitterFactor produces deterministic output", func(t *testing.T) {
+		cfg := RetryConfig{
+			InitialInterval: 100 * time.Millisecond,
+			MaxInterval:     1 * time.Second,
+			Multiplier:      2.0,
+			JitterFactor:    -0.5,
+		}
+
+		results := make(map[time.Duration]bool)
+		for range 50 {
+			backoff := CalculateBackoff(1, cfg)
+			results[backoff] = true
+		}
+		assert.Len(t, results, 1, "negative JitterFactor should produce deterministic results")
+	})
 }

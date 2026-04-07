@@ -188,11 +188,17 @@ func ShouldRetry(statusCode int) bool {
 func CalculateBackoff(attempt int, cfg RetryConfig) time.Duration {
 	backoff := float64(cfg.InitialInterval) * math.Pow(cfg.Multiplier, float64(attempt))
 
-	jitter := backoff * 0.1 * (rand.Float64()*2 - 1)
-	backoff += jitter
+	if cfg.JitterFactor > 0 {
+		jitter := backoff * cfg.JitterFactor * (rand.Float64()*2 - 1)
+		backoff += jitter
+	}
 
 	if backoff > float64(cfg.MaxInterval) {
 		backoff = float64(cfg.MaxInterval)
+	}
+
+	if backoff < 0 {
+		backoff = 0
 	}
 
 	return time.Duration(backoff)

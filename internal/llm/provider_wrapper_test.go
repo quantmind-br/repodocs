@@ -273,6 +273,80 @@ func TestRateLimitedProvider_ConcurrentRequests(t *testing.T) {
 	}
 }
 
+// TestRateLimitedProvider_CircuitOpenPreservesTokens verifies Bug 1 fix:
+// Circuit breaker check happens BEFORE rate limit token consumption.
+func TestRateLimitedProvider_CircuitOpenPreservesTokens(t *testing.T) {
+	var providerCalled bool
+	mockProvider := &mockLLMProvider{
+		name: "test",
+		fn: func() (*domain.LLMResponse, error) {
+			providerCalled = true
+			return nil, &domain.LLMError{StatusCode: 500}
+		},
+	}
+
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	p := NewRateLimitedProvider(mockProvider, RateLimitedProviderConfig{
+		RequestsPerMinute:     60,
+		BurstSize:             10,
+		CircuitBreakerEnabled: true,
+		FailureThreshold:      2,
+	}, logger)
+
+	ctx := context.Background()
+	req := &domain.LLMRequest{
+		Messages: []domain.LLMMessage{{Role: "user", Content: "test"}},
+	}
+
+	_, _ = p.Complete(ctx, req)
+	_, _ = p.Complete(ctx, req)
+	providerCalled = false
+
+	_, err := p.Complete(ctx, req)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, domain.ErrLLMCircuitOpen)
+	assert.False(t, providerCalled, "provider should NOT be called when circuit is open")
+}
+
+// TestRateLimitedProvider_RetriesConsumeTokens verifies Bug 5 fix:
+// rateLimiter.Wait() is INSIDE the retry closure, so each retry consumes a token.
+func TestRateLimitedProvider_RetriesConsumeTokens(t *testing.T) {
+	calls := 0
+	mockProvider := &mockLLMProvider{
+		name: "test",
+		fn: func() (*domain.LLMResponse, error) {
+			calls++
+			if calls < 3 {
+				return nil, &domain.LLMError{StatusCode: 429}
+			}
+			return &domain.LLMResponse{Content: "success"}, nil
+		},
+	}
+
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	p := NewRateLimitedProvider(mockProvider, RateLimitedProviderConfig{
+		RequestsPerMinute: 6,
+		BurstSize:         1,
+		MaxRetries:        3,
+		InitialDelay:      10 * time.Millisecond,
+	}, logger)
+
+	ctx := context.Background()
+	req := &domain.LLMRequest{
+		Messages: []domain.LLMMessage{{Role: "user", Content: "test"}},
+	}
+
+	start := time.Now()
+	resp, err := p.Complete(ctx, req)
+	elapsed := time.Since(start)
+
+	require.NoError(t, err)
+	assert.Equal(t, "success", resp.Content)
+	assert.Equal(t, 3, calls, "provider should be called 3 times")
+	assert.GreaterOrEqual(t, elapsed, 100*time.Millisecond,
+		"retries should consume rate limit tokens, causing waits between attempts")
+}
+
 // Mock LLM provider for testing
 type mockLLMProvider struct {
 	name     string

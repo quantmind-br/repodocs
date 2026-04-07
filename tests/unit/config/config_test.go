@@ -622,3 +622,76 @@ func TestConfig_ExcludeIsCopy(t *testing.T) {
 	assert.NotEqual(t, len(cfg1.Exclude), len(cfg2.Exclude))
 	assert.Equal(t, len(config.DefaultExcludePatterns), len(cfg2.Exclude))
 }
+
+func TestConfig_Validate_RateLimitFields(t *testing.T) {
+	t.Run("negative requests_per_minute rejected", func(t *testing.T) {
+		cfg := config.Default()
+		cfg.LLM.RateLimit.Enabled = true
+		cfg.LLM.RateLimit.RequestsPerMinute = -1
+		err := cfg.Validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "requests_per_minute")
+	})
+
+	t.Run("negative burst_size rejected", func(t *testing.T) {
+		cfg := config.Default()
+		cfg.LLM.RateLimit.Enabled = true
+		cfg.LLM.RateLimit.BurstSize = -1
+		err := cfg.Validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "burst_size")
+	})
+
+	t.Run("negative max_retries rejected", func(t *testing.T) {
+		cfg := config.Default()
+		cfg.LLM.RateLimit.Enabled = true
+		cfg.LLM.RateLimit.MaxRetries = -1
+		err := cfg.Validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "max_retries")
+	})
+
+	t.Run("negative jitter_factor rejected", func(t *testing.T) {
+		cfg := config.Default()
+		cfg.LLM.RateLimit.Enabled = true
+		cfg.LLM.RateLimit.JitterFactor = -0.5
+		err := cfg.Validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "jitter_factor")
+	})
+
+	t.Run("jitter_factor above 1.0 rejected", func(t *testing.T) {
+		cfg := config.Default()
+		cfg.LLM.RateLimit.Enabled = true
+		cfg.LLM.RateLimit.JitterFactor = 1.5
+		err := cfg.Validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "jitter_factor")
+	})
+
+	t.Run("zero circuit breaker failure_threshold rejected", func(t *testing.T) {
+		cfg := config.Default()
+		cfg.LLM.RateLimit.Enabled = true
+		cfg.LLM.RateLimit.CircuitBreaker.Enabled = true
+		cfg.LLM.RateLimit.CircuitBreaker.FailureThreshold = 0
+		err := cfg.Validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failure_threshold")
+	})
+
+	t.Run("zero circuit breaker success_threshold_half_open rejected", func(t *testing.T) {
+		cfg := config.Default()
+		cfg.LLM.RateLimit.Enabled = true
+		cfg.LLM.RateLimit.CircuitBreaker.Enabled = true
+		cfg.LLM.RateLimit.CircuitBreaker.SuccessThresholdHalfOpen = 0
+		err := cfg.Validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "success_threshold_half_open")
+	})
+
+	t.Run("valid rate limit config passes", func(t *testing.T) {
+		cfg := config.Default()
+		err := cfg.Validate()
+		assert.NoError(t, err)
+	})
+}
