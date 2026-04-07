@@ -111,6 +111,23 @@ func TestNewProviderFromConfig(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name: "valid lmstudio config",
+			cfg: &config.LLMConfig{
+				Provider: "lmstudio",
+				BaseURL:  "http://localhost:1234/v1",
+				Model:    "local-model",
+			},
+			wantErr: nil,
+		},
+		{
+			name: "lmstudio without api key",
+			cfg: &config.LLMConfig{
+				Provider: "lmstudio",
+				Model:    "local-model",
+			},
+			wantErr: nil,
+		},
+		{
 			name: "missing base url for unknown provider",
 			cfg: &config.LLMConfig{
 				Provider: "unknown",
@@ -203,6 +220,15 @@ func TestNewProvider(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "valid lmstudio",
+			cfg: ProviderConfig{
+				Provider: "lmstudio",
+				BaseURL:  "http://localhost:1234/v1",
+				Model:    "local-model",
+			},
+			wantErr: false,
+		},
+		{
 			name: "invalid provider",
 			cfg: ProviderConfig{
 				Provider: "invalid",
@@ -275,6 +301,7 @@ func TestDefaultBaseURL(t *testing.T) {
 		{"anthropic", DefaultAnthropicBaseURL},
 		{"google", DefaultGoogleBaseURL},
 		{"ollama", DefaultOllamaBaseURL},
+		{"lmstudio", DefaultLMStudioBaseURL},
 		{"unknown", ""},
 		{"", ""},
 	}
