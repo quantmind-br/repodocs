@@ -851,6 +851,69 @@ func TestFilterSitemapURLs(t *testing.T) {
 	})
 }
 
+// TestParseSitemap_TextExtension verifies that a .txt source URL skips XML
+// parsing and returns one SitemapURL per URL line (regression for
+// doc.rust-lang.org/sitemap.txt EOF).
+func TestParseSitemap_TextExtension(t *testing.T) {
+	content := []byte(`https://doc.rust-lang.org/stable/
+https://doc.rust-lang.org/beta/
+https://doc.rust-lang.org/nightly/
+`)
+
+	sm, err := parseSitemap(content, "https://doc.rust-lang.org/sitemap.txt")
+	require.NoError(t, err)
+	require.NotNil(t, sm)
+	assert.False(t, sm.IsIndex)
+	require.Len(t, sm.URLs, 3)
+	assert.Equal(t, "https://doc.rust-lang.org/stable/", sm.URLs[0].Loc)
+	assert.Equal(t, "https://doc.rust-lang.org/beta/", sm.URLs[1].Loc)
+	assert.Equal(t, "https://doc.rust-lang.org/nightly/", sm.URLs[2].Loc)
+}
+
+// TestParseSitemap_TextFallbackNoExtension verifies that plain-text URL list
+// content parses correctly even when the source URL doesn't end with .txt
+// (e.g. served with generic content-type).
+func TestParseSitemap_TextFallbackNoExtension(t *testing.T) {
+	content := []byte("https://example.com/a\r\nhttps://example.com/b\n")
+
+	sm, err := parseSitemap(content, "https://example.com/sitemap")
+	require.NoError(t, err)
+	require.NotNil(t, sm)
+	assert.False(t, sm.IsIndex)
+	require.Len(t, sm.URLs, 2)
+	assert.Equal(t, "https://example.com/a", sm.URLs[0].Loc)
+	assert.Equal(t, "https://example.com/b", sm.URLs[1].Loc)
+}
+
+// TestParseSitemap_TextIgnoresCommentsAndBlanks verifies comment and empty
+// line handling in plain-text sitemaps.
+func TestParseSitemap_TextIgnoresCommentsAndBlanks(t *testing.T) {
+	content := []byte(`# Rust documentation sitemap
+# generated 2026-04-16
+
+https://doc.rust-lang.org/stable/
+
+# mid-file comment
+https://doc.rust-lang.org/beta/
+`)
+
+	sm, err := parseSitemap(content, "https://doc.rust-lang.org/sitemap.txt")
+	require.NoError(t, err)
+	require.Len(t, sm.URLs, 2)
+	assert.Equal(t, "https://doc.rust-lang.org/stable/", sm.URLs[0].Loc)
+	assert.Equal(t, "https://doc.rust-lang.org/beta/", sm.URLs[1].Loc)
+}
+
+// TestParseSitemap_NonXMLNonURLReturnsError verifies that content that is
+// neither XML nor a URL list returns the XML parse error (not a silent
+// empty success).
+func TestParseSitemap_NonXMLNonURLReturnsError(t *testing.T) {
+	content := []byte("this is not xml and not urls\njust some text\n")
+
+	_, err := parseSitemap(content, "https://example.com/sitemap.xml")
+	require.Error(t, err)
+}
+
 // TestSitemapStrategy_Execute_WithFilter tests sitemap execution with URL filter
 func TestSitemapStrategy_Execute_WithFilter(t *testing.T) {
 	ctx := context.Background()

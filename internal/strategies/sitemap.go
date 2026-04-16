@@ -317,11 +317,19 @@ type sitemapLocation struct {
 	LastMod string `xml:"lastmod"`
 }
 
-// parseSitemap parses sitemap XML content
+// parseSitemap parses sitemap content. Supports XML urlset, XML sitemapindex,
+// and the plain-text variant of the Sitemaps protocol (one URL per line).
 func parseSitemap(content []byte, sourceURL string) (*domain.Sitemap, error) {
+	// Plain-text sitemaps are advertised with a .txt extension. Skip XML
+	// parsing entirely — `encoding/xml` returns io.EOF on non-XML input,
+	// which previously bubbled up as "strategy execution failed: EOF".
+	if strings.HasSuffix(strings.ToLower(sourceURL), ".txt") {
+		return parseTextSitemap(content, sourceURL)
+	}
+
 	// Try to parse as sitemap index first
 	var index sitemapIndexXML
-	if err := xml.Unmarshal(content, &index); err == nil && len(index.Sitemaps) > 0 {
+	if indexErr := xml.Unmarshal(content, &index); indexErr == nil && len(index.Sitemaps) > 0 {
 		var sitemaps []string
 		for _, sm := range index.Sitemaps {
 			sitemaps = append(sitemaps, sm.Loc)
@@ -336,6 +344,11 @@ func parseSitemap(content []byte, sourceURL string) (*domain.Sitemap, error) {
 	// Parse as regular sitemap
 	var sitemap sitemapXML
 	if err := xml.Unmarshal(content, &sitemap); err != nil {
+		// XML parsing failed — fall back to text sitemap if the content
+		// looks like a URL list (served with the wrong extension/content-type).
+		if looksLikeTextSitemap(content) {
+			return parseTextSitemap(content, sourceURL)
+		}
 		return nil, err
 	}
 
@@ -355,6 +368,46 @@ func parseSitemap(content []byte, sourceURL string) (*domain.Sitemap, error) {
 		IsIndex:   false,
 		SourceURL: sourceURL,
 	}, nil
+}
+
+// parseTextSitemap parses a plain-text sitemap: one URL per line, with
+// blank lines and `#` comments ignored. This is part of the Sitemaps
+// protocol (https://www.sitemaps.org/protocol.html#otherformats).
+func parseTextSitemap(content []byte, sourceURL string) (*domain.Sitemap, error) {
+	urls := make([]domain.SitemapURL, 0)
+	for _, line := range strings.Split(string(content), "\n") {
+		line = strings.TrimSpace(strings.TrimSuffix(line, "\r"))
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if !strings.HasPrefix(line, "http://") && !strings.HasPrefix(line, "https://") {
+			continue
+		}
+		urls = append(urls, domain.SitemapURL{Loc: line})
+	}
+	return &domain.Sitemap{
+		URLs:      urls,
+		IsIndex:   false,
+		SourceURL: sourceURL,
+	}, nil
+}
+
+// looksLikeTextSitemap reports whether content appears to be a plain-text
+// URL list rather than XML. It requires at least one non-comment, non-empty
+// line beginning with http:// or https://.
+func looksLikeTextSitemap(content []byte) bool {
+	for _, line := range strings.Split(string(content), "\n") {
+		line = strings.TrimSpace(strings.TrimSuffix(line, "\r"))
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if strings.HasPrefix(line, "http://") || strings.HasPrefix(line, "https://") {
+			return true
+		}
+		// First non-blank, non-comment line isn't a URL — not a text sitemap.
+		return false
+	}
+	return false
 }
 
 // parseLastMod parses a lastmod date string
