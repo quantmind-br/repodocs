@@ -66,8 +66,9 @@ type Sitemap struct {
 
 // LLMSLink represents a link parsed from llms.txt
 type LLMSLink struct {
-	Title string
-	URL   string
+	Title       string
+	URL         string
+	Description string
 }
 
 // Deprecated: Metadata is replaced by SimpleMetadata for JSON output.

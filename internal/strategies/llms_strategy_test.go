@@ -474,6 +474,52 @@ func TestParseLLMSLinks(t *testing.T) {
 				{Title: "Guide", URL: "https://example.com/guide"},
 			},
 		},
+		{
+			name:    "bare url without anchor text",
+			content: `- (https://example.com/page.md.txt): Page description here`,
+			expected: []domain.LLMSLink{
+				{Title: "Page description here", URL: "https://example.com/page.md.txt", Description: "Page description here"},
+			},
+		},
+		{
+			name: "google style mixed links",
+			content: `Gemini API Docs and API Reference
+
+## Docs
+- [Getting Started](https://example.com/start.md.txt): Getting started guide
+- (https://example.com/no-title.md.txt): Page without anchor text
+[API Reference](https://example.com/api.md.txt): Full API docs
+- [Guide](https://example.com/guide.md.txt)
+`,
+			expected: []domain.LLMSLink{
+				{Title: "Getting Started", URL: "https://example.com/start.md.txt", Description: "Getting started guide"},
+				{Title: "Page without anchor text", URL: "https://example.com/no-title.md.txt", Description: "Page without anchor text"},
+				{Title: "API Reference", URL: "https://example.com/api.md.txt", Description: "Full API docs"},
+				{Title: "Guide", URL: "https://example.com/guide.md.txt"},
+			},
+		},
+		{
+			name: "duplicate urls are deduplicated",
+			content: `[Page](https://example.com/page)
+[Page](https://example.com/page)`,
+			expected: []domain.LLMSLink{
+				{Title: "Page", URL: "https://example.com/page"},
+			},
+		},
+		{
+			name:    "link with description",
+			content: `[Home](https://example.com/): The home page`,
+			expected: []domain.LLMSLink{
+				{Title: "Home", URL: "https://example.com/", Description: "The home page"},
+			},
+		},
+		{
+			name:    "bare url without description",
+			content: `- (https://example.com/page.md.txt)`,
+			expected: []domain.LLMSLink{
+				{Title: "", URL: "https://example.com/page.md.txt"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -691,4 +737,24 @@ func TestLLMSStrategy_Execute_FetchError(t *testing.T) {
 	// Should not fail, should continue processing other pages
 	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	assert.NoError(t, err)
+}
+
+func TestTruncateTitle(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"", ""},
+		{"Short description", "Short description"},
+		{"This is a longer description that exceeds the eighty character limit for titles here", "This is a longer description that exceeds the eighty character limit for titl..."},
+		{"First sentence. Second sentence.", "First sentence"},
+		{"A. B. C.", "A"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := truncateTitle(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }

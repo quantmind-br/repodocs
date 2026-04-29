@@ -160,9 +160,12 @@ func (s *LLMSStrategy) Execute(ctx context.Context, url string, opts Options) er
 		doc.CacheHit = pageResp.FromCache
 		doc.FetchedAt = time.Now()
 
-		// Use title from llms.txt if document title is empty
 		if doc.Title == "" && link.Title != "" {
 			doc.Title = link.Title
+		}
+
+		if doc.Description == "" && link.Description != "" {
+			doc.Description = link.Description
 		}
 
 		if !opts.DryRun {
@@ -191,30 +194,86 @@ func (s *LLMSStrategy) Execute(ctx context.Context, url string, opts Options) er
 	return nil
 }
 
-// linkRegex matches markdown links: [Title](url)
-var linkRegex = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
+// linkRegex matches markdown links: [Title](url) or [Title](url): description
+// It also captures an optional description after the link.
+var linkRegex = regexp.MustCompile(`\[([^\]]*)\]\(([^)]+)\)(?::\s*(.*))?`)
+
+// bareLinkRegex matches bare URLs in parentheses without anchor text:
+// (url) or (url): description
+// These appear in some llms.txt implementations (e.g., Google's format).
+var bareLinkRegex = regexp.MustCompile(`^\s*(?:-\s*)?\(([^)]+)\)(?::\s*(.*))?`)
 
 func parseLLMSLinks(content string) []domain.LLMSLink {
 	links := make([]domain.LLMSLink, 0)
+	seen := make(map[string]bool)
 
-	matches := linkRegex.FindAllStringSubmatch(content, -1)
-	for _, match := range matches {
-		if len(match) == 3 {
-			title := strings.TrimSpace(match[1])
-			url := strings.TrimSpace(match[2])
+	lines := strings.Split(content, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		if matches := linkRegex.FindStringSubmatch(line); matches != nil {
+			title := strings.TrimSpace(matches[1])
+			url := strings.TrimSpace(matches[2])
+			desc := strings.TrimSpace(matches[3])
 
 			if url == "" || strings.HasPrefix(url, "#") {
 				continue
 			}
+			if seen[url] {
+				continue
+			}
+			seen[url] = true
 
 			links = append(links, domain.LLMSLink{
-				Title: title,
-				URL:   url,
+				Title:       title,
+				URL:         url,
+				Description: desc,
+			})
+			continue
+		}
+
+		if matches := bareLinkRegex.FindStringSubmatch(line); matches != nil {
+			url := strings.TrimSpace(matches[1])
+			desc := strings.TrimSpace(matches[2])
+
+			if url == "" || strings.HasPrefix(url, "#") {
+				continue
+			}
+			if seen[url] {
+				continue
+			}
+			seen[url] = true
+
+			title := ""
+			if desc != "" {
+				title = truncateTitle(desc)
+			}
+
+			links = append(links, domain.LLMSLink{
+				Title:       title,
+				URL:         url,
+				Description: desc,
 			})
 		}
 	}
 
 	return links
+}
+
+func truncateTitle(desc string) string {
+	if len(desc) == 0 {
+		return ""
+	}
+	if idx := strings.Index(desc, "."); idx > 0 && idx < 80 {
+		return desc[:idx]
+	}
+	if len(desc) > 80 {
+		return desc[:77] + "..."
+	}
+	return desc
 }
 
 func filterLLMSLinks(links []domain.LLMSLink, filterURL string) []domain.LLMSLink {
