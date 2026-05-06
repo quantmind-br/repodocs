@@ -25,7 +25,7 @@ RepoDocs is a powerful Go-based CLI tool and library designed to extract documen
 
 ### Prerequisites
 
--   **Go**: 1.21 or later.
+-   **Go**: 1.24 or later.
 -   **Chrome/Chromium**: Required if using the `--render-js` feature for JavaScript rendering.
 
 ### From Source
@@ -201,6 +201,17 @@ See the `examples/manifests/` directory for sample manifest files:
 
 RepoDocs follows a decoupled, interface-driven architecture structured as a processing pipeline:
 
+```mermaid
+graph LR
+    A[URL/Manifest] --> B[Detector]
+    B --> C[Strategy]
+    C --> D[Fetcher/Renderer]
+    D --> E[Converter]
+    E --> F[Writer]
+    E -.-> G[LLM Enhancer]
+    F -.-> H[Metadata Collector]
+```
+
 1.  **Detection**: The `Orchestrator` uses a `Strategy Factory` to identify the correct approach (Git, Crawler, Sitemap, etc.) based on the input URL.
 2.  **Execution**: The selected `Strategy` orchestrates fetching or cloning content.
 3.  **Processing**: The `Converter Pipeline` transforms raw content:
@@ -216,6 +227,24 @@ RepoDocs follows a decoupled, interface-driven architecture structured as a proc
 -   **Fetcher**: High-level HTTP client with stealth capabilities and caching.
 -   **Renderer**: Manages a pool of headless browser tabs for dynamic content.
 -   **Strategies**: Specialized logic for different documentation sources.
+
+## How URL Detection Works
+
+RepoDocs checks each registered strategy in a fixed order and uses the first one that can handle the URL:
+
+```text
+LLMS → PkgGo → DocsRS → Sitemap → Wiki → GitHubPages → Git → Crawler
+```
+
+Each strategy inspects the input URL and returns whether it supports that source. The first matching strategy wins, which means specialized handlers run before the generic crawler. Use `--strategy` to force a specific strategy when auto-detection is not what you want.
+
+Examples:
+
+-   `https://pkg.go.dev/...` → `PkgGo`
+-   `https://docs.rs/...` → `DocsRS`
+-   `https://github.com/org/repo` → `Git`
+-   `https://example.com/sitemap.xml` → `Sitemap`
+-   `https://example.com/docs` → `Crawler`
 
 ## Configuration
 
@@ -276,8 +305,41 @@ The interactive TUI organizes settings into categories:
 | `--limit` | `-l` | Maximum number of pages to process | `0` (unlimited) |
 | `--render-js` | | Force JavaScript rendering | `false` |
 | `--no-cache` | | Disable the BadgerDB caching layer | `false` |
+| `--accessible` | | Enable screen reader support for interactive commands | `false` |
 | `--exclude` | | Regex patterns to exclude specific paths | |
 | `--json-meta` | | Generate individual `.json` metadata files | `false` |
+
+## FAQ
+
+### "Chrome/Chromium not found" error
+
+Install Chrome or Chromium if you need JavaScript rendering. If the site works without a browser, run with `--no-render-js` to disable rendering.
+
+### "No strategy found for URL"
+
+Check that the URL is valid and includes the expected scheme (`https://` or `http://`). If auto-detection chooses the wrong path or cannot match the source, specify one with `--strategy`.
+
+### How do I clear the cache?
+
+Remove the cache directory:
+
+```bash
+rm -rf ~/.repodocs/cache
+```
+
+For one-off runs, use `--no-cache` to bypass the cache without deleting it.
+
+### How is the output directory structured?
+
+RepoDocs writes Markdown files under the configured output directory. Flat output keeps pages at a single level for easier ingestion, while nested output mirrors source paths when preserving site structure matters. Downloaded or referenced assets are kept alongside generated documents when asset handling is enabled.
+
+### How does rate limiting work?
+
+RepoDocs includes retries with exponential backoff for transient failures. The persistent cache reduces repeat requests, which helps avoid hitting remote rate limits during repeated runs.
+
+### How do I fix manifest validation errors?
+
+Check YAML or JSON syntax first, then verify required fields such as `url` are present for each source. See the manifest schema above for supported fields and types.
 
 ## Development
 
