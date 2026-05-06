@@ -11,23 +11,28 @@ import (
 	"strings"
 	"time"
 
+	"github.com/quantmind-br/repodocs/internal/converter"
 	"github.com/quantmind-br/repodocs/internal/domain"
 	"github.com/quantmind-br/repodocs/internal/state"
 	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
+// Processor discovers documentation files in fetched repositories and converts them to documents.
 type Processor struct {
 	logger *utils.Logger
 }
 
+// ProcessorOptions configures a Processor.
 type ProcessorOptions struct {
 	Logger *utils.Logger
 }
 
+// NewProcessor creates a repository documentation processor.
 func NewProcessor(opts ProcessorOptions) *Processor {
 	return &Processor{logger: opts.Logger}
 }
 
+// ProcessOptions controls file processing and output for a fetched repository.
 type ProcessOptions struct {
 	RepoURL      string
 	Branch       string
@@ -38,8 +43,10 @@ type ProcessOptions struct {
 	MaxFileSize  int64
 	WriteFunc    func(ctx context.Context, doc *domain.Document) error
 	StateManager *state.Manager
+	Result       *domain.StrategyResult
 }
 
+// FindDocumentationFiles walks dir or filterPath and returns documentation and configuration files.
 func (p *Processor) FindDocumentationFiles(dir string, filterPath string) ([]string, error) {
 	var files []string
 
@@ -86,6 +93,7 @@ func (p *Processor) FindDocumentationFiles(dir string, filterPath string) ([]str
 	return files, err
 }
 
+// ProcessFiles processes files concurrently and writes each resulting document through ProcessOptions.WriteFunc.
 func (p *Processor) ProcessFiles(ctx context.Context, files []string, tmpDir string, opts ProcessOptions) error {
 	bar := utils.NewProgressBar(len(files), utils.DescExtracting)
 
@@ -110,9 +118,13 @@ func (p *Processor) ProcessFiles(ctx context.Context, files []string, tmpDir str
 	return nil
 }
 
+// ProcessFile converts one repository file into a domain document and writes it when enabled.
 func (p *Processor) ProcessFile(ctx context.Context, path, tmpDir string, opts ProcessOptions) error {
+	opts.Result.IncAttempted()
+
 	info, err := os.Stat(path)
 	if err != nil {
+		opts.Result.IncFailed()
 		return err
 	}
 	maxSize := opts.MaxFileSize
@@ -120,11 +132,13 @@ func (p *Processor) ProcessFile(ctx context.Context, path, tmpDir string, opts P
 		maxSize = 10 * 1024 * 1024
 	}
 	if maxSize > 0 && info.Size() > maxSize {
+		opts.Result.IncSkipped()
 		return nil
 	}
 
 	content, err := os.ReadFile(path)
 	if err != nil {
+		opts.Result.IncFailed()
 		return err
 	}
 
@@ -147,9 +161,22 @@ func (p *Processor) ProcessFile(ctx context.Context, path, tmpDir string, opts P
 	}
 
 	ext := strings.ToLower(filepath.Ext(path))
-	if ConfigExtensions[ext] {
+	switch {
+	case ConfigExtensions[ext]:
 		doc.IsRawFile = true
-	} else if ext != ".md" && ext != ".mdx" {
+	case ext == ".rst":
+		md, convErr := converter.ConvertRST(content)
+		if convErr != nil {
+			if p.logger != nil {
+				p.logger.Warn().Err(convErr).Str("file", relPath).Msg("RST conversion failed, falling back to raw")
+			}
+			doc.Content = "```\n" + string(content) + "\n```"
+		} else {
+			doc.Content = string(md)
+			doc.WordCount = len(strings.Fields(doc.Content))
+			doc.CharCount = len(doc.Content)
+		}
+	case ext != ".md" && ext != ".mdx":
 		doc.Content = "```\n" + string(content) + "\n```"
 	}
 
@@ -159,12 +186,18 @@ func (p *Processor) ProcessFile(ctx context.Context, path, tmpDir string, opts P
 			if p.logger != nil {
 				p.logger.Debug().Str("file", relPath).Msg("Skipping unchanged file")
 			}
+			opts.Result.IncSkipped()
 			return nil
 		}
 	}
 
 	if !opts.DryRun && opts.WriteFunc != nil {
-		return opts.WriteFunc(ctx, doc)
+		if err := opts.WriteFunc(ctx, doc); err != nil {
+			opts.Result.IncFailed()
+			return err
+		}
+		opts.Result.IncWritten()
+		opts.Result.AddBytesWritten(int64(len(content)))
 	}
 
 	return nil
@@ -175,6 +208,7 @@ func computeHash(content []byte) string {
 	return hex.EncodeToString(hash[:])
 }
 
+// ExtractTitleFromPath creates a display title from a repository-relative file path.
 func ExtractTitleFromPath(path string) string {
 	base := filepath.Base(path)
 	ext := filepath.Ext(base)

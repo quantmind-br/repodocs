@@ -17,6 +17,31 @@ import (
 	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
+const (
+	// githubPagesMinSPAShellHTMLLength treats very small HTML payloads as SPA shells because
+	// real GitHub Pages documentation pages usually include enough markup, text, and assets
+	// to exceed this size even before JavaScript rendering.
+	githubPagesMinSPAShellHTMLLength = 500
+
+	// githubPagesMinSPAShellBodyTextLength catches app-shell pages that ship scripts and
+	// containers but almost no readable body text until client-side rendering completes.
+	githubPagesMinSPAShellBodyTextLength = 100
+
+	// githubPagesMaxConcurrency caps browser-backed extraction so multiple Chromium tabs do
+	// not overwhelm local CPU/memory or trigger flaky GitHub Pages throttling behavior.
+	githubPagesMaxConcurrency = 5
+
+	// githubPagesDefaultConcurrency keeps extraction parallel enough for throughput while
+	// staying conservative for machines that did not explicitly tune concurrency.
+	githubPagesDefaultConcurrency = 2
+)
+
+// GitHub Pages often serves static docs as full HTML but SPAs as thin app shells that
+// need JavaScript before useful content exists. The heuristic below prefers fast HTTP
+// extraction when the response has enough HTML/body text, then falls back to browser
+// rendering when the page looks like a shell, avoids text-heavy markers, or reports JS
+// rendering needs. Thresholds are deliberately conservative: false positives cost a
+// slower render, while false negatives write empty documentation.
 // GitHubPagesStrategy extracts documentation from GitHub Pages sites (*.github.io)
 type GitHubPagesStrategy struct {
 	deps           *Dependencies
@@ -65,7 +90,14 @@ func IsGitHubPagesURL(rawURL string) bool {
 }
 
 // Execute runs the GitHub Pages extraction strategy
-func (s *GitHubPagesStrategy) Execute(ctx context.Context, inputURL string, opts Options) error {
+func (s *GitHubPagesStrategy) Execute(ctx context.Context, inputURL string, opts Options) (*domain.StrategyResult, error) {
+	result := domain.NewStrategyResult(s.Name(), inputURL)
+	err := s.execute(ctx, inputURL, opts, result)
+	result.Finish()
+	return result, err
+}
+
+func (s *GitHubPagesStrategy) execute(ctx context.Context, inputURL string, opts Options, result *domain.StrategyResult) error {
 	s.logger.Info().
 		Str("url", inputURL).
 		Msg("Starting GitHub Pages extraction")
@@ -83,6 +115,9 @@ func (s *GitHubPagesStrategy) Execute(ctx context.Context, inputURL string, opts
 	}
 
 	if len(urls) == 0 {
+		result.AddDiagnostic(domain.DiagNoDocuments,
+			"No URLs discovered on GitHub Pages site",
+			"The site may use a different structure or require authentication")
 		s.logger.Warn().Msg("No URLs discovered")
 		return nil
 	}
@@ -101,12 +136,14 @@ func (s *GitHubPagesStrategy) Execute(ctx context.Context, inputURL string, opts
 		urls = urls[:opts.Limit]
 	}
 
+	result.AddDiscovered(len(urls))
+
 	s.logger.Info().
 		Int("count", len(urls)).
 		Msg("Processing URLs")
 
 	// Phase 2: Extract content (HTTP-first, browser fallback)
-	return s.processURLs(ctx, urls, opts)
+	return s.processURLs(ctx, urls, opts, result)
 }
 
 // discoverURLs finds all URLs using multi-tier discovery
@@ -386,20 +423,22 @@ func (s *GitHubPagesStrategy) filterURLs(urls []string, baseURL string, opts Opt
 }
 
 // processURLs processes all URLs using HTTP-first extraction with browser fallback
-func (s *GitHubPagesStrategy) processURLs(ctx context.Context, urls []string, opts Options) error {
+func (s *GitHubPagesStrategy) processURLs(ctx context.Context, urls []string, opts Options, result *domain.StrategyResult) error {
 	bar := utils.NewProgressBar(len(urls), utils.DescExtracting)
 
 	// Limit browser concurrency for stability
 	concurrency := opts.Concurrency
-	if concurrency > 5 {
-		concurrency = 5
+	if concurrency > githubPagesMaxConcurrency {
+		concurrency = githubPagesMaxConcurrency
 	}
 	if concurrency <= 0 {
-		concurrency = 2
+		concurrency = githubPagesDefaultConcurrency
 	}
 
+	result.AddAttempted(len(urls))
+
 	var mu sync.Mutex
-	var processedCount, successCount int
+	var processedCount int
 
 	errors := utils.ParallelForEach(ctx, urls, concurrency, func(ctx context.Context, pageURL string) error {
 		defer func() {
@@ -411,18 +450,21 @@ func (s *GitHubPagesStrategy) processURLs(ctx context.Context, urls []string, op
 
 		// Check if already exists
 		if !opts.Force && s.writer.Exists(pageURL) {
+			result.IncSkipped()
 			return nil
 		}
 
 		// HTTP-first fetch with browser fallback
 		html, usedBrowser, err := s.fetchOrRenderPage(ctx, pageURL, opts)
 		if err != nil {
+			result.IncFailed()
 			s.logger.Warn().Err(err).Str("url", pageURL).Msg("Failed to fetch/render page")
 			return nil
 		}
 
 		// Validate content
 		if s.isEmptyOrErrorContent(html) {
+			result.IncFailed()
 			s.logger.Debug().Str("url", pageURL).Msg("Empty or error content, skipping")
 			return nil
 		}
@@ -430,12 +472,14 @@ func (s *GitHubPagesStrategy) processURLs(ctx context.Context, urls []string, op
 		// Convert HTML to document
 		doc, err := s.converter.Convert(ctx, html, pageURL)
 		if err != nil {
+			result.IncFailed()
 			s.logger.Warn().Err(err).Str("url", pageURL).Msg("Failed to convert page")
 			return nil
 		}
 
 		// Validate converted content
 		if len(strings.TrimSpace(doc.Content)) < 50 {
+			result.IncFailed()
 			s.logger.Debug().Str("url", pageURL).Msg("Converted content too short, skipping")
 			return nil
 		}
@@ -445,15 +489,21 @@ func (s *GitHubPagesStrategy) processURLs(ctx context.Context, urls []string, op
 		doc.FetchedAt = time.Now()
 		doc.RenderedWithJS = usedBrowser
 
+		if usedBrowser {
+			result.AddDiagnostic(domain.DiagJSRequired,
+				"Browser rendering required for some pages",
+				"The site uses client-side rendering; JS rendering adds latency")
+		}
+
 		// Write document
 		if !opts.DryRun {
 			if err := s.deps.WriteDocument(ctx, doc); err != nil {
+				result.IncFailed()
 				s.logger.Warn().Err(err).Str("url", pageURL).Msg("Failed to write document")
 				return nil
 			}
-			mu.Lock()
-			successCount++
-			mu.Unlock()
+			result.IncWritten()
+			result.AddBytesWritten(int64(len(doc.Content)))
 		}
 
 		return nil
@@ -463,9 +513,16 @@ func (s *GitHubPagesStrategy) processURLs(ctx context.Context, urls []string, op
 		return err
 	}
 
+	snap := result.Snapshot()
+	if snap.URLsAttempted > 0 && snap.DocsWritten == 0 && snap.DocsSkipped == 0 {
+		result.AddDiagnostic(domain.DiagAllFetchesFailed,
+			"All page fetch attempts failed",
+			"Verify the site is accessible and not blocking automated access")
+	}
+
 	s.logger.Info().
 		Int("processed", processedCount).
-		Int("success", successCount).
+		Int("written", snap.DocsWritten).
 		Int("total", len(urls)).
 		Msg("GitHub Pages extraction completed")
 
@@ -505,7 +562,7 @@ func (s *GitHubPagesStrategy) fetchOrRenderPage(ctx context.Context, pageURL str
 // looksLikeSPAShell checks if HTML looks like an empty SPA shell
 func (s *GitHubPagesStrategy) looksLikeSPAShell(html string) bool {
 	// Check for minimal content indicators
-	if len(html) < 500 {
+	if len(html) < githubPagesMinSPAShellHTMLLength {
 		return true
 	}
 
@@ -530,7 +587,7 @@ func (s *GitHubPagesStrategy) looksLikeSPAShell(html string) bool {
 			}
 
 			bodyText := strings.TrimSpace(doc.Find("body").Text())
-			if len(bodyText) < 100 {
+			if len(bodyText) < githubPagesMinSPAShellBodyTextLength {
 				return true
 			}
 		}

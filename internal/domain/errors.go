@@ -42,6 +42,12 @@ var (
 
 	// ErrBrowserNotFound indicates Chrome/Chromium was not found
 	ErrBrowserNotFound = errors.New("browser not found")
+
+	// ErrInsufficientOutput indicates the strategy produced too few documents
+	ErrInsufficientOutput = errors.New("insufficient extraction output")
+
+	// ErrPlanExhausted indicates the recovery plan has no remaining alternatives
+	ErrPlanExhausted = errors.New("recovery plan exhausted")
 )
 
 // FetchError represents an error during fetching
@@ -86,6 +92,15 @@ func (e *RetryableError) Error() string {
 
 func (e *RetryableError) Unwrap() error {
 	return e.Err
+}
+
+// IsTransient checks if an error is already handled by fetcher retry/backoff
+// policy and should not trigger recovery/fallback logic.
+func IsTransient(err error) bool {
+	if err == nil {
+		return false
+	}
+	return IsRetryable(err)
 }
 
 // IsRetryable checks if an error should be retried

@@ -888,6 +888,27 @@ func TestProcessor_FindDocumentationFiles_MarkdownOnly(t *testing.T) {
 	assert.Len(t, files, 2)
 }
 
+func TestProcessor_FindDocumentationFiles_RST(t *testing.T) {
+	processor := gitstrat.NewProcessor(gitstrat.ProcessorOptions{})
+
+	tmpDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("# Test"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "index.rst"), []byte("Index\n====="), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "guide.rst"), []byte("Guide\n====="), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte("package main"), 0644))
+
+	files, err := processor.FindDocumentationFiles(tmpDir, "")
+	require.NoError(t, err)
+	assert.Len(t, files, 3)
+	var rstCount int
+	for _, f := range files {
+		if filepath.Ext(f) == ".rst" {
+			rstCount++
+		}
+	}
+	assert.Equal(t, 2, rstCount)
+}
+
 func TestProcessor_FindDocumentationFiles_WithSubdirectories(t *testing.T) {
 	processor := gitstrat.NewProcessor(gitstrat.ProcessorOptions{})
 
@@ -2221,6 +2242,51 @@ func TestProcessor_ProcessFile_MdxExtension(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, capturedDoc)
 	assert.Contains(t, capturedDoc.Content, "# MDX Content")
+}
+
+func TestProcessor_ProcessFile_RstExtension(t *testing.T) {
+	processor := gitstrat.NewProcessor(gitstrat.ProcessorOptions{})
+
+	tmpDir := t.TempDir()
+	rstPath := filepath.Join(tmpDir, "guide.rst")
+	rstContent := `Guide
+=====
+
+Section
+-------
+
+.. code-block:: python
+
+   def hello():
+       return "world"
+
+.. note::
+
+   Heads up.
+`
+	require.NoError(t, os.WriteFile(rstPath, []byte(rstContent), 0644))
+
+	var capturedDoc *domain.Document
+	writeFunc := func(ctx context.Context, doc *domain.Document) error {
+		capturedDoc = doc
+		return nil
+	}
+
+	opts := gitstrat.ProcessOptions{
+		RepoURL:   "https://github.com/user/repo",
+		Branch:    "main",
+		WriteFunc: writeFunc,
+	}
+
+	err := processor.ProcessFile(context.Background(), rstPath, tmpDir, opts)
+	require.NoError(t, err)
+	require.NotNil(t, capturedDoc)
+	assert.Contains(t, capturedDoc.Content, "# Guide")
+	assert.Contains(t, capturedDoc.Content, "## Section")
+	assert.Contains(t, capturedDoc.Content, "```python")
+	assert.Contains(t, capturedDoc.Content, "> [!NOTE]")
+	assert.NotContains(t, capturedDoc.Content, ".. code-block::")
+	assert.False(t, capturedDoc.IsRawFile)
 }
 
 func TestProcessor_ProcessFile_ConfigFile(t *testing.T) {

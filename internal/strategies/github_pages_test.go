@@ -595,7 +595,7 @@ func TestGitHubPagesStrategy_Execute_ErrorCases(t *testing.T) {
 		s := NewGitHubPagesStrategy(deps)
 
 		ctx := context.Background()
-		err := s.Execute(ctx, "://invalid-url", Options{})
+		_, err := s.Execute(ctx, "://invalid-url", Options{})
 
 		if err == nil {
 			t.Error("Expected error for invalid URL, got nil")

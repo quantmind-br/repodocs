@@ -141,7 +141,7 @@ func TestLLMSStrategy_Execute_Success(t *testing.T) {
 		Concurrency: 1,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	assert.NoError(t, err)
 	assert.Len(t, fetchedPages, 4)
 }
@@ -196,7 +196,7 @@ func TestLLMSStrategy_Execute_WithFilter(t *testing.T) {
 		FilterURL:   "/docs",
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	assert.NoError(t, err)
 
 	// Only docs should be fetched
@@ -254,7 +254,7 @@ func TestLLMSStrategy_Execute_WithLimit(t *testing.T) {
 		Concurrency: 1,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	assert.NoError(t, err)
 	assert.LessOrEqual(t, fetchedPages, 2)
 }
@@ -307,7 +307,7 @@ This is a markdown guide.
 		Concurrency: 1,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	assert.NoError(t, err)
 }
 
@@ -359,7 +359,7 @@ func TestLLMSStrategy_Execute_ContextCancellation(t *testing.T) {
 		Concurrency: 1,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	assert.Error(t, err)
 }
 
@@ -399,7 +399,7 @@ func TestLLMSStrategy_Execute_EmptyLLMS(t *testing.T) {
 		Concurrency: 1,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	assert.NoError(t, err)
 }
 
@@ -628,7 +628,7 @@ func TestLLMSStrategy_Execute_RelativeURLs(t *testing.T) {
 		Concurrency: 1,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/docs/llms.txt", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/docs/llms.txt", opts)
 	assert.NoError(t, err)
 	assert.Len(t, fetchedPaths, 3, "All 3 relative URLs should have been resolved and fetched")
 
@@ -682,7 +682,7 @@ func TestLLMSStrategy_Execute_TitleFallback(t *testing.T) {
 		Concurrency: 1,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	assert.NoError(t, err)
 }
 
@@ -735,7 +735,7 @@ func TestLLMSStrategy_Execute_FetchError(t *testing.T) {
 	}
 
 	// Should not fail, should continue processing other pages
-	err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	assert.NoError(t, err)
 }
 

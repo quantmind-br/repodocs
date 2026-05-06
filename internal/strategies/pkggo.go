@@ -52,7 +52,14 @@ func (s *PkgGoStrategy) CanHandle(url string) bool {
 }
 
 // Execute runs the pkg.go.dev extraction strategy
-func (s *PkgGoStrategy) Execute(ctx context.Context, url string, opts Options) error {
+func (s *PkgGoStrategy) Execute(ctx context.Context, url string, opts Options) (*domain.StrategyResult, error) {
+	result := domain.NewStrategyResult(s.Name(), url)
+	err := s.execute(ctx, url, opts, result)
+	result.Finish()
+	return result, err
+}
+
+func (s *PkgGoStrategy) execute(ctx context.Context, url string, opts Options, result *domain.StrategyResult) error {
 	// Check context cancellation early
 	select {
 	case <-ctx.Done():
@@ -78,12 +85,14 @@ func (s *PkgGoStrategy) Execute(ctx context.Context, url string, opts Options) e
 	// Fetch page
 	resp, err := s.fetcher.Get(ctx, url)
 	if err != nil {
+		result.IncFailed()
 		return err
 	}
 
 	// Parse HTML
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(resp.Body)))
 	if err != nil {
+		result.IncFailed()
 		return err
 	}
 
@@ -93,7 +102,7 @@ func (s *PkgGoStrategy) Execute(ctx context.Context, url string, opts Options) e
 
 	// If split option is enabled, extract sections separately
 	if opts.Split {
-		return s.extractSections(ctx, doc, url, packageName, opts)
+		return s.extractSections(ctx, doc, url, packageName, opts, result)
 	}
 
 	// Extract main documentation content
@@ -103,14 +112,26 @@ func (s *PkgGoStrategy) Execute(ctx context.Context, url string, opts Options) e
 		content = doc.Find("main").First()
 	}
 
+	if content.Length() == 0 {
+		result.AddDiagnostic(domain.DiagNoDocuments,
+			"No documentation content found on pkg.go.dev page",
+			"The page may not contain a Documentation-content div or main element")
+		return nil
+	}
+
 	contentHTML, err := content.Html()
 	if err != nil {
+		result.IncFailed()
 		return err
 	}
+
+	result.IncDiscovered()
+	result.IncAttempted()
 
 	// Convert to document
 	document, err := s.converter.Convert(ctx, contentHTML, url)
 	if err != nil {
+		result.IncFailed()
 		return err
 	}
 
@@ -122,16 +143,28 @@ func (s *PkgGoStrategy) Execute(ctx context.Context, url string, opts Options) e
 
 	if !opts.DryRun {
 		if s.deps != nil {
-			return s.deps.WriteDocument(ctx, document)
+			if err := s.deps.WriteDocument(ctx, document); err != nil {
+				result.IncFailed()
+				return err
+			}
+			result.IncWritten()
+			result.AddBytesWritten(int64(len(document.Content)))
+			return nil
 		}
-		return s.writer.Write(ctx, document)
+		if err := s.writer.Write(ctx, document); err != nil {
+			result.IncFailed()
+			return err
+		}
+		result.IncWritten()
+		result.AddBytesWritten(int64(len(document.Content)))
+		return nil
 	}
 
 	return nil
 }
 
 // extractSections extracts documentation split by sections
-func (s *PkgGoStrategy) extractSections(ctx context.Context, doc *goquery.Document, baseURL, packageName string, opts Options) error {
+func (s *PkgGoStrategy) extractSections(ctx context.Context, doc *goquery.Document, baseURL, packageName string, opts Options, result *domain.StrategyResult) error {
 	sections := []struct {
 		selector string
 		name     string
@@ -143,6 +176,28 @@ func (s *PkgGoStrategy) extractSections(ctx context.Context, doc *goquery.Docume
 		{"#pkg-functions", "Functions"},
 		{"#pkg-types", "Types"},
 	}
+
+	// Count available sections first
+	var availableSections int
+	for _, section := range sections {
+		content := doc.Find(section.selector).First()
+		if content.Length() > 0 {
+			sectionHTML, _ := content.Html()
+			if strings.TrimSpace(sectionHTML) != "" {
+				availableSections++
+			}
+		}
+	}
+
+	if availableSections == 0 {
+		result.AddDiagnostic(domain.DiagNoDocuments,
+			"No documentation sections found on pkg.go.dev page",
+			"The page may have a different structure than expected")
+		return nil
+	}
+
+	result.AddDiscovered(availableSections)
+	result.AddAttempted(availableSections)
 
 	for _, section := range sections {
 		select {
@@ -159,6 +214,7 @@ func (s *PkgGoStrategy) extractSections(ctx context.Context, doc *goquery.Docume
 		// Get section HTML
 		sectionHTML, err := content.Html()
 		if err != nil {
+			result.IncFailed()
 			continue
 		}
 
@@ -173,6 +229,7 @@ func (s *PkgGoStrategy) extractSections(ctx context.Context, doc *goquery.Docume
 		// Convert to document
 		document, err := s.converter.Convert(ctx, sectionHTML, sectionURL)
 		if err != nil {
+			result.IncFailed()
 			s.logger.Warn().Err(err).Str("section", section.name).Msg("Failed to convert section")
 			continue
 		}
@@ -185,13 +242,19 @@ func (s *PkgGoStrategy) extractSections(ctx context.Context, doc *goquery.Docume
 		if !opts.DryRun {
 			if s.deps != nil {
 				if err := s.deps.WriteDocument(ctx, document); err != nil {
+					result.IncFailed()
 					s.logger.Warn().Err(err).Str("section", section.name).Msg("Failed to write section")
+					continue
 				}
 			} else {
 				if err := s.writer.Write(ctx, document); err != nil {
+					result.IncFailed()
 					s.logger.Warn().Err(err).Str("section", section.name).Msg("Failed to write section")
+					continue
 				}
 			}
+			result.IncWritten()
+			result.AddBytesWritten(int64(len(document.Content)))
 		}
 	}
 

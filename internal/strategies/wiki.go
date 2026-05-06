@@ -77,7 +77,14 @@ func IsWikiURL(url string) bool {
 }
 
 // Execute runs the wiki extraction strategy
-func (s *WikiStrategy) Execute(ctx context.Context, url string, opts Options) error {
+func (s *WikiStrategy) Execute(ctx context.Context, url string, opts Options) (*domain.StrategyResult, error) {
+	result := domain.NewStrategyResult(s.Name(), url)
+	err := s.execute(ctx, url, opts, result)
+	result.Finish()
+	return result, err
+}
+
+func (s *WikiStrategy) execute(ctx context.Context, url string, opts Options, result *domain.StrategyResult) error {
 	s.logger.Info().Str("url", url).Msg("Starting wiki extraction")
 
 	// Step 1: Parse wiki URL
@@ -117,7 +124,7 @@ func (s *WikiStrategy) Execute(ctx context.Context, url string, opts Options) er
 		Msg("Parsed wiki structure")
 
 	// Step 5: Process and write documents
-	return s.processPages(ctx, structure, wikiInfo, opts)
+	return s.processPages(ctx, structure, wikiInfo, opts, result)
 }
 
 // cloneWiki clones the wiki repository
@@ -211,6 +218,7 @@ func (s *WikiStrategy) processPages(
 	structure *WikiStructure,
 	wikiInfo *WikiInfo,
 	opts Options,
+	result *domain.StrategyResult,
 ) error {
 	// Count processable pages (exclude special files)
 	var processablePages []*WikiPage
@@ -221,14 +229,21 @@ func (s *WikiStrategy) processPages(
 	}
 
 	if len(processablePages) == 0 {
+		result.AddDiagnostic(domain.DiagNoDocuments,
+			"No processable wiki pages found",
+			"The wiki may contain only special pages or be empty")
 		s.logger.Warn().Msg("No processable pages found in wiki")
 		return nil
 	}
+
+	result.AddDiscovered(len(processablePages))
 
 	// Apply limit
 	if opts.Limit > 0 && len(processablePages) > opts.Limit {
 		processablePages = processablePages[:opts.Limit]
 	}
+
+	result.AddAttempted(len(processablePages))
 
 	// Create progress bar
 	bar := utils.NewProgressBar(len(processablePages), utils.DescExtracting)
@@ -244,7 +259,7 @@ func (s *WikiStrategy) processPages(
 		default:
 		}
 
-		if err := s.processPage(ctx, page, structure, baseWikiURL, opts); err != nil {
+		if err := s.processPage(ctx, page, structure, baseWikiURL, opts, result); err != nil {
 			s.logger.Warn().Err(err).Str("page", page.Filename).Msg("Failed to process page")
 		}
 		bar.Add(1)
@@ -264,6 +279,7 @@ func (s *WikiStrategy) processPage(
 	structure *WikiStructure,
 	baseWikiURL string,
 	opts Options,
+	result *domain.StrategyResult,
 ) error {
 	content := ConvertWikiLinks(page.Content, structure.Pages)
 
@@ -288,7 +304,13 @@ func (s *WikiStrategy) processPage(
 	}
 
 	if !opts.DryRun {
-		return s.deps.WriteDocument(ctx, doc)
+		if err := s.deps.WriteDocument(ctx, doc); err != nil {
+			result.IncFailed()
+			return err
+		}
+		result.IncWritten()
+		result.AddBytesWritten(int64(len(doc.Content)))
+		return nil
 	}
 
 	return nil

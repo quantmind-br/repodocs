@@ -15,7 +15,7 @@ func TestNewCrawlContext_Initialization(t *testing.T) {
 	ctx := context.Background()
 	opts := DefaultOptions()
 
-	cctx := newCrawlContext(ctx, "https://example.com", opts)
+	cctx := newCrawlContext(ctx, "https://example.com", opts, nil)
 
 	require.NotNil(t, cctx)
 	assert.NotNil(t, cctx.visited)
@@ -33,7 +33,7 @@ func TestNewCrawlContext_ExcludePatterns(t *testing.T) {
 		Exclude: []string{"/admin.*", "/api/v[0-9]+"},
 	}
 
-	cctx := newCrawlContext(ctx, "https://example.com", opts)
+	cctx := newCrawlContext(ctx, "https://example.com", opts, nil)
 
 	require.Len(t, cctx.excludeRegexps, 2)
 	assert.True(t, cctx.excludeRegexps[0].MatchString("/admin/settings"))
@@ -47,7 +47,7 @@ func TestNewCrawlContext_InvalidRegexIgnored(t *testing.T) {
 		Exclude: []string{"[invalid", "valid.*"},
 	}
 
-	cctx := newCrawlContext(ctx, "https://example.com", opts)
+	cctx := newCrawlContext(ctx, "https://example.com", opts, nil)
 
 	assert.Len(t, cctx.excludeRegexps, 1)
 	assert.True(t, cctx.excludeRegexps[0].MatchString("valid_pattern"))
@@ -55,7 +55,7 @@ func TestNewCrawlContext_InvalidRegexIgnored(t *testing.T) {
 
 func TestCrawlContext_ConcurrentVisited(t *testing.T) {
 	ctx := context.Background()
-	cctx := newCrawlContext(ctx, "https://example.com", DefaultOptions())
+	cctx := newCrawlContext(ctx, "https://example.com", DefaultOptions(), nil)
 
 	var wg sync.WaitGroup
 	urls := make([]string, 100)
@@ -82,7 +82,7 @@ func TestCrawlContext_ConcurrentVisited(t *testing.T) {
 
 func TestCrawlContext_ConcurrentProcessedCount(t *testing.T) {
 	ctx := context.Background()
-	cctx := newCrawlContext(ctx, "https://example.com", DefaultOptions())
+	cctx := newCrawlContext(ctx, "https://example.com", DefaultOptions(), nil)
 
 	var wg sync.WaitGroup
 	for i := 0; i < 100; i++ {
@@ -103,7 +103,7 @@ func TestNewCrawlContext_EmptyOptions(t *testing.T) {
 	ctx := context.Background()
 	opts := Options{}
 
-	cctx := newCrawlContext(ctx, "https://example.com", opts)
+	cctx := newCrawlContext(ctx, "https://example.com", opts, nil)
 
 	require.NotNil(t, cctx)
 	assert.Empty(t, cctx.excludeRegexps)
@@ -112,7 +112,7 @@ func TestNewCrawlContext_EmptyOptions(t *testing.T) {
 
 func TestNewCrawlContext_CollectorNilByDefault(t *testing.T) {
 	ctx := context.Background()
-	cctx := newCrawlContext(ctx, "https://example.com", DefaultOptions())
+	cctx := newCrawlContext(ctx, "https://example.com", DefaultOptions(), nil)
 
 	require.NotNil(t, cctx)
 	assert.Nil(t, cctx.collector)
@@ -131,7 +131,7 @@ func TestNewCrawlContext_OptsPreserved(t *testing.T) {
 		FilterURL:   "https://example.com/docs",
 	}
 
-	cctx := newCrawlContext(ctx, "https://example.com", opts)
+	cctx := newCrawlContext(ctx, "https://example.com", opts, nil)
 
 	assert.Equal(t, 10, cctx.opts.Limit)
 	assert.Equal(t, 5, cctx.opts.MaxDepth)
@@ -205,7 +205,7 @@ func TestCrawlerStrategy_ShouldProcessURL(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			cctx := newCrawlContext(ctx, tc.baseURL, tc.opts)
+			cctx := newCrawlContext(ctx, tc.baseURL, tc.opts, nil)
 			result := strategy.shouldProcessURL(tc.link, tc.baseURL, cctx)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -220,7 +220,7 @@ func TestCrawlerStrategy_ShouldProcessURL_Limit(t *testing.T) {
 			Limit: 2,
 		},
 	}
-	cctx := newCrawlContext(ctx, "https://example.com", opts)
+	cctx := newCrawlContext(ctx, "https://example.com", opts, nil)
 
 	assert.True(t, strategy.shouldProcessURL("https://example.com/page1", "https://example.com", cctx))
 	assert.True(t, strategy.shouldProcessURL("https://example.com/page2", "https://example.com", cctx))
@@ -235,7 +235,7 @@ func TestCrawlerStrategy_ShouldProcessURL_Limit(t *testing.T) {
 func TestCrawlerStrategy_ShouldProcessURL_AlreadyVisited(t *testing.T) {
 	strategy := &CrawlerStrategy{}
 	ctx := context.Background()
-	cctx := newCrawlContext(ctx, "https://example.com", DefaultOptions())
+	cctx := newCrawlContext(ctx, "https://example.com", DefaultOptions(), nil)
 
 	url := "https://example.com/page1"
 
@@ -249,7 +249,7 @@ func TestCrawlerStrategy_ShouldProcessURL_MultipleExcludePatterns(t *testing.T) 
 	opts := Options{
 		Exclude: []string{"/admin", "/api/.*", ".*\\.pdf$"},
 	}
-	cctx := newCrawlContext(ctx, "https://example.com", opts)
+	cctx := newCrawlContext(ctx, "https://example.com", opts, nil)
 
 	assert.False(t, strategy.shouldProcessURL("https://example.com/admin/page", "https://example.com", cctx))
 	assert.False(t, strategy.shouldProcessURL("https://example.com/api/v1/users", "https://example.com", cctx))
@@ -260,7 +260,7 @@ func TestCrawlerStrategy_ShouldProcessURL_MultipleExcludePatterns(t *testing.T) 
 func TestCrawlerStrategy_ShouldProcessURL_ConcurrentAccess(t *testing.T) {
 	strategy := &CrawlerStrategy{}
 	ctx := context.Background()
-	cctx := newCrawlContext(ctx, "https://example.com", DefaultOptions())
+	cctx := newCrawlContext(ctx, "https://example.com", DefaultOptions(), nil)
 
 	var wg sync.WaitGroup
 	results := make([]bool, 100)

@@ -87,7 +87,7 @@ func TestProcessSitemapIndex(t *testing.T) {
 		strategy := NewSitemapStrategy(deps)
 
 		// Execute with sitemap index - this will call processSitemapIndex
-		err = strategy.Execute(ctx, server.URL+"/sitemap-index.xml", Options{
+		_, err = strategy.Execute(ctx, server.URL+"/sitemap-index.xml", Options{
 			CommonOptions: domain.CommonOptions{
 				Limit: 10,
 			},
@@ -172,7 +172,7 @@ func TestProcessSitemapIndex(t *testing.T) {
 		strategy := NewSitemapStrategy(deps)
 
 		// Execute
-		err = strategy.Execute(ctx, server.URL+"/mixed-sitemap.xml", Options{
+		_, err = strategy.Execute(ctx, server.URL+"/mixed-sitemap.xml", Options{
 			CommonOptions: domain.CommonOptions{
 				Limit: 10,
 			},
@@ -236,7 +236,7 @@ func TestProcessSitemapIndex(t *testing.T) {
 		strategy := NewSitemapStrategy(deps)
 
 		// Execute should not fail on invalid nested sitemap
-		err = strategy.Execute(ctx, server.URL+"/sitemap-index.xml", Options{
+		_, err = strategy.Execute(ctx, server.URL+"/sitemap-index.xml", Options{
 			CommonOptions: domain.CommonOptions{
 				Limit: 10,
 			},
@@ -308,7 +308,7 @@ func TestProcessSitemapIndex(t *testing.T) {
 		cancel()
 
 		// Execute should return context cancellation error
-		err = strategy.Execute(ctx, server.URL+"/sitemap-index.xml", Options{
+		_, err = strategy.Execute(ctx, server.URL+"/sitemap-index.xml", Options{
 			CommonOptions: domain.CommonOptions{
 				Limit: 10,
 			},
@@ -473,7 +473,7 @@ func TestProcessSitemapIndex_Success(t *testing.T) {
 	strategy := NewSitemapStrategy(deps)
 
 	// Execute with sitemap index - this will call processSitemapIndex
-	err = strategy.Execute(ctx, server.URL+"/sitemap-index.xml", Options{
+	_, err = strategy.Execute(ctx, server.URL+"/sitemap-index.xml", Options{
 		CommonOptions: domain.CommonOptions{
 			Limit: 10,
 		},
@@ -517,7 +517,7 @@ func TestProcessSitemapIndex_Empty(t *testing.T) {
 	strategy := NewSitemapStrategy(deps)
 
 	// Execute with empty sitemap
-	err = strategy.Execute(ctx, server.URL+"/sitemap.xml", Options{
+	_, err = strategy.Execute(ctx, server.URL+"/sitemap.xml", Options{
 		CommonOptions: domain.CommonOptions{
 			Limit: 10,
 		},
@@ -643,7 +643,7 @@ func TestProcessSitemapIndex_Nested(t *testing.T) {
 	strategy := NewSitemapStrategy(deps)
 
 	// Execute with nested sitemap index
-	err = strategy.Execute(ctx, server.URL+"/sitemap.xml", Options{
+	_, err = strategy.Execute(ctx, server.URL+"/sitemap.xml", Options{
 		CommonOptions: domain.CommonOptions{
 			Limit: 10,
 		},
@@ -965,7 +965,7 @@ func TestSitemapStrategy_Execute_WithFilter(t *testing.T) {
 	strategy := NewSitemapStrategy(deps)
 
 	// Execute with filter for docs section only
-	err = strategy.Execute(ctx, server.URL+"/sitemap.xml", Options{
+	_, err = strategy.Execute(ctx, server.URL+"/sitemap.xml", Options{
 		CommonOptions: domain.CommonOptions{
 			Limit: 10,
 		},
@@ -1027,7 +1027,7 @@ func TestSitemapStrategy_Execute_WithFilter_AndLimit(t *testing.T) {
 	strategy := NewSitemapStrategy(deps)
 
 	// Execute with filter for docs AND limit
-	err = strategy.Execute(ctx, server.URL+"/sitemap.xml", Options{
+	_, err = strategy.Execute(ctx, server.URL+"/sitemap.xml", Options{
 		CommonOptions: domain.CommonOptions{
 			Limit: 2,
 		},

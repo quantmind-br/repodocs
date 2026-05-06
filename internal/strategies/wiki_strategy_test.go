@@ -205,7 +205,7 @@ func TestWikiStrategy_Execute_Success(t *testing.T) {
 	assert.Equal(t, 3, nonSpecialCount)
 
 	// Test processPages
-	err = strategy.processPages(ctx, structure, wikiInfo, opts)
+	err = strategy.processPages(ctx, structure, wikiInfo, opts, domain.NewStrategyResult("wiki", "https://github.com/test/repo/wiki"))
 	assert.NoError(t, err)
 }
 
@@ -350,7 +350,7 @@ func TestWikiStrategy_ProcessPage(t *testing.T) {
 		},
 	}
 
-	err := strategy.processPage(ctx, page, structure, "https://github.com/owner/repo/wiki", opts)
+	err := strategy.processPage(ctx, page, structure, "https://github.com/owner/repo/wiki", opts, domain.NewStrategyResult("wiki", "https://github.com/owner/repo/wiki"))
 	assert.NoError(t, err)
 }
 
@@ -441,7 +441,7 @@ func TestWikiStrategy_ProcessPages(t *testing.T) {
 			},
 		}
 
-		err := strategy.processPages(ctx, structure, wikiInfo, opts)
+		err := strategy.processPages(ctx, structure, wikiInfo, opts, domain.NewStrategyResult("wiki", "https://github.com/test/repo/wiki"))
 		assert.NoError(t, err)
 	})
 
@@ -473,7 +473,7 @@ func TestWikiStrategy_ProcessPages(t *testing.T) {
 			},
 		}
 
-		err := strategy.processPages(ctx, structure, wikiInfo, opts)
+		err := strategy.processPages(ctx, structure, wikiInfo, opts, domain.NewStrategyResult("wiki", "https://github.com/test/repo/wiki"))
 		assert.NoError(t, err)
 	})
 }
@@ -536,7 +536,7 @@ func TestWikiStrategy_ContextCancellation(t *testing.T) {
 		},
 	}
 
-	err := strategy.Execute(ctx, "https://github.com/owner/repo/wiki", opts)
+	_, err := strategy.Execute(ctx, "https://github.com/owner/repo/wiki", opts)
 	assert.Error(t, err)
 }
 
@@ -556,7 +556,7 @@ func TestWikiStrategy_Execute_URLParseError(t *testing.T) {
 		},
 	}
 
-	err := strategy.Execute(ctx, "https://example.com/not-a-wiki", opts)
+	_, err := strategy.Execute(ctx, "https://example.com/not-a-wiki", opts)
 	assert.Error(t, err)
 	assert.Contains(t, strings.ToLower(err.Error()), "invalid wiki url")
 }

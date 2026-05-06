@@ -131,7 +131,14 @@ func parseDocsRSPathWithHost(rawURL, expectedHost string) (*DocsRSURL, error) {
 	return result, nil
 }
 
-func (s *DocsRSStrategy) Execute(ctx context.Context, rawURL string, opts Options) error {
+func (s *DocsRSStrategy) Execute(ctx context.Context, rawURL string, opts Options) (*domain.StrategyResult, error) {
+	result := domain.NewStrategyResult(s.Name(), rawURL)
+	err := s.execute(ctx, rawURL, opts, result)
+	result.Finish()
+	return result, err
+}
+
+func (s *DocsRSStrategy) execute(ctx context.Context, rawURL string, opts Options, result *domain.StrategyResult) error {
 	s.logger.Info().Str("url", rawURL).Msg("Starting docs.rs JSON extraction")
 
 	if s.fetcher == nil {
@@ -153,10 +160,12 @@ func (s *DocsRSStrategy) Execute(ctx context.Context, rawURL string, opts Option
 
 	index, err := s.fetchRustdocJSON(ctx, baseInfo.CrateName, baseInfo.Version)
 	if err != nil {
+		result.IncFailed()
 		return fmt.Errorf("failed to fetch rustdoc JSON: %w", err)
 	}
 
 	if err := s.checkFormatVersion(index.FormatVersion); err != nil {
+		result.IncFailed()
 		return err
 	}
 
@@ -165,35 +174,55 @@ func (s *DocsRSStrategy) Execute(ctx context.Context, rawURL string, opts Option
 	items := s.collectItems(index, opts)
 	s.logger.Info().Int("count", len(items)).Msg("Collected items to process")
 
+	if len(items) == 0 {
+		result.AddDiagnostic(domain.DiagNoDocuments,
+			"No items collected from rustdoc JSON",
+			"The crate may have no public API items documented")
+		return nil
+	}
+
+	result.AddDiscovered(len(items))
+
 	if opts.Limit > 0 && len(items) > opts.Limit {
 		items = items[:opts.Limit]
 		s.logger.Info().Int("limit", opts.Limit).Msg("Applied item limit")
 	}
 
+	result.AddAttempted(len(items))
+
 	bar := utils.NewProgressBar(len(items), utils.DescExtracting)
 
 	errors := utils.ParallelForEach(ctx, items, opts.Concurrency, func(ctx context.Context, item *RustdocItem) error {
 		defer bar.Add(1)
-		return s.processItem(ctx, item, renderer, baseInfo, opts)
+		return s.processItem(ctx, item, renderer, baseInfo, opts, result)
 	})
 
 	if err := utils.FirstError(errors); err != nil {
 		return err
 	}
 
+	snap := result.Snapshot()
+	if snap.URLsAttempted > 0 && snap.DocsWritten == 0 && snap.DocsSkipped == 0 {
+		result.AddDiagnostic(domain.DiagAllFetchesFailed,
+			"All item processing attempts failed",
+			"Verify the rustdoc JSON format is compatible")
+	}
+
 	s.logger.Info().Int("items", len(items)).Msg("docs.rs JSON extraction completed")
 	return nil
 }
 
-func (s *DocsRSStrategy) processItem(ctx context.Context, item *RustdocItem, renderer *RustdocRenderer, baseInfo *DocsRSURL, opts Options) error {
+func (s *DocsRSStrategy) processItem(ctx context.Context, item *RustdocItem, renderer *RustdocRenderer, baseInfo *DocsRSURL, opts Options, result *domain.StrategyResult) error {
 	itemURL := s.buildItemURL(item, baseInfo)
 
 	if !opts.Force && s.writer.Exists(itemURL) {
+		result.IncSkipped()
 		return nil
 	}
 
 	markdown := renderer.RenderItem(item)
 	if markdown == "" {
+		result.IncFailed()
 		return nil
 	}
 
@@ -209,9 +238,12 @@ func (s *DocsRSStrategy) processItem(ctx context.Context, item *RustdocItem, ren
 
 	if !opts.DryRun {
 		if err := s.deps.WriteDocument(ctx, doc); err != nil {
+			result.IncFailed()
 			s.logger.Warn().Err(err).Str("url", itemURL).Msg("Failed to write document")
 			return nil
 		}
+		result.IncWritten()
+		result.AddBytesWritten(int64(len(doc.Content)))
 	}
 
 	return nil

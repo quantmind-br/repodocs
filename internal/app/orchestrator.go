@@ -10,6 +10,7 @@ import (
 	"github.com/quantmind-br/repodocs/internal/config"
 	"github.com/quantmind-br/repodocs/internal/domain"
 	"github.com/quantmind-br/repodocs/internal/manifest"
+	"github.com/quantmind-br/repodocs/internal/recovery"
 	"github.com/quantmind-br/repodocs/internal/strategies"
 	"github.com/quantmind-br/repodocs/internal/utils"
 )
@@ -20,6 +21,7 @@ type Orchestrator struct {
 	deps            *strategies.Dependencies
 	logger          *utils.Logger
 	strategyFactory func(StrategyType, *strategies.Dependencies) strategies.Strategy
+	validator       *recovery.Validator
 }
 
 // OrchestratorOptions contains options for creating an orchestrator
@@ -34,6 +36,7 @@ type OrchestratorOptions struct {
 	FilterURL        string
 	StrategyFactory  func(StrategyType, *strategies.Dependencies) strategies.Strategy
 	StrategyOverride string
+	MinDocs          int
 }
 
 // NewOrchestrator creates a new orchestrator with the given configuration
@@ -115,6 +118,7 @@ func NewOrchestrator(opts OrchestratorOptions) (*Orchestrator, error) {
 		deps:            deps,
 		logger:          logger,
 		strategyFactory: strategyFactory,
+		validator:       recovery.NewValidator(nil),
 	}, nil
 }
 
@@ -214,12 +218,33 @@ func (o *Orchestrator) Run(ctx context.Context, url string, opts OrchestratorOpt
 		FilterURL:       opts.FilterURL,
 	}
 
-	if err := strategy.Execute(ctx, url, strategyOpts); err != nil {
-		if ctx.Err() != nil {
-			o.logger.Warn().Msg("Extraction cancelled")
-			return ctx.Err()
-		}
-		return fmt.Errorf("strategy execution failed: %w", err)
+	result, execErr := strategy.Execute(ctx, url, strategyOpts)
+	if ctx.Err() != nil {
+		o.logger.Warn().Msg("Extraction cancelled")
+		return ctx.Err()
+	}
+
+	// Phase 5: validate extraction outcome via recovery validator
+	verdict := o.validator.Validate(result, execErr, recovery.ValidationOptions{
+		FilterURL: opts.FilterURL,
+		DryRun:    opts.DryRun,
+		MinDocs:   opts.MinDocs,
+	})
+
+	switch v := verdict.(type) {
+	case recovery.VerdictOK:
+		// Continue to FlushMetadata, prune, SaveState, and success logging below.
+	case recovery.VerdictPropagate:
+		return v.Cause
+	case recovery.VerdictRetryAlternative:
+		return recovery.NewOutcomeError(v, result)
+	case recovery.VerdictHardFail:
+		return recovery.NewOutcomeError(v, result)
+	default:
+		return recovery.NewOutcomeError(recovery.VerdictHardFail{
+			Reason: "unknown recovery verdict",
+			Cause:  domain.ErrInsufficientOutput,
+		}, result)
 	}
 
 	if err := o.deps.FlushMetadata(); err != nil {

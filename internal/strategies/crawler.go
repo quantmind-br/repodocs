@@ -42,9 +42,10 @@ type crawlContext struct {
 	barMu          *sync.Mutex
 	excludeRegexps []*regexp.Regexp
 	collector      *colly.Collector // for re-injecting JS-discovered links
+	result         *domain.StrategyResult
 }
 
-func newCrawlContext(ctx context.Context, baseURL string, opts Options) *crawlContext {
+func newCrawlContext(ctx context.Context, baseURL string, opts Options, result *domain.StrategyResult) *crawlContext {
 	var excludeRegexps []*regexp.Regexp
 	for _, pattern := range opts.Exclude {
 		if re, err := regexp.Compile(pattern); err == nil {
@@ -63,6 +64,7 @@ func newCrawlContext(ctx context.Context, baseURL string, opts Options) *crawlCo
 		bar:            utils.NewProgressBar(-1, utils.DescExtracting),
 		barMu:          &sync.Mutex{},
 		excludeRegexps: excludeRegexps,
+		result:         result,
 	}
 }
 
@@ -94,6 +96,10 @@ func (s *CrawlerStrategy) shouldProcessURL(link, baseURL string, cctx *crawlCont
 
 	if _, exists := cctx.visited.LoadOrStore(link, true); exists {
 		return false
+	}
+
+	if cctx.result != nil {
+		cctx.result.IncDiscovered()
 	}
 
 	return true
@@ -154,6 +160,10 @@ func (s *CrawlerStrategy) processResponse(ctx context.Context, r *colly.Response
 		return
 	}
 
+	if cctx.result != nil {
+		cctx.result.IncAttempted()
+	}
+
 	cctx.mu.Lock()
 	if cctx.opts.Limit > 0 && *cctx.processedCount >= cctx.opts.Limit {
 		cctx.mu.Unlock()
@@ -167,6 +177,9 @@ func (s *CrawlerStrategy) processResponse(ctx context.Context, r *colly.Response
 	cctx.barMu.Unlock()
 
 	if !cctx.opts.Force && s.writer.Exists(currentURL) {
+		if cctx.result != nil {
+			cctx.result.IncSkipped()
+		}
 		return
 	}
 
@@ -180,6 +193,9 @@ func (s *CrawlerStrategy) processResponse(ctx context.Context, r *colly.Response
 	}
 
 	if err != nil || doc == nil {
+		if cctx.result != nil {
+			cctx.result.IncFailed()
+		}
 		return
 	}
 
@@ -207,6 +223,9 @@ func (s *CrawlerStrategy) processResponse(ctx context.Context, r *colly.Response
 	if s.deps.StateManager != nil {
 		s.deps.StateManager.MarkSeen(currentURL)
 		if doc.ContentHash != "" && !s.deps.StateManager.ShouldProcess(currentURL, doc.ContentHash) {
+			if cctx.result != nil {
+				cctx.result.IncSkipped()
+			}
 			s.logger.Debug().Str("url", currentURL).Msg("Skipping unchanged page")
 			return
 		}
@@ -214,7 +233,15 @@ func (s *CrawlerStrategy) processResponse(ctx context.Context, r *colly.Response
 
 	if !cctx.opts.DryRun {
 		if err := s.deps.WriteDocument(ctx, doc); err != nil {
+			if cctx.result != nil {
+				cctx.result.IncFailed()
+			}
 			s.logger.Warn().Err(err).Str("url", currentURL).Msg("Failed to write document")
+			return
+		}
+		if cctx.result != nil {
+			cctx.result.IncWritten()
+			cctx.result.AddBytesWritten(int64(len(doc.Content)))
 		}
 	}
 }
@@ -273,14 +300,21 @@ func (s *CrawlerStrategy) makeRendererFallback() fetcher.RendererFallback {
 	}
 }
 
-func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options) error {
+func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options) (*domain.StrategyResult, error) {
+	result := domain.NewStrategyResult(s.Name(), url)
+	err := s.execute(ctx, url, opts, result)
+	result.Finish()
+	return result, err
+}
+
+func (s *CrawlerStrategy) execute(ctx context.Context, url string, opts Options, result *domain.StrategyResult) error {
 	s.logger.Info().Str("url", url).Msg("Starting web crawl")
 
 	if opts.FilterURL != "" {
 		s.logger.Info().Str("filter", opts.FilterURL).Msg("URL filter active - only crawling URLs under this path")
 	}
 
-	cctx := newCrawlContext(ctx, url, opts)
+	cctx := newCrawlContext(ctx, url, opts, result)
 
 	c := colly.NewCollector(
 		colly.Async(true),
@@ -316,6 +350,7 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
+		result.IncFailed()
 		s.logger.Debug().Err(err).Str("url", r.Request.URL.String()).Msg("Request failed")
 	})
 
@@ -336,6 +371,20 @@ func (s *CrawlerStrategy) Execute(ctx context.Context, url string, opts Options)
 	}
 
 	s.logger.Info().Int("pages", *cctx.processedCount).Msg("Crawl completed")
+
+	// Phase 2 diagnostics
+	snap := result.Snapshot()
+	if snap.URLsAttempted > 0 && snap.DocsWritten == 0 && snap.DocsSkipped == 0 {
+		result.AddDiagnostic(domain.DiagAllFetchesFailed,
+			"All fetch attempts failed",
+			"Verify target is reachable; try without --render-js or with --crawl")
+	}
+	if snap.URLsDiscovered == 0 {
+		result.AddDiagnostic(domain.DiagNoDocuments,
+			"No pages discovered during crawl",
+			"Check URL filter, depth, or exclusions")
+	}
+
 	return nil
 }
 

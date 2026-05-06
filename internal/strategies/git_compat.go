@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/quantmind-br/repodocs/internal/domain"
 	"github.com/quantmind-br/repodocs/internal/strategies/git"
 )
 
@@ -72,15 +73,24 @@ func (s *GitStrategy) CanHandle(url string) bool {
 	return s.strategy.CanHandle(url)
 }
 
-func (s *GitStrategy) Execute(ctx context.Context, rawURL string, opts Options) error {
+func (s *GitStrategy) Execute(ctx context.Context, rawURL string, opts Options) (*domain.StrategyResult, error) {
+	result := domain.NewStrategyResult(s.Name(), rawURL)
 	gitOpts := git.ExecuteOptions{
 		Output:      opts.Output,
 		Concurrency: opts.Concurrency,
 		Limit:       opts.Limit,
 		DryRun:      opts.DryRun,
 		FilterURL:   opts.FilterURL,
+		Result:      result,
 	}
-	return s.strategy.Execute(ctx, rawURL, gitOpts)
+	err := s.strategy.Execute(ctx, rawURL, gitOpts)
+	if err != nil {
+		result.AddDiagnostic(domain.DiagNoDocuments,
+			err.Error(),
+			"The repository may not contain documentation files matching the expected extensions")
+	}
+	result.Finish()
+	return result, err
 }
 
 func (s *GitStrategy) detectDefaultBranch(ctx context.Context, url string) (string, error) {

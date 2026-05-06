@@ -27,8 +27,8 @@ type Strategy interface {
 	Name() string
 	// CanHandle returns true if this strategy can handle the given URL
 	CanHandle(url string) bool
-	// Execute runs the extraction strategy
-	Execute(ctx context.Context, url string, opts Options) error
+	// Execute runs the extraction strategy and reports its structured outcome.
+	Execute(ctx context.Context, url string, opts Options) (*domain.StrategyResult, error)
 }
 
 // Options contains common options for all strategies

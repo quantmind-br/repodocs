@@ -14,6 +14,7 @@ import (
 	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
+// StrategyDependencies supplies runtime services used by the git extraction strategy.
 type StrategyDependencies struct {
 	Writer       *output.Writer
 	Logger       *utils.Logger
@@ -22,6 +23,7 @@ type StrategyDependencies struct {
 	StateManager *state.Manager
 }
 
+// Strategy coordinates git URL parsing, repository acquisition, file discovery, and document output.
 type Strategy struct {
 	deps             *StrategyDependencies
 	parser           *Parser
@@ -33,6 +35,7 @@ type Strategy struct {
 	skipBranchDetect bool
 }
 
+// NewStrategy creates a git extraction strategy with archive, clone, parser, and processor components.
 func NewStrategy(deps *StrategyDependencies) *Strategy {
 	var client *http.Client
 	var skipBranchDetect bool
@@ -73,10 +76,12 @@ func NewStrategy(deps *StrategyDependencies) *Strategy {
 	}
 }
 
+// Name returns the strategy identifier used by the extraction orchestrator.
 func (s *Strategy) Name() string {
 	return "git"
 }
 
+// CanHandle reports whether url points to a git repository supported by this strategy.
 func (s *Strategy) CanHandle(url string) bool {
 	lower := strings.ToLower(url)
 
@@ -99,14 +104,17 @@ func (s *Strategy) CanHandle(url string) bool {
 		strings.Contains(lower, "bitbucket.org")
 }
 
+// ExecuteOptions configures one git strategy execution.
 type ExecuteOptions struct {
 	Output      string
 	Concurrency int
 	Limit       int
 	DryRun      bool
 	FilterURL   string
+	Result      *domain.StrategyResult
 }
 
+// Execute extracts repository documentation from rawURL and writes matching documents.
 func (s *Strategy) Execute(ctx context.Context, rawURL string, opts ExecuteOptions) error {
 	if s.logger != nil {
 		s.logger.Info().Str("url", rawURL).Msg("Starting git extraction")
@@ -161,6 +169,10 @@ func (s *Strategy) Execute(ctx context.Context, rawURL string, opts ExecuteOptio
 		return err
 	}
 
+	if opts.Result != nil {
+		opts.Result.AddDiscovered(len(files))
+	}
+
 	if len(files) == 0 && filterPath != "" {
 		return fmt.Errorf("no documentation files found under path: %s", filterPath)
 	}
@@ -182,11 +194,13 @@ func (s *Strategy) Execute(ctx context.Context, rawURL string, opts ExecuteOptio
 		DryRun:       opts.DryRun,
 		WriteFunc:    s.deps.WriteFunc,
 		StateManager: s.deps.StateManager,
+		Result:       opts.Result,
 	}
 
 	return s.processor.ProcessFiles(ctx, files, tmpDir, processOpts)
 }
 
+// TryArchiveDownload attempts to fetch a repository through an HTTP source archive.
 func (s *Strategy) TryArchiveDownload(ctx context.Context, url, destDir string) (branch, method string, err error) {
 	if strings.HasPrefix(url, "git@") {
 		return "", "", fmt.Errorf("SSH URLs not supported for archive download")
@@ -226,6 +240,7 @@ func (s *Strategy) TryArchiveDownload(ctx context.Context, url, destDir string) 
 	return result.Branch, result.Method, nil
 }
 
+// CloneRepository clones a repository into destDir and returns the detected branch.
 func (s *Strategy) CloneRepository(ctx context.Context, url, destDir string) (string, error) {
 	info := &RepoInfo{URL: url}
 	result, err := s.cloneFetcher.Fetch(ctx, info, "", destDir)

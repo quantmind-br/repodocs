@@ -64,12 +64,20 @@ func (s *SitemapStrategy) CanHandle(url string) bool {
 }
 
 // Execute runs the sitemap extraction strategy
-func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options) error {
+func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options) (*domain.StrategyResult, error) {
+	result := domain.NewStrategyResult(s.Name(), url)
+	err := s.execute(ctx, url, opts, result)
+	result.Finish()
+	return result, err
+}
+
+func (s *SitemapStrategy) execute(ctx context.Context, url string, opts Options, result *domain.StrategyResult) error {
 	s.logger.Info().Str("url", url).Msg("Fetching sitemap")
 
 	// Fetch sitemap
 	resp, err := s.fetcher.Get(ctx, url)
 	if err != nil {
+		result.IncFailed()
 		return err
 	}
 
@@ -78,6 +86,7 @@ func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options)
 	if strings.HasSuffix(strings.ToLower(url), ".gz") {
 		content, err = decompressGzip(resp.Body)
 		if err != nil {
+			result.IncFailed()
 			return err
 		}
 	}
@@ -85,12 +94,13 @@ func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options)
 	// Parse sitemap
 	sitemap, err := parseSitemap(content, url)
 	if err != nil {
+		result.IncFailed()
 		return err
 	}
 
 	// If it's a sitemap index, process each sitemap
 	if sitemap.IsIndex {
-		return s.processSitemapIndex(ctx, sitemap, opts)
+		return s.processSitemapIndex(ctx, sitemap, opts, result)
 	}
 
 	// Sort by lastmod (most recent first)
@@ -104,18 +114,30 @@ func (s *SitemapStrategy) Execute(ctx context.Context, url string, opts Options)
 
 	// Apply URL filter
 	if opts.FilterURL != "" {
+		beforeFilter := len(urls)
 		urls = filterSitemapURLs(urls, opts.FilterURL)
 		s.logger.Info().Str("filter", opts.FilterURL).Int("filtered_count", len(urls)).Msg("URLs after filter")
+		if beforeFilter > 0 && len(urls) == 0 {
+			result.AddDiagnostic(domain.DiagFilterZeroed,
+				"URL filter excluded every sitemap URL",
+				"Use the filtered URL as the crawler entry point or adjust --filter")
+		}
+		if beforeFilter > 0 && beforeFilter < 10 {
+			result.AddDiagnostic(domain.DiagSitemapShallow,
+				"Sitemap contains very few URLs before filtering",
+				"A shallow sitemap is a weak signal; crawler may be a better strategy")
+		}
 	}
 
+	result.AddDiscovered(len(urls))
 	s.logger.Info().Int("count", len(urls)).Msg("Processing URLs from sitemap")
 
-	return s.processURLs(ctx, urls, opts)
+	return s.processURLs(ctx, urls, opts, result)
 }
 
 // processSitemapIndex processes a sitemap index file batch-by-batch.
 // Each nested sitemap's URLs are processed immediately before fetching the next sitemap.
-func (s *SitemapStrategy) processSitemapIndex(ctx context.Context, sitemap *domain.Sitemap, opts Options) error {
+func (s *SitemapStrategy) processSitemapIndex(ctx context.Context, sitemap *domain.Sitemap, opts Options, result *domain.StrategyResult) error {
 	s.logger.Info().Int("count", len(sitemap.Sitemaps)).Msg("Processing sitemap index")
 
 	// Log filter if set
@@ -125,6 +147,7 @@ func (s *SitemapStrategy) processSitemapIndex(ctx context.Context, sitemap *doma
 
 	// Process each nested sitemap batch-by-batch
 	totalProcessed := 0
+	totalDiscovered := 0
 	for _, sitemapURL := range sitemap.Sitemaps {
 		select {
 		case <-ctx.Done():
@@ -132,8 +155,11 @@ func (s *SitemapStrategy) processSitemapIndex(ctx context.Context, sitemap *doma
 		default:
 		}
 
-		urls, err := s.collectURLsFromSitemap(ctx, sitemapURL, opts.FilterURL)
+		urls, discovered, err := s.collectURLsFromSitemap(ctx, sitemapURL, opts.FilterURL)
+		totalDiscovered += discovered
+		result.AddDiscovered(discovered)
 		if err != nil {
+			result.IncFailed()
 			s.logger.Warn().Err(err).Str("url", sitemapURL).Msg("Failed to fetch nested sitemap")
 			continue
 		}
@@ -156,25 +182,30 @@ func (s *SitemapStrategy) processSitemapIndex(ctx context.Context, sitemap *doma
 		s.logger.Info().Int("count", len(urls)).Str("sitemap", sitemapURL).Msg("Processing URLs from nested sitemap")
 
 		// Process immediately
-		if err := s.processURLs(ctx, urls, opts); err != nil {
+		if err := s.processURLs(ctx, urls, opts, result); err != nil {
 			return err
 		}
 		totalProcessed += len(urls)
 	}
 
 	if totalProcessed == 0 {
+		if opts.FilterURL != "" && totalDiscovered > 0 {
+			result.AddDiagnostic(domain.DiagFilterZeroed,
+				"URL filter excluded every URL from the sitemap index",
+				"Use the filtered URL as the crawler entry point or adjust --filter")
+		}
 		s.logger.Warn().Msg("No URLs found in sitemap index")
 	}
 
 	return nil
 }
 
-// collectURLsFromSitemap fetches and parses a sitemap, returning its URLs.
+// collectURLsFromSitemap fetches and parses a sitemap, returning its URLs and discovered count.
 // For sitemap indexes, it recursively collects URLs from all nested sitemaps.
-func (s *SitemapStrategy) collectURLsFromSitemap(ctx context.Context, url string, filterURL string) ([]domain.SitemapURL, error) {
+func (s *SitemapStrategy) collectURLsFromSitemap(ctx context.Context, url string, filterURL string) ([]domain.SitemapURL, int, error) {
 	resp, err := s.fetcher.Get(ctx, url)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// Decompress if gzipped
@@ -182,27 +213,29 @@ func (s *SitemapStrategy) collectURLsFromSitemap(ctx context.Context, url string
 	if strings.HasSuffix(strings.ToLower(url), ".gz") {
 		content, err = decompressGzip(resp.Body)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 	}
 
 	// Parse sitemap
 	sitemap, err := parseSitemap(content, url)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// If it's a nested index, recursively collect URLs
 	if sitemap.IsIndex {
 		var allURLs []domain.SitemapURL
+		var discovered int
 		for _, nestedURL := range sitemap.Sitemaps {
 			select {
 			case <-ctx.Done():
-				return nil, ctx.Err()
+				return nil, discovered, ctx.Err()
 			default:
 			}
 
-			urls, err := s.collectURLsFromSitemap(ctx, nestedURL, filterURL)
+			urls, nestedDiscovered, err := s.collectURLsFromSitemap(ctx, nestedURL, filterURL)
+			discovered += nestedDiscovered
 			if err != nil {
 				s.logger.Warn().Err(err).Str("url", nestedURL).Msg("Failed to fetch nested sitemap")
 				continue
@@ -213,29 +246,33 @@ func (s *SitemapStrategy) collectURLsFromSitemap(ctx context.Context, url string
 		if filterURL != "" {
 			allURLs = filterSitemapURLs(allURLs, filterURL)
 		}
-		return allURLs, nil
+		return allURLs, discovered, nil
 	}
 
 	// Apply filter to URLs from this sitemap
+	discovered := len(sitemap.URLs)
 	if filterURL != "" {
 		sitemap.URLs = filterSitemapURLs(sitemap.URLs, filterURL)
 	}
 
-	return sitemap.URLs, nil
+	return sitemap.URLs, discovered, nil
 }
 
-func (s *SitemapStrategy) processURLs(ctx context.Context, urls []domain.SitemapURL, opts Options) error {
+func (s *SitemapStrategy) processURLs(ctx context.Context, urls []domain.SitemapURL, opts Options, result *domain.StrategyResult) error {
+	result.AddAttempted(len(urls))
 	bar := utils.NewProgressBar(len(urls), utils.DescExtracting)
 
 	errors := utils.ParallelForEach(ctx, urls, opts.Concurrency, func(ctx context.Context, sitemapURL domain.SitemapURL) error {
 		defer bar.Add(1)
 
 		if !opts.Force && s.writer.Exists(sitemapURL.Loc) {
+			result.IncSkipped()
 			return nil
 		}
 
 		pageResp, err := s.fetcher.Get(ctx, sitemapURL.Loc)
 		if err != nil {
+			result.IncFailed()
 			s.logger.Warn().Err(err).Str("url", sitemapURL.Loc).Msg("Failed to fetch page")
 			return nil
 		}
@@ -244,6 +281,7 @@ func (s *SitemapStrategy) processURLs(ctx context.Context, urls []domain.Sitemap
 		if converter.IsMarkdownContent(pageResp.ContentType, sitemapURL.Loc) {
 			doc, err = s.markdownReader.Read(string(pageResp.Body), sitemapURL.Loc)
 			if err != nil {
+				result.IncFailed()
 				s.logger.Warn().Err(err).Str("url", sitemapURL.Loc).Msg("Failed to read markdown")
 				return nil
 			}
@@ -266,6 +304,7 @@ func (s *SitemapStrategy) processURLs(ctx context.Context, urls []domain.Sitemap
 
 			doc, err = s.converter.Convert(ctx, html, sitemapURL.Loc)
 			if err != nil {
+				result.IncFailed()
 				s.logger.Warn().Err(err).Str("url", sitemapURL.Loc).Msg("Failed to convert page")
 				return nil
 			}
@@ -277,9 +316,12 @@ func (s *SitemapStrategy) processURLs(ctx context.Context, urls []domain.Sitemap
 
 		if !opts.DryRun {
 			if err := s.deps.WriteDocument(ctx, doc); err != nil {
+				result.IncFailed()
 				s.logger.Warn().Err(err).Str("url", sitemapURL.Loc).Msg("Failed to write document")
 				return nil
 			}
+			result.IncWritten()
+			result.AddBytesWritten(int64(len(doc.Content)))
 		}
 
 		return nil

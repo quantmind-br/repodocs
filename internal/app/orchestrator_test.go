@@ -500,8 +500,10 @@ func (m *mockErrorStrategy) CanHandle(url string) bool {
 	return true
 }
 
-func (m *mockErrorStrategy) Execute(ctx context.Context, url string, opts strategies.Options) error {
-	return fmt.Errorf("mock execution error")
+func (m *mockErrorStrategy) Execute(ctx context.Context, url string, opts strategies.Options) (*domain.StrategyResult, error) {
+	result := domain.NewBasicResult(m.name, url)
+	result.Finish()
+	return result, fmt.Errorf("mock execution error")
 }
 
 type mockCancelStrategy struct {
@@ -516,9 +518,11 @@ func (m *mockCancelStrategy) CanHandle(url string) bool {
 	return true
 }
 
-func (m *mockCancelStrategy) Execute(ctx context.Context, url string, opts strategies.Options) error {
+func (m *mockCancelStrategy) Execute(ctx context.Context, url string, opts strategies.Options) (*domain.StrategyResult, error) {
+	result := domain.NewBasicResult(m.name, url)
 	<-ctx.Done()
-	return ctx.Err()
+	result.Finish()
+	return result, ctx.Err()
 }
 
 type mockDryRunStrategy struct {
@@ -533,11 +537,15 @@ func (m *mockDryRunStrategy) CanHandle(url string) bool {
 	return true
 }
 
-func (m *mockDryRunStrategy) Execute(ctx context.Context, url string, opts strategies.Options) error {
+func (m *mockDryRunStrategy) Execute(ctx context.Context, url string, opts strategies.Options) (*domain.StrategyResult, error) {
+	result := domain.NewBasicResult(m.name, url)
 	if !opts.DryRun {
-		return fmt.Errorf("expected dry run to be set")
+		result.Finish()
+		return result, fmt.Errorf("expected dry run to be set")
 	}
-	return nil
+	result.IncAttempted()
+	result.Finish()
+	return result, nil
 }
 
 type mockLimitStrategy struct {
@@ -552,11 +560,16 @@ func (m *mockLimitStrategy) CanHandle(url string) bool {
 	return true
 }
 
-func (m *mockLimitStrategy) Execute(ctx context.Context, url string, opts strategies.Options) error {
+func (m *mockLimitStrategy) Execute(ctx context.Context, url string, opts strategies.Options) (*domain.StrategyResult, error) {
+	result := domain.NewBasicResult(m.name, url)
 	if opts.Limit == 0 {
-		return fmt.Errorf("expected limit to be set")
+		result.Finish()
+		return result, fmt.Errorf("expected limit to be set")
 	}
-	return nil
+	result.IncAttempted()
+	result.IncWritten()
+	result.Finish()
+	return result, nil
 }
 
 type mockSelectorStrategy struct {
@@ -571,12 +584,49 @@ func (m *mockSelectorStrategy) CanHandle(url string) bool {
 	return true
 }
 
-func (m *mockSelectorStrategy) Execute(ctx context.Context, url string, opts strategies.Options) error {
+func (m *mockSelectorStrategy) Execute(ctx context.Context, url string, opts strategies.Options) (*domain.StrategyResult, error) {
+	result := domain.NewBasicResult(m.name, url)
 	if opts.ContentSelector == "" {
-		return fmt.Errorf("expected content selector to be set")
+		result.Finish()
+		return result, fmt.Errorf("expected content selector to be set")
 	}
 	if opts.ExcludeSelector == "" {
-		return fmt.Errorf("expected exclude selector to be set")
+		result.Finish()
+		return result, fmt.Errorf("expected exclude selector to be set")
 	}
-	return nil
+	result.IncAttempted()
+	result.IncWritten()
+	result.Finish()
+	return result, nil
+}
+
+type mockEmptyStrategy struct{ name string }
+
+func (m *mockEmptyStrategy) Name() string                 { return m.name }
+func (m *mockEmptyStrategy) CanHandle(url string) bool    { return true }
+func (m *mockEmptyStrategy) Execute(ctx context.Context, url string, opts strategies.Options) (*domain.StrategyResult, error) {
+	result := domain.NewStrategyResult(m.name, url)
+	result.Finish()
+	return result, nil
+}
+
+func TestOrchestrator_Run_EmptyOutcomeRegression(t *testing.T) {
+	cfg := &config.Config{
+		Cache:       config.CacheConfig{Enabled: false},
+		Concurrency: config.ConcurrencyConfig{Timeout: 10 * time.Second, Workers: 1},
+		Output:      config.OutputConfig{Directory: t.TempDir()},
+		Logging:     config.LoggingConfig{Level: "error", Format: "pretty"},
+	}
+
+	mockFactory := func(st StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+		return &mockEmptyStrategy{name: string(st)}
+	}
+
+	orch, err := NewOrchestrator(OrchestratorOptions{Config: cfg, StrategyFactory: mockFactory})
+	require.NoError(t, err)
+	defer orch.Close()
+
+	err = orch.Run(context.Background(), "https://example.com/docs", OrchestratorOptions{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "0 documents")
 }

@@ -153,7 +153,7 @@ func TestPkgGoStrategy_Execute_SinglePage(t *testing.T) {
 		},
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
 	assert.NoError(t, err)
 }
 
@@ -218,7 +218,7 @@ func TestPkgGoStrategy_Execute_SplitMode(t *testing.T) {
 		},
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
 	assert.NoError(t, err)
 }
 
@@ -271,7 +271,7 @@ func TestPkgGoStrategy_Execute_ContextCancellation(t *testing.T) {
 		},
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
 	assert.Error(t, err)
 }
 
@@ -323,7 +323,7 @@ func TestPkgGoStrategy_Execute_WithoutDocumentationContent(t *testing.T) {
 		},
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
 	assert.NoError(t, err)
 }
 
@@ -380,7 +380,7 @@ func TestPkgGoStrategy_Execute_WithEmptySection(t *testing.T) {
 		},
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
 	assert.NoError(t, err)
 }
 
@@ -418,7 +418,7 @@ func TestPkgGoStrategy_Execute_FetchError(t *testing.T) {
 		},
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
 	assert.Error(t, err)
 }
 
@@ -476,7 +476,7 @@ func TestPkgGoStrategy_Execute_SplitWithSectionSkip(t *testing.T) {
 		},
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
 	assert.NoError(t, err)
 }
 
@@ -527,6 +527,6 @@ func TestPkgGoStrategy_Execute_MissingPackageTitle(t *testing.T) {
 		},
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/github.com/example/test-package", opts)
 	assert.NoError(t, err)
 }

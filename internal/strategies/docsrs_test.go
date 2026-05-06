@@ -676,7 +676,7 @@ func TestDocsRSStrategy_Execute_Errors(t *testing.T) {
 		s := NewDocsRSStrategy(deps)
 
 		ctx := context.Background()
-		err := s.Execute(ctx, "https://docs.rs/serde/", Options{})
+		_, err := s.Execute(ctx, "https://docs.rs/serde/", Options{})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "fetcher is nil")
 	})
@@ -690,7 +690,7 @@ func TestDocsRSStrategy_Execute_Errors(t *testing.T) {
 		s := NewDocsRSStrategy(deps)
 
 		ctx := context.Background()
-		err := s.Execute(ctx, "https://docs.rs/serde/", Options{})
+		_, err := s.Execute(ctx, "https://docs.rs/serde/", Options{})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "writer is nil")
 	})
@@ -705,7 +705,7 @@ func TestDocsRSStrategy_Execute_Errors(t *testing.T) {
 		s := NewDocsRSStrategy(deps)
 
 		ctx := context.Background()
-		err := s.Execute(ctx, "://invalid", Options{})
+		_, err := s.Execute(ctx, "://invalid", Options{})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid docs.rs URL")
 	})

@@ -145,7 +145,7 @@ func TestCrawlerStrategy_Execute_Simple(t *testing.T) {
 		MaxDepth:    1,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/", opts)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, visited)
 }
@@ -197,7 +197,7 @@ func TestCrawlerStrategy_Execute_WithLinks(t *testing.T) {
 		MaxDepth:    1,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/", opts)
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, len(visited), 1)
 }
@@ -247,7 +247,7 @@ func TestCrawlerStrategy_Execute_WithExclude(t *testing.T) {
 		Exclude:     []string{"/admin", "/api.*"},
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/", opts)
 	assert.NoError(t, err)
 
 	// Admin and /api should not be visited
@@ -301,7 +301,7 @@ func TestCrawlerStrategy_Execute_WithFilterURL(t *testing.T) {
 		FilterURL:   server.URL + "/docs",
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/", opts)
 	assert.NoError(t, err)
 
 	// Only /docs should be visited
@@ -364,7 +364,7 @@ func TestCrawlerStrategy_Execute_ContextCancellation(t *testing.T) {
 		MaxDepth:    2,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/", opts)
 	assert.Error(t, err)
 	assert.Contains(t, strings.ToLower(err.Error()), "context canceled")
 }
@@ -409,7 +409,7 @@ This is a **test** markdown file.
 		MaxDepth:    1,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/", opts)
 	assert.NoError(t, err)
 }
 
@@ -477,7 +477,7 @@ func TestCrawlerStrategy_Execute_LimitTests(t *testing.T) {
 		MaxDepth:    2,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/", opts)
 	assert.NoError(t, err)
 	// Should only process 1 page (the limit)
 }
@@ -521,7 +521,7 @@ func TestCrawlerStrategy_Execute_DifferentDomains(t *testing.T) {
 		MaxDepth:    1,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/", opts)
 	assert.NoError(t, err)
 
 	// External domain should not be visited
@@ -583,7 +583,7 @@ func TestCrawlerStrategy_Execute_SPAWithLinks(t *testing.T) {
 		MaxDepth:    2,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/", opts)
 	assert.NoError(t, err)
 
 	// Even without a renderer, Colly should discover links from raw HTML
@@ -655,7 +655,7 @@ func TestCrawlerStrategy_Execute_JSLinksReinjection(t *testing.T) {
 		MaxDepth:    2,
 	}
 
-	err = strategy.Execute(ctx, server.URL+"/", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/", opts)
 	assert.NoError(t, err)
 
 	// Verify sub-pages were visited

@@ -403,6 +403,9 @@ func (m *mockStrategy) CanHandle(url string) bool {
 	return true
 }
 
-func (m *mockStrategy) Execute(ctx context.Context, url string, opts strategies.Options) error {
-	return nil
+func (m *mockStrategy) Execute(ctx context.Context, url string, opts strategies.Options) (*domain.StrategyResult, error) {
+	result := domain.NewBasicResult(m.name, url)
+	result.IncWritten()
+	result.Finish()
+	return result, nil
 }

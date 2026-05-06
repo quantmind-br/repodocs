@@ -1276,7 +1276,7 @@ func TestExecute_ArchiveFailCloneSuccess(t *testing.T) {
 	}
 
 	// This should use clone method since archive download will fail
-	err = strategy.Execute(ctx, "file://"+repoDir, opts)
+	_, err = strategy.Execute(ctx, "file://"+repoDir, opts)
 	// May fail due to processFiles, but we test the branch coverage
 	// The important thing is we tested the fallback logic
 }
@@ -1310,7 +1310,7 @@ func TestExecute_BothMethodsFail(t *testing.T) {
 	}
 
 	// Use invalid URL that will fail for both methods
-	err = strategy.Execute(ctx, "https://github.com/nonexistent/invalidrepo12345", opts)
+	_, err = strategy.Execute(ctx, "https://github.com/nonexistent/invalidrepo12345", opts)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to acquire repository")
 }

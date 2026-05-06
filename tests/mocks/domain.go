@@ -10,9 +10,9 @@
 package mocks
 
 import (
-	"bytes"
+	bytes "bytes"
 	context "context"
-	"io"
+	io "io"
 	http "net/http"
 	reflect "reflect"
 	time "time"
@@ -60,11 +60,12 @@ func (mr *MockStrategyMockRecorder) CanHandle(url any) *gomock.Call {
 }
 
 // Execute mocks base method.
-func (m *MockStrategy) Execute(ctx context.Context, url string, opts domain.StrategyOptions) error {
+func (m *MockStrategy) Execute(ctx context.Context, url string, opts domain.StrategyOptions) (*domain.StrategyResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Execute", ctx, url, opts)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*domain.StrategyResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Execute indicates an expected call of Execute.
@@ -408,6 +409,73 @@ func (mr *MockWriterMockRecorder) Write(ctx, doc any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Write", reflect.TypeOf((*MockWriter)(nil).Write), ctx, doc)
 }
 
+// MockLLMProvider is a mock of LLMProvider interface.
+type MockLLMProvider struct {
+	ctrl     *gomock.Controller
+	recorder *MockLLMProviderMockRecorder
+	isgomock struct{}
+}
+
+// MockLLMProviderMockRecorder is the mock recorder for MockLLMProvider.
+type MockLLMProviderMockRecorder struct {
+	mock *MockLLMProvider
+}
+
+// NewMockLLMProvider creates a new mock instance.
+func NewMockLLMProvider(ctrl *gomock.Controller) *MockLLMProvider {
+	mock := &MockLLMProvider{ctrl: ctrl}
+	mock.recorder = &MockLLMProviderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockLLMProvider) EXPECT() *MockLLMProviderMockRecorder {
+	return m.recorder
+}
+
+// Close mocks base method.
+func (m *MockLLMProvider) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockLLMProviderMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockLLMProvider)(nil).Close))
+}
+
+// Complete mocks base method.
+func (m *MockLLMProvider) Complete(ctx context.Context, req *domain.LLMRequest) (*domain.LLMResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Complete", ctx, req)
+	ret0, _ := ret[0].(*domain.LLMResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Complete indicates an expected call of Complete.
+func (mr *MockLLMProviderMockRecorder) Complete(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Complete", reflect.TypeOf((*MockLLMProvider)(nil).Complete), ctx, req)
+}
+
+// Name mocks base method.
+func (m *MockLLMProvider) Name() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Name")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Name indicates an expected call of Name.
+func (mr *MockLLMProviderMockRecorder) Name() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockLLMProvider)(nil).Name))
+}
+
 // SimpleMockCache is a simple in-memory cache for testing without gomock
 type SimpleMockCache struct {
 	data map[string][]byte
@@ -451,73 +519,6 @@ func (m *SimpleMockCache) Delete(ctx context.Context, key string) error {
 func (m *SimpleMockCache) Close() error {
 	m.data = nil
 	return nil
-}
-
-// MockLLMProvider is a mock of LLMProvider interface
-type MockLLMProvider struct {
-	ctrl     *gomock.Controller
-	recorder *MockLLMProviderMockRecorder
-	isgomock struct{}
-}
-
-// MockLLMProviderMockRecorder is the mock recorder for MockLLMProvider
-type MockLLMProviderMockRecorder struct {
-	mock *MockLLMProvider
-}
-
-// NewMockLLMProvider creates a new mock instance
-func NewMockLLMProvider(ctrl *gomock.Controller) *MockLLMProvider {
-	mock := &MockLLMProvider{ctrl: ctrl}
-	mock.recorder = &MockLLMProviderMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use
-func (m *MockLLMProvider) EXPECT() *MockLLMProviderMockRecorder {
-	return m.recorder
-}
-
-// Name mocks base method
-func (m *MockLLMProvider) Name() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Name")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// Name indicates an expected call of Name
-func (mr *MockLLMProviderMockRecorder) Name() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockLLMProvider)(nil).Name))
-}
-
-// Complete mocks base method
-func (m *MockLLMProvider) Complete(ctx context.Context, req *domain.LLMRequest) (*domain.LLMResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Complete", ctx, req)
-	ret0, _ := ret[0].(*domain.LLMResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Complete indicates an expected call of Complete
-func (mr *MockLLMProviderMockRecorder) Complete(ctx, req any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Complete", reflect.TypeOf((*MockLLMProvider)(nil).Complete), ctx, req)
-}
-
-// Close mocks base method
-func (m *MockLLMProvider) Close() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Close")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Close indicates an expected call of Close
-func (mr *MockLLMProviderMockRecorder) Close() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockLLMProvider)(nil).Close))
 }
 
 // SimpleMockFetcher is a simple fetcher for testing without gomock
@@ -586,12 +587,14 @@ func (t *MockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	}, nil
 }
 
+// MultiResponseMockFetcher is a fetcher that returns different responses per URL
 type MultiResponseMockFetcher struct {
 	Responses map[string]*domain.Response
 	Errors    map[string]error
 	Requests  []string
 }
 
+// NewMultiResponseMockFetcher creates a new MultiResponseMockFetcher
 func NewMultiResponseMockFetcher() *MultiResponseMockFetcher {
 	return &MultiResponseMockFetcher{
 		Responses: make(map[string]*domain.Response),
@@ -627,6 +630,7 @@ func (m *MultiResponseMockFetcher) Close() error {
 	return nil
 }
 
+// MultiResponseRoundTripper implements http.RoundTripper using MultiResponseMockFetcher
 type MultiResponseRoundTripper struct {
 	Fetcher *MultiResponseMockFetcher
 }
