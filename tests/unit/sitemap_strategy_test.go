@@ -665,7 +665,7 @@ func TestSitemapStrategy_Execute_Success(t *testing.T) {
 	opts.Output = outputDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
 	require.NoError(t, err)
 
 	// Verify fetcher was called
@@ -705,7 +705,7 @@ func TestSitemapStrategy_Execute_DryRun(t *testing.T) {
 	opts.DryRun = true
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
 	require.NoError(t, err)
 
 	// Verify no files were created in dry run mode
@@ -728,7 +728,7 @@ func TestSitemapStrategy_Execute_FetchError(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "network error")
 }
@@ -768,7 +768,7 @@ func TestSitemapStrategy_Execute_SitemapIndexWithMock(t *testing.T) {
 	opts.Output = outputDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, "https://example.com/sitemap-index.xml", opts)
+	_, err := strategy.Execute(ctx, "https://example.com/sitemap-index.xml", opts)
 	require.NoError(t, err)
 
 	// Verify all URLs were fetched
@@ -811,7 +811,7 @@ func TestSitemapStrategy_Execute_GzipCompressed(t *testing.T) {
 	opts.Output = outputDir
 	opts.Concurrency = 1
 
-	err = strategy.Execute(ctx, "https://example.com/sitemap.xml.gz", opts)
+	_, err = strategy.Execute(ctx, "https://example.com/sitemap.xml.gz", opts)
 	require.NoError(t, err)
 
 	// Verify sitemap was processed (gzip decompressed)
@@ -864,7 +864,7 @@ func TestSitemapStrategy_Execute_WithLimit(t *testing.T) {
 	opts.Limit = 2 // Only process 2 URLs
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
 	require.NoError(t, err)
 
 	// Count page requests (excluding sitemap itself)
@@ -897,7 +897,7 @@ func TestSitemapStrategy_Execute_EmptySitemapWithMock(t *testing.T) {
 	opts.Output = outputDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
 	require.NoError(t, err, "Should handle empty sitemap gracefully")
 
 	// Only sitemap should be fetched
@@ -927,7 +927,7 @@ func TestSitemapStrategy_Execute_PageFetchError(t *testing.T) {
 	opts.Concurrency = 1
 
 	// Should complete without error (page errors are logged, not propagated)
-	err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
 	require.NoError(t, err)
 }
 
@@ -957,7 +957,7 @@ func TestSitemapStrategy_Execute_MarkdownContent(t *testing.T) {
 	opts.Output = outputDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, "https://example.com/sitemap.xml", opts)
 	require.NoError(t, err)
 
 	// Verify markdown was fetched

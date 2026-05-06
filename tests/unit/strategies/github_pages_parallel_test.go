@@ -186,7 +186,7 @@ func TestDiscoverViaHTTPProbes_Parallel_ReturnHighestPriority(t *testing.T) {
 	require.NotNil(t, strategy)
 
 	ctx := context.Background()
-	err := strategy.Execute(ctx, "https://test.github.io", strategies.Options{
+	_, err := strategy.Execute(ctx, "https://test.github.io", strategies.Options{
 		CommonOptions: domain.CommonOptions{
 			DryRun: true, // Don't write files, just test discovery
 		},
@@ -300,7 +300,7 @@ func TestDiscoverViaHTTPProbes_Parallel_ErrorIsolation(t *testing.T) {
 	require.NotNil(t, strategy)
 
 	ctx := context.Background()
-	err := strategy.Execute(ctx, "https://test.github.io", strategies.Options{
+	_, err := strategy.Execute(ctx, "https://test.github.io", strategies.Options{
 		CommonOptions: domain.CommonOptions{
 			DryRun: true,
 		},

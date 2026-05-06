@@ -54,6 +54,7 @@ type googleResponse struct {
 	} `json:"error,omitempty"`
 }
 
+// GoogleProvider implements domain.LLMProvider for Google Gemini content generation.
 type GoogleProvider struct {
 	httpClient  *http.Client
 	apiKey      string
@@ -63,6 +64,7 @@ type GoogleProvider struct {
 	temperature float64
 }
 
+// NewGoogleProvider creates a Google provider using cfg and httpClient for API requests.
 func NewGoogleProvider(cfg ProviderConfig, httpClient *http.Client) (*GoogleProvider, error) {
 	baseURL := strings.TrimSuffix(cfg.BaseURL, "/")
 

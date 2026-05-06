@@ -1,14 +1,28 @@
-// Package git implements the git repository extraction strategy.
+// Package git implements documentation extraction from git repositories.
 //
-// It supports extracting documentation from GitHub, GitLab, and Bitbucket
-// repositories using either archive download (faster) or git clone (fallback).
+// The package supports GitHub, GitLab, Bitbucket, and generic HTTP(S) git URLs.
+// It recognizes repository roots as well as hosted tree URLs that include a
+// branch and subdirectory, then limits discovery to that repository-relative
+// path when present.
 //
-// Architecture:
-//   - Strategy: Coordinator implementing strategies.Strategy interface
-//   - Parser: URL parsing and platform detection
-//   - ArchiveFetcher: HTTP-based tar.gz download and extraction
-//   - CloneFetcher: go-git based repository cloning
-//   - Processor: File discovery and document conversion
+// The extraction pipeline is split into small components:
+//   - Strategy coordinates parsing, fetching, discovery, processing, and output.
+//   - Parser normalizes repository URLs, detects hosting platforms, and extracts
+//     branch/subpath information from tree URLs.
+//   - ArchiveFetcher uses platform-specific tar.gz archive URLs for the fast
+//     path and strips archive root directories during extraction.
+//   - CloneFetcher falls back to a shallow go-git clone when archives fail or
+//     cannot be used.
+//   - Processor walks the fetched repository, ignores dependency/build
+//     directories, turns Markdown/MDX and selected config files into
+//     domain.Document values, and cooperates with sync state to skip unchanged
+//     files.
+//
+// Strategy first tries archive download for non-SSH URLs, including default
+// branch detection and a main-to-master fallback. If archive acquisition fails,
+// it clones the repository and processes the local checkout through the same
+// Processor path. Output writing is supplied by StrategyDependencies so the
+// package stays independent from CLI orchestration details.
 //
 // Usage:
 //

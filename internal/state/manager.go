@@ -11,8 +11,10 @@ import (
 	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
+// StateFileName is the filename used to persist incremental sync state.
 const StateFileName = ".repodocs-state.json"
 
+// Manager tracks incremental sync state for processed pages and deleted-page detection.
 type Manager struct {
 	baseDir  string
 	state    *SyncState
@@ -23,6 +25,7 @@ type Manager struct {
 	seenURLs sync.Map
 }
 
+// ManagerOptions configures sync-state storage, source identity, logging, and disabled mode.
 type ManagerOptions struct {
 	BaseDir   string
 	SourceURL string
@@ -31,6 +34,7 @@ type ManagerOptions struct {
 	Disabled  bool
 }
 
+// NewManager creates a sync-state manager initialized for the configured source.
 func NewManager(opts ManagerOptions) *Manager {
 	return &Manager{
 		baseDir:  opts.BaseDir,
@@ -40,6 +44,7 @@ func NewManager(opts ManagerOptions) *Manager {
 	}
 }
 
+// Load reads sync state from disk unless the manager is disabled.
 func (m *Manager) Load(ctx context.Context) error {
 	if m.disabled {
 		return nil
@@ -76,6 +81,7 @@ func (m *Manager) Load(ctx context.Context) error {
 	return nil
 }
 
+// Save writes dirty sync state to disk unless the manager is disabled.
 func (m *Manager) Save(ctx context.Context) error {
 	if m.disabled {
 		return nil
@@ -114,6 +120,7 @@ func (m *Manager) Save(ctx context.Context) error {
 	return nil
 }
 
+// ShouldProcess reports whether url is new or its stored contentHash differs.
 func (m *Manager) ShouldProcess(url, contentHash string) bool {
 	if m.disabled {
 		return true
@@ -130,6 +137,7 @@ func (m *Manager) ShouldProcess(url, contentHash string) bool {
 	return page.ContentHash != contentHash
 }
 
+// Update stores page state for url and marks the manager dirty.
 func (m *Manager) Update(url string, page PageState) {
 	if m.disabled {
 		return
@@ -142,10 +150,12 @@ func (m *Manager) Update(url string, page PageState) {
 	m.dirty = true
 }
 
+// MarkSeen records that url was observed during the current sync run.
 func (m *Manager) MarkSeen(url string) {
 	m.seenURLs.Store(url, true)
 }
 
+// GetDeletedPages returns previously known pages not seen during the current sync run.
 func (m *Manager) GetDeletedPages() []PageState {
 	if m.disabled {
 		return nil
@@ -163,6 +173,7 @@ func (m *Manager) GetDeletedPages() []PageState {
 	return deleted
 }
 
+// RemoveDeletedFromState removes unseen pages from the persisted state and marks it dirty.
 func (m *Manager) RemoveDeletedFromState() {
 	if m.disabled {
 		return
@@ -179,6 +190,7 @@ func (m *Manager) RemoveDeletedFromState() {
 	}
 }
 
+// Stats returns total tracked pages and pages not seen during the current sync run.
 func (m *Manager) Stats() (total, cached int) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -194,6 +206,7 @@ func (m *Manager) Stats() (total, cached int) {
 	return total, total - seenCount
 }
 
+// IsDisabled reports whether sync-state persistence is disabled.
 func (m *Manager) IsDisabled() bool {
 	return m.disabled
 }

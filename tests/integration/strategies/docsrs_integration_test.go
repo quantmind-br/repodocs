@@ -47,7 +47,7 @@ func TestDocsRSStrategy_Execute_WithJSON(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Limit = 10
 
-	err = strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
 	require.NoError(t, err)
 
 	outputFiles, err := os.ReadDir(tempDir)
@@ -89,7 +89,7 @@ func TestDocsRSStrategy_Execute_DryRun(t *testing.T) {
 	opts.DryRun = true
 	opts.Limit = 10
 
-	err = strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
 	require.NoError(t, err)
 
 	outputFiles, err := os.ReadDir(tempDir)
@@ -113,7 +113,7 @@ func TestDocsRSStrategy_Execute_JSONFetchError(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Limit = 10
 
-	err := strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to fetch rustdoc JSON")
 }
@@ -136,7 +136,7 @@ func TestDocsRSStrategy_Execute_InvalidJSON(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Limit = 10
 
-	err := strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to fetch rustdoc JSON")
 }
@@ -167,7 +167,7 @@ func TestDocsRSStrategy_Execute_ContextCancellation(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Limit = 10
 
-	err = strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/crate/example/1.0.0", opts)
 	if err != nil {
 		assert.Contains(t, err.Error(), "context canceled")
 	}
@@ -201,7 +201,7 @@ func TestDocsRSStrategy_Execute_EmptyIndex(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Limit = 10
 
-	err := strategy.Execute(ctx, server.URL+"/crate/empty/1.0.0", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/crate/empty/1.0.0", opts)
 	require.NoError(t, err)
 
 	outputFiles, err := os.ReadDir(tempDir)

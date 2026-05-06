@@ -10,6 +10,7 @@ import (
 	"github.com/quantmind-br/repodocs/internal/domain"
 )
 
+// MetadataCollector aggregates document metadata and writes a JSON metadata index.
 type MetadataCollector struct {
 	mu        sync.RWMutex
 	documents []*domain.SimpleDocumentMetadata
@@ -20,6 +21,7 @@ type MetadataCollector struct {
 	enabled   bool
 }
 
+// CollectorOptions configures metadata collection output, source context, and enablement.
 type CollectorOptions struct {
 	BaseDir   string
 	Filename  string
@@ -28,6 +30,7 @@ type CollectorOptions struct {
 	Enabled   bool
 }
 
+// NewMetadataCollector creates a metadata collector with the supplied options.
 func NewMetadataCollector(opts CollectorOptions) *MetadataCollector {
 	filename := opts.Filename
 	if filename == "" {
@@ -43,6 +46,7 @@ func NewMetadataCollector(opts CollectorOptions) *MetadataCollector {
 	}
 }
 
+// Add records metadata for doc using filePath relative to the collector base directory.
 func (c *MetadataCollector) Add(doc *domain.Document, filePath string) {
 	if !c.enabled || doc == nil {
 		return
@@ -63,6 +67,7 @@ func (c *MetadataCollector) Add(doc *domain.Document, filePath string) {
 	c.documents = append(c.documents, metadata)
 }
 
+// Flush writes the collected metadata index to disk when collection is enabled.
 func (c *MetadataCollector) Flush() error {
 	if !c.enabled || len(c.documents) == 0 {
 		return nil
@@ -98,28 +103,33 @@ func (c *MetadataCollector) buildIndex() *domain.SimpleMetadataIndex {
 	}
 }
 
+// Count returns the number of documents collected so far.
 func (c *MetadataCollector) Count() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return len(c.documents)
 }
 
+// GetIndex returns an in-memory metadata index for the collected documents.
 func (c *MetadataCollector) GetIndex() *domain.SimpleMetadataIndex {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.buildIndex()
 }
 
+// IsEnabled reports whether metadata collection is active.
 func (c *MetadataCollector) IsEnabled() bool {
 	return c.enabled
 }
 
+// SetStrategy updates the strategy name stored in future metadata indexes.
 func (c *MetadataCollector) SetStrategy(name string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.strategy = name
 }
 
+// SetSourceURL updates the source URL stored in future metadata indexes.
 func (c *MetadataCollector) SetSourceURL(url string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

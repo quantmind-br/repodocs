@@ -14,10 +14,12 @@ type platformPattern struct {
 	treePattern *regexp.Regexp
 }
 
+// Parser extracts repository, branch, and subpath information from git hosting URLs.
 type Parser struct {
 	patterns []platformPattern
 }
 
+// NewParser creates a Parser with patterns for GitHub, GitLab, and Bitbucket URLs.
 func NewParser() *Parser {
 	return &Parser{
 		patterns: []platformPattern{
@@ -40,6 +42,7 @@ func NewParser() *Parser {
 	}
 }
 
+// ParseURL parses a repository URL into platform, owner, repository, and original URL fields.
 func (p *Parser) ParseURL(rawURL string) (*RepoInfo, error) {
 	patterns := []struct {
 		platform Platform
@@ -64,6 +67,7 @@ func (p *Parser) ParseURL(rawURL string) (*RepoInfo, error) {
 	return nil, fmt.Errorf("unsupported git URL format: %s", rawURL)
 }
 
+// ParseURLWithPath parses a repository URL plus optional tree path into structured git URL information.
 func (p *Parser) ParseURLWithPath(rawURL string) (*GitURLInfo, error) {
 	info := &GitURLInfo{}
 	lower := strings.ToLower(rawURL)
@@ -103,6 +107,7 @@ func (p *Parser) ParseURLWithPath(rawURL string) (*GitURLInfo, error) {
 	return nil, fmt.Errorf("unsupported git URL format: %s", rawURL)
 }
 
+// NormalizeFilterPath converts a URL or path string into a clean repository-relative path.
 func NormalizeFilterPath(path string) string {
 	if path == "" {
 		return ""
@@ -124,6 +129,7 @@ func NormalizeFilterPath(path string) string {
 	return path
 }
 
+// ExtractPathFromTreeURL returns the repository-relative path from a hosted tree or blob URL.
 func ExtractPathFromTreeURL(rawURL string) string {
 	patterns := []*regexp.Regexp{
 		regexp.MustCompile(`github\.com/[^/]+/[^/]+/(?:tree|blob)/[^/]+/(.+)$`),

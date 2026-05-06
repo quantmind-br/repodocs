@@ -1,3 +1,10 @@
+// This file implements a Rustdoc JSON to Markdown renderer for docs.rs output.
+// Rustdoc JSON represents many Rust types as nested []interface{} and
+// map[string]interface{} values because Rust's type system includes generics,
+// lifetimes, trait bounds, associated types, tuples, references, raw pointers, and
+// qualified paths that do not fit one flat schema. RenderItem is the main dispatch
+// point: it identifies each Rustdoc item kind, then delegates signatures, type
+// formatting, nested contents, and cross-reference rewriting to specialized helpers.
 package strategies
 
 import (
@@ -164,6 +171,8 @@ func (r *RustdocRenderer) renderFunctionSignature(item *RustdocItem) string {
 
 	sb.WriteString("(")
 	if fn.Sig != nil {
+		// Rustdoc encodes each function input as [name, type] rather than a struct;
+		// the type half can itself be any nested Rust type representation.
 		for i, input := range fn.Sig.Inputs {
 			if i > 0 {
 				sb.WriteString(", ")
@@ -212,6 +221,9 @@ func (r *RustdocRenderer) RenderType(t interface{}) string {
 }
 
 func (r *RustdocRenderer) RenderTypeMap(t map[string]interface{}) string {
+	// Rustdoc JSON has 12+ type shapes (primitive, generic, resolved path,
+	// reference, slice, array, tuple, raw pointer, impl Trait, qualified path,
+	// and more), so rendering is a keyed dispatch over whichever shape exists.
 	if prim, ok := t["primitive"]; ok {
 		return fmt.Sprintf("%v", prim)
 	}
@@ -348,6 +360,9 @@ func (r *RustdocRenderer) resolveCrossRefs(docs string, links map[string]interfa
 		return docs
 	}
 
+	// Rustdoc stores intra-doc links as display-name -> item-id. Resolve each id
+	// through the index, build the docs.rs URL for the target item, then rewrite
+	// Markdown references while leaving unresolved links untouched.
 	result := docs
 	for name, id := range links {
 		targetItem := r.getItemByID(id)

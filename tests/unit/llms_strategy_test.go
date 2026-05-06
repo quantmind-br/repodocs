@@ -543,7 +543,7 @@ func TestExecute_WithValidLLMS(t *testing.T) {
 	}
 
 	// Act
-	err = strategy.Execute(ctx, llmsServer.URL, opts)
+	_, err = strategy.Execute(ctx, llmsServer.URL, opts)
 
 	// Assert
 	require.NoError(t, err)
@@ -581,7 +581,7 @@ func TestExecute_WithEmptyLLMS(t *testing.T) {
 	}
 
 	// Act
-	err = strategy.Execute(ctx, llmsServer.URL, opts)
+	_, err = strategy.Execute(ctx, llmsServer.URL, opts)
 
 	// Assert
 	require.NoError(t, err)
@@ -639,7 +639,7 @@ func TestExecute_WithInvalidHTML(t *testing.T) {
 	}
 
 	// Act
-	err = strategy.Execute(ctx, llmsServer.URL, opts)
+	_, err = strategy.Execute(ctx, llmsServer.URL, opts)
 
 	// Assert - should complete without error even with invalid HTML
 	// (converter should handle it gracefully)
@@ -677,7 +677,7 @@ func TestExecute_FetchError(t *testing.T) {
 	}
 
 	// Act
-	err = strategy.Execute(ctx, llmsServer.URL, opts)
+	_, err = strategy.Execute(ctx, llmsServer.URL, opts)
 
 	// Assert
 	require.Error(t, err)
@@ -1020,7 +1020,7 @@ This is the API documentation.
 		},
 	}
 
-	err = strategy.Execute(ctx, llmsServer.URL, opts)
+	_, err = strategy.Execute(ctx, llmsServer.URL, opts)
 	require.NoError(t, err)
 }
 
@@ -1065,7 +1065,7 @@ Welcome to the documentation.
 		},
 	}
 
-	err = strategy.Execute(ctx, llmsServer.URL, opts)
+	_, err = strategy.Execute(ctx, llmsServer.URL, opts)
 	require.NoError(t, err)
 }
 
@@ -1111,6 +1111,6 @@ func TestExecute_WithFilterURL(t *testing.T) {
 		},
 	}
 
-	err = strategy.Execute(ctx, llmsServer.URL, opts)
+	_, err = strategy.Execute(ctx, llmsServer.URL, opts)
 	require.NoError(t, err)
 }

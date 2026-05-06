@@ -47,7 +47,7 @@ func TestGitHubPagesStrategy_SitemapDiscovery(t *testing.T) {
 		Concurrency:   2,
 	}
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	assert.NoError(t, err, "Strategy should not error even if fetch fails")
 }
 
@@ -79,7 +79,7 @@ func TestGitHubPagesStrategy_LLMsTxtDiscovery(t *testing.T) {
 		Concurrency:   2,
 	}
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	assert.NoError(t, err, "Strategy should not error even if fetch fails")
 }
 
@@ -111,7 +111,7 @@ func TestGitHubPagesStrategy_MkDocsDiscovery(t *testing.T) {
 		Concurrency:   2,
 	}
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	assert.NoError(t, err, "Strategy should not error even if fetch fails")
 }
 
@@ -142,7 +142,7 @@ func TestGitHubPagesStrategy_DryRun(t *testing.T) {
 		Concurrency:   2,
 	}
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	assert.NoError(t, err, "Strategy should not error in dry run mode")
 }
 
@@ -177,7 +177,7 @@ func TestGitHubPagesStrategy_WithProjectSubpath(t *testing.T) {
 		Concurrency:   2,
 	}
 
-	err := strategy.Execute(ctx, projectURL, opts)
+	_, err := strategy.Execute(ctx, projectURL, opts)
 	assert.NoError(t, err, "Strategy should not error even with project subpath")
 }
 
@@ -199,7 +199,7 @@ func TestGitHubPagesStrategy_EmptyDiscovery(t *testing.T) {
 		Concurrency:   2,
 	}
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	assert.NoError(t, err)
 }
 

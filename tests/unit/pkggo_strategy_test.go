@@ -143,7 +143,7 @@ func TestPkgGoStrategy_Execute_Success(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Output = outputDir
 
-	err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
+	_, err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
 	require.NoError(t, err)
 
 	// Verify fetcher was called
@@ -196,7 +196,7 @@ func TestPkgGoStrategy_Execute_DryRun(t *testing.T) {
 	opts.Output = outputDir
 	opts.DryRun = true
 
-	err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
+	_, err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
 	require.NoError(t, err)
 
 	// Verify no files were created in dry run mode
@@ -229,7 +229,7 @@ func TestPkgGoStrategy_Execute_FetchError(t *testing.T) {
 	ctx := context.Background()
 	opts := strategies.DefaultOptions()
 
-	err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
+	_, err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "network error")
 }
@@ -297,7 +297,7 @@ func TestPkgGoStrategy_Execute_Split(t *testing.T) {
 	opts.Output = outputDir
 	opts.Split = true
 
-	err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
+	_, err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
 	require.NoError(t, err)
 
 	// Verify files were created
@@ -345,7 +345,7 @@ func TestPkgGoStrategy_Execute_MainFallback(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Output = outputDir
 
-	err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
+	_, err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
 	require.NoError(t, err)
 
 	// Verify output file was created
@@ -393,7 +393,7 @@ func TestPkgGoStrategy_Execute_CachedResponse(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Output = outputDir
 
-	err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
+	_, err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
 	require.NoError(t, err)
 
 	// Verify output was created (CacheHit is set on document)
@@ -451,7 +451,7 @@ func TestPkgGoStrategy_Execute_ContextCancelled(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Split = true // Use split mode to test context cancellation in loop
 
-	err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
+	_, err := strategy.Execute(ctx, "https://pkg.go.dev/fmt", opts)
 	// Note: Context cancellation is checked in the loop, so we may get either nil or context.Canceled
 	// depending on when the fetch completes
 	if err != nil {
@@ -498,7 +498,7 @@ func TestPkgGoStrategy_Execute_EmptyPackageName(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Output = outputDir
 
-	err := strategy.Execute(ctx, "https://pkg.go.dev/unknown", opts)
+	_, err := strategy.Execute(ctx, "https://pkg.go.dev/unknown", opts)
 	require.NoError(t, err, "Should handle missing package name gracefully")
 }
 

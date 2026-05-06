@@ -30,7 +30,7 @@ func TestGitStrategy_Execute_FetchError(t *testing.T) {
 	strategy := strategies.NewGitStrategy(deps)
 
 	// Act
-	err := strategy.Execute(ctx, server.URL+"/nonexistent/repo", strategies.DefaultOptions())
+	_, err := strategy.Execute(ctx, server.URL+"/nonexistent/repo", strategies.DefaultOptions())
 
 	// Assert
 	require.Error(t, err)

@@ -347,7 +347,8 @@ func GenerateOutputDirFromURL(rawURL string) string {
 	return "docs_" + name
 }
 
-// sanitizeForDirName removes characters that are not safe for directory names
+// sanitizeForDirName converts a string into a lowercase directory-safe segment by
+// keeping only ASCII letters, digits, hyphens, and underscores.
 func sanitizeForDirName(s string) string {
 	// Remove dots, spaces, and special characters
 	var result strings.Builder

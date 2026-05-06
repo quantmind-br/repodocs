@@ -43,7 +43,7 @@ func TestLLMSStrategy_Execute_DryRun(t *testing.T) {
 			DryRun: true,
 		},
 	}
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 
 	// Assert
 	require.NoError(t, err)
@@ -73,7 +73,7 @@ func TestLLMSStrategy_Execute_EmptyLLMS(t *testing.T) {
 	strategy := strategies.NewLLMSStrategy(deps)
 
 	// Act
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", strategies.DefaultOptions())
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", strategies.DefaultOptions())
 
 	// Assert
 	require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestLLMSStrategy_Execute_FetchError(t *testing.T) {
 	strategy := strategies.NewLLMSStrategy(deps)
 
 	// Act
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", strategies.DefaultOptions())
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", strategies.DefaultOptions())
 
 	// Assert
 	require.Error(t, err)
@@ -148,7 +148,7 @@ It should be processed by PlainTextReader, not the HTML converter.
 	opts.Output = tempDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	require.NoError(t, err)
 
 	outputFiles, err := os.ReadDir(tempDir)
@@ -181,7 +181,7 @@ func TestLLMSStrategy_Execute_MixedContentTypes(t *testing.T) {
 	opts.Output = tempDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	require.NoError(t, err)
 
 	outputFiles, err := os.ReadDir(tempDir)
@@ -211,7 +211,7 @@ but without a .txt extension in the URL.`
 	opts.Output = tempDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	require.NoError(t, err)
 
 	outputFiles, err := os.ReadDir(tempDir)

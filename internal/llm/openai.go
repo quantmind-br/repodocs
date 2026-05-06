@@ -47,6 +47,7 @@ type openAIResponse struct {
 	} `json:"error,omitempty"`
 }
 
+// OpenAIProvider implements domain.LLMProvider for OpenAI-compatible chat completions.
 type OpenAIProvider struct {
 	httpClient  *http.Client
 	apiKey      string
@@ -56,6 +57,7 @@ type OpenAIProvider struct {
 	temperature float64
 }
 
+// NewOpenAIProvider creates an OpenAI provider using cfg and httpClient for API requests.
 func NewOpenAIProvider(cfg ProviderConfig, httpClient *http.Client) (*OpenAIProvider, error) {
 	baseURL := strings.TrimSuffix(cfg.BaseURL, "/")
 

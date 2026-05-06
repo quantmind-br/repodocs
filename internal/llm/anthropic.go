@@ -46,6 +46,7 @@ type anthropicResponse struct {
 	} `json:"error,omitempty"`
 }
 
+// AnthropicProvider implements domain.LLMProvider for Anthropic Claude chat completions.
 type AnthropicProvider struct {
 	httpClient  *http.Client
 	apiKey      string
@@ -55,6 +56,7 @@ type AnthropicProvider struct {
 	temperature float64
 }
 
+// NewAnthropicProvider creates an Anthropic provider using cfg and httpClient for API requests.
 func NewAnthropicProvider(cfg ProviderConfig, httpClient *http.Client) (*AnthropicProvider, error) {
 	baseURL := strings.TrimSuffix(cfg.BaseURL, "/")
 

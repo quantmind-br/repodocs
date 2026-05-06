@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// WikiPage describes one markdown page found in a GitHub wiki repository.
 type WikiPage struct {
 	Filename  string
 	Title     string
@@ -19,18 +20,21 @@ type WikiPage struct {
 	IsSpecial bool
 }
 
+// WikiStructure groups wiki pages into ordered sections for output path generation.
 type WikiStructure struct {
 	Sections   []WikiSection
 	Pages      map[string]*WikiPage
 	HasSidebar bool
 }
 
+// WikiSection describes an ordered group of wiki page filenames.
 type WikiSection struct {
 	Name  string
 	Order int
 	Pages []string
 }
 
+// WikiInfo contains parsed GitHub wiki repository details and clone target information.
 type WikiInfo struct {
 	Owner      string
 	Repo       string
@@ -39,6 +43,7 @@ type WikiInfo struct {
 	TargetPage string
 }
 
+// ParseWikiURL parses a GitHub wiki URL into repository owner, repo, clone URL, and optional target page.
 func ParseWikiURL(rawURL string) (*WikiInfo, error) {
 	url := strings.TrimSuffix(rawURL, "/")
 
@@ -76,6 +81,7 @@ func ParseWikiURL(rawURL string) (*WikiInfo, error) {
 	}, nil
 }
 
+// FilenameToTitle converts a wiki markdown filename into a display title.
 func FilenameToTitle(filename string) string {
 	// Extract base name without extension
 	ext := filepath.Ext(filename)
@@ -99,10 +105,12 @@ func FilenameToTitle(filename string) string {
 	return strings.Join(words, " ")
 }
 
+// TitleToFilename converts a wiki page title into a GitHub wiki filename stem.
 func TitleToFilename(title string) string {
 	return strings.ReplaceAll(title, " ", "-")
 }
 
+// ParseSidebarContent parses wiki sidebar markdown into sections and assigns matching pages to them.
 func ParseSidebarContent(content string, pages map[string]*WikiPage) []WikiSection {
 	var sections []WikiSection
 	var currentSection *WikiSection
@@ -222,6 +230,7 @@ func findPageFilename(pageName string, pages map[string]*WikiPage) string {
 	return ""
 }
 
+// CreateDefaultStructure builds a single ordered documentation section when no sidebar exists.
 func CreateDefaultStructure(pages map[string]*WikiPage) []WikiSection {
 	var pageNames []string
 	for filename, page := range pages {
@@ -255,6 +264,7 @@ func CreateDefaultStructure(pages map[string]*WikiPage) []WikiSection {
 	}
 }
 
+// ConvertWikiLinks rewrites GitHub wiki-style links in content to relative markdown links.
 func ConvertWikiLinks(content string, _ map[string]*WikiPage) string {
 	// [[Page Name|Custom Text]] -> [Custom Text](./page-name.md)
 	pattern1 := regexp.MustCompile(`\[\[([^\]|]+)\|([^\]]+)\]\]`)
@@ -298,6 +308,7 @@ func ConvertWikiLinks(content string, _ map[string]*WikiPage) string {
 	return content
 }
 
+// BuildRelativePath returns the output path for page using wiki structure unless flat output is requested.
 func BuildRelativePath(page *WikiPage, structure *WikiStructure, flat bool) string {
 	if page.IsHome {
 		return "index.md"

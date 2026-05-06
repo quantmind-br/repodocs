@@ -134,7 +134,7 @@ func TestGitHubPagesStrategy_Execute_InvalidURL(t *testing.T) {
 	// The Execute method doesn't return an error for invalid URLs during the discovery phase
 	// It tries to process them with the browser renderer
 	// This test documents that behavior
-	err := strategy.Execute(ctx, "not-a-valid-github-io-url", strategies.Options{})
+	_, err := strategy.Execute(ctx, "not-a-valid-github-io-url", strategies.Options{})
 
 	// The function may succeed (using browser discovery) or fail depending on the URL format
 	// For this test, we just verify the strategy was created
@@ -166,7 +166,7 @@ func TestGitHubPagesStrategy_Execute_NoRendererAvailable(t *testing.T) {
 	ctx := context.Background()
 	// The Dependencies.GetRenderer() method will create a renderer on demand
 	// So even when HTTP probes fail, it will fall back to browser rendering
-	err := strategy.Execute(ctx, "https://test.github.io/", strategies.Options{})
+	_, err := strategy.Execute(ctx, "https://test.github.io/", strategies.Options{})
 
 	// The Execute should succeed (with browser rendering) or at least not return an error
 	// This test documents that the GetRenderer method creates a renderer on demand

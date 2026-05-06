@@ -309,7 +309,7 @@ func TestCrawlerStrategy_Execute(t *testing.T) {
 		Output:      tempDir,
 	}
 
-	err = strategy.Execute(context.Background(), server.URL, opts)
+	_, err = strategy.Execute(context.Background(), server.URL, opts)
 	require.NoError(t, err)
 
 	// Verify output
@@ -686,7 +686,7 @@ func TestCrawlerStrategy_Execute_DryRun(t *testing.T) {
 		},
 	}
 
-	err := strategy.Execute(context.Background(), "http://example.com/", opts)
+	_, err := strategy.Execute(context.Background(), "http://example.com/", opts)
 	require.NoError(t, err)
 
 	files, _ := filepath.Glob(filepath.Join(tempDir, "**/*.md"))
@@ -725,7 +725,7 @@ func TestCrawlerStrategy_Execute_WithMockFetcher(t *testing.T) {
 		},
 	}
 
-	err := strategy.Execute(context.Background(), "http://example.com/", opts)
+	_, err := strategy.Execute(context.Background(), "http://example.com/", opts)
 	require.NoError(t, err)
 
 	assert.Contains(t, mockFetcher.Requests, "http://example.com/")
@@ -763,7 +763,7 @@ func TestCrawlerStrategy_Execute_ContextCancellation(t *testing.T) {
 		Output:      tempDir,
 	}
 
-	err := strategy.Execute(ctx, "http://example.com/", opts)
+	_, err := strategy.Execute(ctx, "http://example.com/", opts)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, context.Canceled)
 }
@@ -821,7 +821,7 @@ func TestCrawlerStrategy_Execute_WithLimit(t *testing.T) {
 		},
 	}
 
-	err := strategy.Execute(context.Background(), "http://example.com/", opts)
+	_, err := strategy.Execute(context.Background(), "http://example.com/", opts)
 	require.NoError(t, err)
 }
 
@@ -850,7 +850,7 @@ func TestCrawlerStrategy_Execute_TransportErrorHandledByCollyCallback(t *testing
 		Output:      tempDir,
 	}
 
-	err := strategy.Execute(context.Background(), "http://example.com/", opts)
+	_, err := strategy.Execute(context.Background(), "http://example.com/", opts)
 	require.NoError(t, err)
 	assert.Contains(t, mockFetcher.Requests, "http://example.com/")
 }

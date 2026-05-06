@@ -14,16 +14,19 @@ import (
 	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
+// ArchiveFetcher downloads repository source archives over HTTP and extracts them locally.
 type ArchiveFetcher struct {
 	httpClient *http.Client
 	logger     *utils.Logger
 }
 
+// ArchiveFetcherOptions configures an ArchiveFetcher.
 type ArchiveFetcherOptions struct {
 	HTTPClient *http.Client
 	Logger     *utils.Logger
 }
 
+// NewArchiveFetcher creates an archive-based repository fetcher.
 func NewArchiveFetcher(opts ArchiveFetcherOptions) *ArchiveFetcher {
 	return &ArchiveFetcher{
 		httpClient: opts.HTTPClient,
@@ -31,10 +34,12 @@ func NewArchiveFetcher(opts ArchiveFetcherOptions) *ArchiveFetcher {
 	}
 }
 
+// Name returns the fetch method name used in FetchResult values and logs.
 func (f *ArchiveFetcher) Name() string {
 	return "archive"
 }
 
+// Fetch downloads and extracts the requested branch archive into destDir.
 func (f *ArchiveFetcher) Fetch(ctx context.Context, info *RepoInfo, branch, destDir string) (*FetchResult, error) {
 	archiveURL := f.BuildArchiveURL(info, branch)
 	if f.logger != nil {
@@ -52,6 +57,7 @@ func (f *ArchiveFetcher) Fetch(ctx context.Context, info *RepoInfo, branch, dest
 	}, nil
 }
 
+// BuildArchiveURL returns the platform-specific tar.gz archive URL for a repository branch.
 func (f *ArchiveFetcher) BuildArchiveURL(info *RepoInfo, branch string) string {
 	switch info.Platform {
 	case PlatformGitHub:
@@ -69,6 +75,7 @@ func (f *ArchiveFetcher) BuildArchiveURL(info *RepoInfo, branch string) string {
 	}
 }
 
+// DownloadAndExtract downloads a tar.gz archive URL and extracts its contents into destDir.
 func (f *ArchiveFetcher) DownloadAndExtract(ctx context.Context, archiveURL, destDir string) error {
 	req, err := http.NewRequestWithContext(ctx, "GET", archiveURL, nil)
 	if err != nil {
@@ -98,6 +105,7 @@ func (f *ArchiveFetcher) DownloadAndExtract(ctx context.Context, archiveURL, des
 	return f.ExtractTarGz(resp.Body, destDir)
 }
 
+// ExtractTarGz extracts a repository tar.gz stream into destDir while stripping the archive root directory.
 func (f *ArchiveFetcher) ExtractTarGz(r io.Reader, destDir string) error {
 	gzr, err := gzip.NewReader(r)
 	if err != nil {

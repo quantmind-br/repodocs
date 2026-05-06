@@ -14,6 +14,20 @@ import (
 	"github.com/quantmind-br/repodocs/internal/domain"
 )
 
+const (
+	// scrollToEndMaxIterations prevents infinite-scroll pages from hanging renders forever;
+	// ten passes covers common lazy-load docs without turning hostile feeds into unbounded work.
+	scrollToEndMaxIterations = 10
+
+	// scrollToEndPause lets newly revealed content, images, and layout shifts settle before
+	// measuring document height again.
+	scrollToEndPause = 300 * time.Millisecond
+
+	// scrollToEndStableThreshold requires repeated unchanged heights so one slow layout tick
+	// does not stop scrolling before client-rendered content appears.
+	scrollToEndStableThreshold = 2
+)
+
 // Renderer provides JavaScript rendering using headless Chrome
 type Renderer struct {
 	browser  *rod.Browser
@@ -227,13 +241,13 @@ func (r *Renderer) scrollToEnd(page *rod.Page) error {
 	lastHeight := result.Value.Int()
 	stableCount := 0
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < scrollToEndMaxIterations; i++ {
 		_, err := page.Eval(`() => window.scrollTo(0, document.body.scrollHeight)`)
 		if err != nil {
 			return err
 		}
 
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(scrollToEndPause)
 
 		result, err := page.Eval(`() => document.body.scrollHeight`)
 		if err != nil {
@@ -243,7 +257,7 @@ func (r *Renderer) scrollToEnd(page *rod.Page) error {
 
 		if newHeight == lastHeight {
 			stableCount++
-			if stableCount >= 2 {
+			if stableCount >= scrollToEndStableThreshold {
 				break
 			}
 		} else {

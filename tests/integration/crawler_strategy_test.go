@@ -70,7 +70,7 @@ func TestIntegration_CrawlerStrategy_Execute_Success(t *testing.T) {
 	}
 
 	// Act
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 
 	// Assert
 	require.NoError(t, err)
@@ -99,7 +99,7 @@ func TestIntegration_CrawlerStrategy_Execute_ContextCancellation(t *testing.T) {
 	cancel()
 
 	// Act
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 
 	// Assert - context cancellation may result in error or early exit
 	// The important thing is that the code path was exercised
@@ -118,7 +118,7 @@ func TestIntegration_CrawlerStrategy_Execute_InvalidURL(t *testing.T) {
 	}
 
 	// Act - invalid URL
-	err := strategy.Execute(ctx, "not-a-valid-url", opts)
+	_, err := strategy.Execute(ctx, "not-a-valid-url", opts)
 
 	// Assert - should return error
 	assert.Error(t, err)
@@ -152,7 +152,7 @@ func TestIntegration_CrawlerStrategy_Execute_Limit(t *testing.T) {
 	}
 
 	// Act
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 
 	// Assert
 	require.NoError(t, err)
@@ -178,7 +178,7 @@ func TestIntegration_CrawlerStrategy_Execute_MaxDepth(t *testing.T) {
 	}
 
 	// Act
-	err := strategy.Execute(ctx, server.URL+"/", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/", opts)
 
 	// Assert
 	require.NoError(t, err)
@@ -208,7 +208,7 @@ func TestIntegration_CrawlerStrategy_Execute_ContentTypeFilter(t *testing.T) {
 	}
 
 	// Act
-	err := strategy.Execute(ctx, server.URL+"/", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/", opts)
 
 	// Assert
 	require.NoError(t, err)
@@ -233,7 +233,7 @@ func TestIntegration_CrawlerStrategy_Execute_DryRun(t *testing.T) {
 	}
 
 	// Act
-	err := strategy.Execute(ctx, server.URL+"/", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/", opts)
 
 	// Assert
 	require.NoError(t, err)
@@ -272,7 +272,7 @@ func TestIntegration_CrawlerStrategy_Execute_MarkdownContent(t *testing.T) {
 		Concurrency:   1,
 	}
 
-	err := strategy.Execute(ctx, server.URL+"/", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/", opts)
 
 	require.NoError(t, err)
 	assert.NotNil(t, deps.Writer)
@@ -297,7 +297,7 @@ func TestIntegration_CrawlerStrategy_Execute_MarkdownURL(t *testing.T) {
 		Concurrency:   1,
 	}
 
-	err := strategy.Execute(ctx, server.URL+"/", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/", opts)
 
 	require.NoError(t, err)
 	assert.NotNil(t, deps.Writer)
@@ -326,7 +326,7 @@ func TestIntegration_CrawlerStrategy_Execute_MixedHTMLAndMarkdown(t *testing.T) 
 		Concurrency:   1,
 	}
 
-	err := strategy.Execute(ctx, server.URL+"/", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/", opts)
 
 	require.NoError(t, err)
 	assert.NotNil(t, deps.Writer)
@@ -366,7 +366,7 @@ func TestIntegration_CrawlerStrategy_Execute_MarkdownExtensions(t *testing.T) {
 				Concurrency:   1,
 			}
 
-			err := strategy.Execute(ctx, server.URL+"/", opts)
+			_, err := strategy.Execute(ctx, server.URL+"/", opts)
 
 			require.NoError(t, err)
 		})

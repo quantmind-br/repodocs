@@ -14,22 +14,27 @@ import (
 	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
+// CloneFetcher clones repositories with go-git when archive download is unavailable.
 type CloneFetcher struct {
 	logger *utils.Logger
 }
 
+// CloneFetcherOptions configures a CloneFetcher.
 type CloneFetcherOptions struct {
 	Logger *utils.Logger
 }
 
+// NewCloneFetcher creates a git clone-based repository fetcher.
 func NewCloneFetcher(opts CloneFetcherOptions) *CloneFetcher {
 	return &CloneFetcher{logger: opts.Logger}
 }
 
+// Name returns the fetch method name used in FetchResult values and logs.
 func (f *CloneFetcher) Name() string {
 	return "clone"
 }
 
+// Fetch clones the repository into destDir and reports the checked-out branch.
 func (f *CloneFetcher) Fetch(ctx context.Context, info *RepoInfo, branch, destDir string) (*FetchResult, error) {
 	if f.logger != nil {
 		f.logger.Info().Str("url", info.URL).Msg("Cloning repository")
@@ -73,6 +78,7 @@ func (f *CloneFetcher) Fetch(ctx context.Context, info *RepoInfo, branch, destDi
 	}, nil
 }
 
+// DetectDefaultBranch asks the remote repository for its HEAD branch name.
 func DetectDefaultBranch(ctx context.Context, url string) (string, error) {
 	cmd := exec.CommandContext(ctx, "git", "ls-remote", "--symref", url, "HEAD")
 	output, err := cmd.Output()

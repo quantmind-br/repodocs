@@ -43,6 +43,7 @@ type ollamaResponse struct {
 	Error              string        `json:"error,omitempty"`
 }
 
+// OllamaProvider implements domain.LLMProvider for local Ollama chat completions.
 type OllamaProvider struct {
 	httpClient  *http.Client
 	baseURL     string
@@ -51,6 +52,7 @@ type OllamaProvider struct {
 	temperature float64
 }
 
+// NewOllamaProvider creates an Ollama provider using cfg and httpClient for local API requests.
 func NewOllamaProvider(cfg ProviderConfig, httpClient *http.Client) (*OllamaProvider, error) {
 	baseURL := strings.TrimSuffix(cfg.BaseURL, "/")
 

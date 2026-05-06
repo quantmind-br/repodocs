@@ -49,7 +49,7 @@ func TestWikiStrategy_Execute_InvalidURL(t *testing.T) {
 	deps := createTestWikiDependencies(t, tempDir)
 	strategy := strategies.NewWikiStrategy(deps)
 
-	err := strategy.Execute(ctx, "https://not-a-valid-wiki-url.com", strategies.DefaultOptions())
+	_, err := strategy.Execute(ctx, "https://not-a-valid-wiki-url.com", strategies.DefaultOptions())
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid wiki URL")
@@ -67,7 +67,7 @@ func TestWikiStrategy_Execute_NonExistentWiki(t *testing.T) {
 	deps := createTestWikiDependencies(t, tempDir)
 	strategy := strategies.NewWikiStrategy(deps)
 
-	err := strategy.Execute(ctx, "https://github.com/nonexistent-owner-xyz/nonexistent-repo-xyz/wiki", strategies.Options{
+	_, err := strategy.Execute(ctx, "https://github.com/nonexistent-owner-xyz/nonexistent-repo-xyz/wiki", strategies.Options{
 		Output: tempDir,
 		CommonOptions: domain.CommonOptions{
 			DryRun: false,
@@ -94,7 +94,7 @@ func TestWikiStrategy_Execute_RealWiki(t *testing.T) {
 	deps := createTestWikiDependencies(t, tempDir)
 	strategy := strategies.NewWikiStrategy(deps)
 
-	err := strategy.Execute(ctx, "https://github.com/Alexays/Waybar/wiki", strategies.Options{
+	_, err := strategy.Execute(ctx, "https://github.com/Alexays/Waybar/wiki", strategies.Options{
 		Output: tempDir,
 		CommonOptions: domain.CommonOptions{
 			Limit:  5,
@@ -129,7 +129,7 @@ func TestWikiStrategy_Execute_DryRun(t *testing.T) {
 	deps := createTestWikiDependencies(t, tempDir)
 	strategy := strategies.NewWikiStrategy(deps)
 
-	err := strategy.Execute(ctx, "https://github.com/Alexays/Waybar/wiki", strategies.Options{
+	_, err := strategy.Execute(ctx, "https://github.com/Alexays/Waybar/wiki", strategies.Options{
 		Output: tempDir,
 		CommonOptions: domain.CommonOptions{
 			Limit:  3,
@@ -156,7 +156,7 @@ func TestWikiStrategy_Execute_ContextCancellation(t *testing.T) {
 	deps := createTestWikiDependencies(t, tempDir)
 	strategy := strategies.NewWikiStrategy(deps)
 
-	err := strategy.Execute(ctx, "https://github.com/Alexays/Waybar/wiki", strategies.Options{
+	_, err := strategy.Execute(ctx, "https://github.com/Alexays/Waybar/wiki", strategies.Options{
 		Output: tempDir,
 	})
 

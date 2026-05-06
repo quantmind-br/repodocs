@@ -10,6 +10,7 @@ import (
 	"github.com/quantmind-br/repodocs/internal/utils"
 )
 
+// Writer saves documents to disk and optionally collects metadata about written files.
 type Writer struct {
 	baseDir      string
 	flat         bool
@@ -19,6 +20,7 @@ type Writer struct {
 	collector    *MetadataCollector
 }
 
+// WriterOptions configures document output paths, overwrite behavior, dry-run mode, and metadata collection.
 type WriterOptions struct {
 	BaseDir      string
 	Flat         bool
@@ -28,6 +30,7 @@ type WriterOptions struct {
 	Collector    *MetadataCollector
 }
 
+// NewWriter creates a writer with the supplied options and default output directory.
 func NewWriter(opts WriterOptions) *Writer {
 	if opts.BaseDir == "" {
 		opts.BaseDir = "./docs"
@@ -90,6 +93,7 @@ func (w *Writer) Write(ctx context.Context, doc *domain.Document) error {
 	return nil
 }
 
+// FlushMetadata writes collected metadata through the configured collector.
 func (w *Writer) FlushMetadata() error {
 	if w.collector != nil {
 		return w.collector.Flush()
@@ -97,6 +101,7 @@ func (w *Writer) FlushMetadata() error {
 	return nil
 }
 
+// WriteMultiple saves each document in docs, stopping if ctx is canceled or a write fails.
 func (w *Writer) WriteMultiple(ctx context.Context, docs []*domain.Document) error {
 	for _, doc := range docs {
 		select {

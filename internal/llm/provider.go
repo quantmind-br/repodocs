@@ -18,6 +18,7 @@ const (
 	DefaultLMStudioBaseURL  = "http://localhost:1234/v1"
 )
 
+// ProviderConfig defines connection, model, timeout, and client settings for an LLM provider.
 type ProviderConfig struct {
 	Provider    string
 	APIKey      string
@@ -49,6 +50,7 @@ func DefaultBaseURL(provider string) string {
 	}
 }
 
+// NewProviderFromConfig validates an LLMConfig and creates the configured provider.
 func NewProviderFromConfig(cfg *config.LLMConfig) (domain.LLMProvider, error) {
 	if cfg.Provider == "" {
 		return nil, domain.ErrLLMNotConfigured
@@ -82,6 +84,7 @@ func NewProviderFromConfig(cfg *config.LLMConfig) (domain.LLMProvider, error) {
 	return NewProvider(pcfg)
 }
 
+// NewProvider creates an LLM provider from cfg, applying default timeouts and HTTP client settings.
 func NewProvider(cfg ProviderConfig) (domain.LLMProvider, error) {
 	timeout := cfg.Timeout
 	if timeout == 0 {
