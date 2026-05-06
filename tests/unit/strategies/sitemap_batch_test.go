@@ -80,7 +80,7 @@ func TestSitemapIndex_BatchProcessing(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Concurrency = 1 // Sequential processing to ensure order
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	require.NoError(t, err)
 
 	// With batch processing, the order should be:
@@ -194,7 +194,7 @@ func TestSitemapIndex_GlobalLimitAcrossBatches(t *testing.T) {
 	opts.Concurrency = 1
 	opts.Force = true // Force processing even if file exists
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	require.NoError(t, err)
 
 	// Should process exactly 10 pages: 8 from first + 2 from second
@@ -269,7 +269,7 @@ func TestSitemapIndex_ErrorInNestedDoesNotBlockOthers(t *testing.T) {
 	opts.Concurrency = 1
 	opts.Force = true
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	require.NoError(t, err)
 
 	// Should process pages from sitemap1 and sitemap2, despite error in sitemap-error
@@ -356,7 +356,7 @@ func TestSitemapIndex_ContextCancellationStopsProcessing(t *testing.T) {
 	opts.Concurrency = 1
 	opts.Force = true
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	// Should return context error
 	if err != nil {
 		assert.Contains(t, err.Error(), "context canceled")
@@ -428,7 +428,7 @@ func TestSitemapIndex_EmptyBatchContinues(t *testing.T) {
 	opts.Concurrency = 1
 	opts.Force = true
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	require.NoError(t, err)
 
 	// Should process 2 pages from sitemap2, skipping empty sitemap

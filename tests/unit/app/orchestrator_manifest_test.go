@@ -23,12 +23,15 @@ type manifestTestStrategy struct {
 
 func (s *manifestTestStrategy) Name() string          { return s.name }
 func (s *manifestTestStrategy) CanHandle(string) bool { return true }
-func (s *manifestTestStrategy) Execute(ctx context.Context, url string, opts strategies.Options) error {
+func (s *manifestTestStrategy) Execute(ctx context.Context, url string, opts strategies.Options) (*domain.StrategyResult, error) {
 	s.execCalls = append(s.execCalls, url)
+	result := domain.NewBasicResult(s.name, url)
+	result.IncWritten()
 	if s.execFunc != nil {
-		return s.execFunc(ctx, url, opts)
+		return result, s.execFunc(ctx, url, opts)
 	}
-	return nil
+	result.Finish()
+	return result, nil
 }
 
 func createTestOrchestrator(t *testing.T, strategy strategies.Strategy) *app.Orchestrator {

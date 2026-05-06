@@ -83,7 +83,7 @@ func TestDocsRSStrategy_Execute_ValidCrate(t *testing.T) {
 
 	strategy := strategies.NewDocsRSStrategy(deps)
 
-	err := strategy.Execute(ctx, "https://docs.rs/std", strategies.Options{
+	_, err := strategy.Execute(ctx, "https://docs.rs/std", strategies.Options{
 		Concurrency: 2,
 		CommonOptions: domain.CommonOptions{
 			Limit: 10,
@@ -119,7 +119,7 @@ func TestDocsRSStrategy_Execute_FetcherError(t *testing.T) {
 	strategy := strategies.NewDocsRSStrategy(deps)
 
 	// Execute the strategy
-	err := strategy.Execute(ctx, "https://docs.rs/std", strategies.Options{})
+	_, err := strategy.Execute(ctx, "https://docs.rs/std", strategies.Options{})
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to fetch rustdoc JSON")
@@ -158,7 +158,7 @@ func TestDocsRSStrategy_Execute_JSONParseError(t *testing.T) {
 
 	strategy := strategies.NewDocsRSStrategy(deps)
 
-	err := strategy.Execute(ctx, "https://docs.rs/std", strategies.Options{})
+	_, err := strategy.Execute(ctx, "https://docs.rs/std", strategies.Options{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to parse rustdoc JSON")
 }
@@ -194,7 +194,7 @@ func TestDocsRSStrategy_Execute_Limit(t *testing.T) {
 
 	strategy := strategies.NewDocsRSStrategy(deps)
 
-	err := strategy.Execute(ctx, "https://docs.rs/mycrate", strategies.Options{
+	_, err := strategy.Execute(ctx, "https://docs.rs/mycrate", strategies.Options{
 		CommonOptions: domain.CommonOptions{
 			Limit: 1,
 		},
@@ -234,7 +234,7 @@ func TestDocsRSStrategy_Execute_DryRun(t *testing.T) {
 
 	strategy := strategies.NewDocsRSStrategy(deps)
 
-	err := strategy.Execute(ctx, "https://docs.rs/mycrate", strategies.Options{})
+	_, err := strategy.Execute(ctx, "https://docs.rs/mycrate", strategies.Options{})
 	require.NoError(t, err)
 }
 
@@ -271,7 +271,7 @@ func TestDocsRSStrategy_Execute_ContextCancellation(t *testing.T) {
 	}
 
 	strategy := strategies.NewDocsRSStrategy(deps)
-	_ = strategy.Execute(ctx, "https://docs.rs/mycrate", strategies.Options{})
+	_, _ = strategy.Execute(ctx, "https://docs.rs/mycrate", strategies.Options{})
 }
 
 // TestDocsRSStrategy_Execute_OldFormatVersion tests format version validation
@@ -305,7 +305,7 @@ func TestDocsRSStrategy_Execute_OldFormatVersion(t *testing.T) {
 
 	strategy := strategies.NewDocsRSStrategy(deps)
 
-	err := strategy.Execute(ctx, "https://docs.rs/oldcrate", strategies.Options{})
+	_, err := strategy.Execute(ctx, "https://docs.rs/oldcrate", strategies.Options{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "format version")
 }
@@ -329,7 +329,7 @@ func TestDocsRSStrategy_Execute_NilFetcher(t *testing.T) {
 
 	strategy := strategies.NewDocsRSStrategy(deps)
 
-	err := strategy.Execute(ctx, "https://docs.rs/std", strategies.Options{})
+	_, err := strategy.Execute(ctx, "https://docs.rs/std", strategies.Options{})
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "fetcher is nil")
@@ -349,7 +349,7 @@ func TestDocsRSStrategy_Execute_NilWriter(t *testing.T) {
 
 	strategy := strategies.NewDocsRSStrategy(deps)
 
-	err := strategy.Execute(ctx, "https://docs.rs/std", strategies.Options{})
+	_, err := strategy.Execute(ctx, "https://docs.rs/std", strategies.Options{})
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "writer is nil")
@@ -374,7 +374,7 @@ func TestDocsRSStrategy_Execute_InvalidURL(t *testing.T) {
 
 	strategy := strategies.NewDocsRSStrategy(deps)
 
-	err := strategy.Execute(ctx, "not-a-valid-url", strategies.Options{})
+	_, err := strategy.Execute(ctx, "not-a-valid-url", strategies.Options{})
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid docs.rs URL")
@@ -399,7 +399,7 @@ func TestDocsRSStrategy_Execute_NonDocsrsURL(t *testing.T) {
 
 	strategy := strategies.NewDocsRSStrategy(deps)
 
-	err := strategy.Execute(ctx, "https://github.com/rust-lang/rust", strategies.Options{})
+	_, err := strategy.Execute(ctx, "https://github.com/rust-lang/rust", strategies.Options{})
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not a docs.rs URL")

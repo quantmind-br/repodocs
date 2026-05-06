@@ -338,7 +338,7 @@ func TestLLMSStrategy_Execute(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	require.NoError(t, err)
 }
 
@@ -385,7 +385,7 @@ func TestLLMSStrategy_Execute_WithFilter(t *testing.T) {
 	opts.FilterURL = "https://example.com/docs"
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	require.NoError(t, err)
 }
 
@@ -433,7 +433,7 @@ func TestLLMSStrategy_Execute_WithLimit(t *testing.T) {
 	opts.Limit = 2
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	require.NoError(t, err)
 }
 
@@ -469,7 +469,7 @@ func TestLLMSStrategy_Execute_EmptyLLMS(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	require.NoError(t, err)
 }
 
@@ -515,7 +515,7 @@ func TestLLMSStrategy_Execute_InvalidLinks(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	require.NoError(t, err)
 }
 
@@ -570,7 +570,7 @@ func TestLLMSStrategy_Execute_ErrorFetchingPage(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	// Should complete even if some pages fail
 	require.NoError(t, err)
 }
@@ -615,7 +615,7 @@ func TestLLMSStrategy_Execute_DryRun(t *testing.T) {
 	opts.DryRun = true
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	require.NoError(t, err)
 }
 
@@ -662,7 +662,7 @@ func TestLLMSStrategy_Execute_ContextCancellation(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	assert.Error(t, err)
 }
 
@@ -725,7 +725,7 @@ This is the full documentation content in plain text format.
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	require.NoError(t, err)
 
 	assert.Equal(t, "text/plain", servedContentTypes["/llms-full.txt"], "Expected .txt file to be served as text/plain")
@@ -775,7 +775,7 @@ but without a .txt extension in the URL.`))
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	require.NoError(t, err)
 }
 
@@ -838,7 +838,7 @@ func TestLLMSStrategy_Execute_MixedContentTypes(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	require.NoError(t, err)
 
 	assert.True(t, processedFiles["/docs.txt"], "Expected docs.txt to be processed")
@@ -892,6 +892,6 @@ Check [API Reference](https://example.com/api) for details.`))
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/llms.txt", opts)
 	require.NoError(t, err)
 }

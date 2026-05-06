@@ -56,7 +56,7 @@ func TestWikiStrategy_Execute(t *testing.T) {
 
 	url := "https://github.com/owner/repo/wiki"
 
-	err := strategy.Execute(ctx, url, opts)
+	_, err := strategy.Execute(ctx, url, opts)
 	require.NoError(t, err)
 
 	assert.FileExists(t, filepath.Join(outputDir, "index.md"))

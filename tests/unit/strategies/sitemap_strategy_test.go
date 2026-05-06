@@ -146,7 +146,7 @@ func TestSitemapStrategy_Execute(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	require.NoError(t, err)
 }
 
@@ -194,7 +194,7 @@ func TestSitemapStrategy_Execute_Gzipped(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml.gz", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml.gz", opts)
 	require.NoError(t, err)
 }
 
@@ -234,7 +234,7 @@ func TestSitemapStrategy_Execute_WithLimit(t *testing.T) {
 	opts.Limit = 2
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	require.NoError(t, err)
 }
 
@@ -261,7 +261,7 @@ func TestSitemapStrategy_Execute_EmptySitemap(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	require.NoError(t, err)
 }
 
@@ -286,7 +286,7 @@ func TestSitemapStrategy_Execute_InvalidXML(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	assert.Error(t, err)
 }
 
@@ -328,7 +328,7 @@ func TestSitemapStrategy_Execute_ErrorFetchingPage(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	// Should complete even if some pages fail
 	require.NoError(t, err)
 }
@@ -365,7 +365,7 @@ func TestSitemapStrategy_Execute_DryRun(t *testing.T) {
 	opts.DryRun = true
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	require.NoError(t, err)
 }
 
@@ -404,7 +404,7 @@ func TestSitemapStrategy_Execute_ContextCancellation(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	if err != nil {
 		assert.Contains(t, err.Error(), "context canceled")
 	}
@@ -453,7 +453,7 @@ func TestSitemapStrategy_Execute_WithLastMod(t *testing.T) {
 	opts.Limit = 2 // Should get the 2 most recent
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	require.NoError(t, err)
 }
 
@@ -491,7 +491,7 @@ This is a markdown file.`))
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	require.NoError(t, err)
 }
 
@@ -552,6 +552,6 @@ func TestSitemapStrategy_Execute_SitemapIndex(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
+	_, err := strategy.Execute(ctx, server.URL+"/sitemap.xml", opts)
 	require.NoError(t, err)
 }

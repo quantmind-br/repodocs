@@ -44,7 +44,7 @@ func TestPkgGoStrategy_Execute_Success(t *testing.T) {
 	strategy := strategies.NewPkgGoStrategy(deps)
 
 	// Act
-	err = strategy.Execute(ctx, server.URL+"/fmt", strategies.DefaultOptions())
+	_, err = strategy.Execute(ctx, server.URL+"/fmt", strategies.DefaultOptions())
 
 	// Assert
 	require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestPkgGoStrategy_Execute_SplitSections(t *testing.T) {
 			DryRun: false,
 		},
 	}
-	err = strategy.Execute(ctx, server.URL+"/fmt", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/fmt", opts)
 
 	// Assert
 	require.NoError(t, err)
@@ -144,7 +144,7 @@ func TestPkgGoStrategy_Execute_DryRun(t *testing.T) {
 			DryRun: true,
 		},
 	}
-	err = strategy.Execute(ctx, server.URL+"/fmt", opts)
+	_, err = strategy.Execute(ctx, server.URL+"/fmt", opts)
 
 	// Assert
 	require.NoError(t, err)
@@ -173,7 +173,8 @@ func TestPkgGoStrategy_Execute_ContextCancellation(t *testing.T) {
 	// Start the execution in a goroutine
 	errChan := make(chan error, 1)
 	go func() {
-		errChan <- strategy.Execute(ctx, server.URL+"/slow", strategies.DefaultOptions())
+		_, err := strategy.Execute(ctx, server.URL+"/slow", strategies.DefaultOptions())
+		errChan <- err
 	}()
 
 	// Give it a moment to start
@@ -206,7 +207,7 @@ func TestPkgGoStrategy_Execute_FetchError(t *testing.T) {
 	strategy := strategies.NewPkgGoStrategy(deps)
 
 	// Act
-	err := strategy.Execute(ctx, server.URL+"/nonexistent", strategies.DefaultOptions())
+	_, err := strategy.Execute(ctx, server.URL+"/nonexistent", strategies.DefaultOptions())
 
 	// Assert
 	require.Error(t, err)

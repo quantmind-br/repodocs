@@ -13,6 +13,7 @@ import (
 
 	"github.com/quantmind-br/repodocs/internal/app"
 	"github.com/quantmind-br/repodocs/internal/config"
+	"github.com/quantmind-br/repodocs/internal/domain"
 	"github.com/quantmind-br/repodocs/internal/manifest"
 	"github.com/quantmind-br/repodocs/internal/strategies"
 )
@@ -39,7 +40,7 @@ func newParallelTestStrategy(name string, delay time.Duration) *parallelTestStra
 
 func (s *parallelTestStrategy) Name() string          { return s.name }
 func (s *parallelTestStrategy) CanHandle(string) bool { return true }
-func (s *parallelTestStrategy) Execute(ctx context.Context, url string, opts strategies.Options) error {
+func (s *parallelTestStrategy) Execute(ctx context.Context, url string, opts strategies.Options) (*domain.StrategyResult, error) {
 	startTime := time.Now()
 
 	s.mu.Lock()
@@ -51,7 +52,7 @@ func (s *parallelTestStrategy) Execute(ctx context.Context, url string, opts str
 	if s.delay > 0 {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil, ctx.Err()
 		case <-time.After(s.delay):
 		}
 	}
@@ -61,9 +62,13 @@ func (s *parallelTestStrategy) Execute(ctx context.Context, url string, opts str
 	s.mu.Unlock()
 
 	if s.execFunc != nil {
-		return s.execFunc(ctx, url, opts)
+		return nil, s.execFunc(ctx, url, opts)
 	}
-	return nil
+
+	result := domain.NewBasicResult(s.name, url)
+	result.IncWritten()
+	result.Finish()
+	return result, nil
 }
 
 func (s *parallelTestStrategy) getExecCalls() []string {

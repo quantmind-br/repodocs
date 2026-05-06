@@ -169,7 +169,7 @@ func TestCrawlerStrategy_Execute_SimpleHTML(t *testing.T) {
 	opts.MaxDepth = 0 // Only root page
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	require.NoError(t, err)
 }
 
@@ -203,7 +203,7 @@ This is a test markdown file.
 	opts.MaxDepth = 0
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	require.NoError(t, err)
 }
 
@@ -241,7 +241,7 @@ func TestCrawlerStrategy_Execute_WithExclude(t *testing.T) {
 	opts.Concurrency = 1
 	opts.Exclude = []string{"/admin", "/api"}
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	require.NoError(t, err)
 
 	// Verify that admin links were excluded
@@ -282,7 +282,7 @@ func TestCrawlerStrategy_Execute_WithLimit(t *testing.T) {
 	opts.Limit = 2 // Only process 2 pages
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	require.NoError(t, err)
 
 	// Should have limited the number of pages processed
@@ -324,7 +324,7 @@ func TestCrawlerStrategy_Execute_ContextCancellation(t *testing.T) {
 	opts.MaxDepth = 1
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "context canceled")
 }
@@ -351,7 +351,7 @@ func TestCrawlerStrategy_Execute_NonHTMLContent(t *testing.T) {
 	opts.MaxDepth = 0
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	// Should complete without error even if it skips non-HTML content
 	require.NoError(t, err)
 }
@@ -384,7 +384,7 @@ func TestCrawlerStrategy_Execute_DryRun(t *testing.T) {
 	opts.Concurrency = 1
 	opts.DryRun = true
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	require.NoError(t, err)
 
 	// In dry run mode, files should not be written
@@ -411,7 +411,7 @@ func TestCrawlerStrategy_Execute_WithError(t *testing.T) {
 	opts.MaxDepth = 0
 	opts.Concurrency = 1
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	// Crawler should handle errors gracefully
 	// It may return error or complete with warnings
 	if err != nil {

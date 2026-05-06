@@ -145,7 +145,7 @@ func TestE2E_CrawlMockSite(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	err = crawler.Execute(ctx, server.URL, strategies.Options{
+	_, err = crawler.Execute(ctx, server.URL, strategies.Options{
 		MaxDepth:    2,
 		Concurrency: 2,
 		CommonOptions: domain.CommonOptions{
@@ -247,7 +247,7 @@ func TestE2E_CrawlWithLimit(t *testing.T) {
 	defer cancel()
 
 	// Crawl with limit of 5
-	err = crawler.Execute(ctx, server.URL, strategies.Options{
+	_, err = crawler.Execute(ctx, server.URL, strategies.Options{
 		MaxDepth:    2,
 		Concurrency: 2,
 		CommonOptions: domain.CommonOptions{
@@ -341,7 +341,7 @@ func TestE2E_CrawlWithExclude(t *testing.T) {
 	defer cancel()
 
 	// Crawl with exclusions
-	err = crawler.Execute(ctx, server.URL, strategies.Options{
+	_, err = crawler.Execute(ctx, server.URL, strategies.Options{
 		MaxDepth:    2,
 		Concurrency: 1,
 		Exclude:     []string{".*/admin.*", ".*/login.*"},
@@ -460,7 +460,7 @@ Creates a new user.
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	err = crawler.Execute(ctx, server.URL, strategies.Options{
+	_, err = crawler.Execute(ctx, server.URL, strategies.Options{
 		MaxDepth:    2,
 		Concurrency: 1,
 		CommonOptions: domain.CommonOptions{

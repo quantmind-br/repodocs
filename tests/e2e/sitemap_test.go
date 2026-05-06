@@ -155,7 +155,7 @@ func TestE2E_SitemapParsing(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	err = sitemapStrategy.Execute(ctx, server.URL+"/sitemap.xml", strategies.Options{
+	_, err = sitemapStrategy.Execute(ctx, server.URL+"/sitemap.xml", strategies.Options{
 		Concurrency: 2,
 		CommonOptions: domain.CommonOptions{
 			Limit:  10,
@@ -259,7 +259,7 @@ func TestE2E_SitemapIndex(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	err = sitemapStrategy.Execute(ctx, server.URL+"/sitemap.xml", strategies.Options{
+	_, err = sitemapStrategy.Execute(ctx, server.URL+"/sitemap.xml", strategies.Options{
 		Concurrency: 2,
 		CommonOptions: domain.CommonOptions{
 			Limit: 10,
@@ -341,7 +341,7 @@ func TestE2E_SitemapWithLimit(t *testing.T) {
 	defer cancel()
 
 	// Limit to 5 pages
-	err = sitemapStrategy.Execute(ctx, server.URL+"/sitemap.xml", strategies.Options{
+	_, err = sitemapStrategy.Execute(ctx, server.URL+"/sitemap.xml", strategies.Options{
 		Concurrency: 2,
 		CommonOptions: domain.CommonOptions{
 			Limit: 5,
@@ -364,4 +364,110 @@ func TestE2E_SitemapWithLimit(t *testing.T) {
 
 	// Should respect the limit
 	assert.LessOrEqual(t, fileCount, 5, "Should respect the limit of 5 pages")
+}
+
+func TestE2E_SitemapFilterZeroedFailsLoudly(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	// Create a mock server with sitemap whose URLs all fall outside the filter.
+	// This replicates the doc.rust-lang.org scenario where --filter /book/
+	// excludes every URL in the sitemap.
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/sitemap.xml", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml")
+		baseURL := "http://" + r.Host
+		w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+		<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+			<url><loc>` + baseURL + `/reference/foo</loc></url>
+			<url><loc>` + baseURL + `/std/bar</loc></url>
+			<url><loc>` + baseURL + `/cargo/baz</loc></url>
+		</urlset>`))
+	})
+
+	// Serve pages (they exist, but the filter should exclude them before fetching)
+	mux.HandleFunc("/reference/foo", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<html><body><h1>Reference</h1></body></html>`))
+	})
+	mux.HandleFunc("/std/bar", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<html><body><h1>Std</h1></body></html>`))
+	})
+	mux.HandleFunc("/cargo/baz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<html><body><h1>Cargo</h1></body></html>`))
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	tmpDir, err := os.MkdirTemp("", "repodocs-e2e-filter-zeroed-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	fetcherClient, _ := fetcher.NewClient(fetcher.ClientOptions{Timeout: 10 * time.Second})
+	defer fetcherClient.Close()
+
+	cacheClient, _ := cache.NewBadgerCache(cache.Options{InMemory: true})
+	defer cacheClient.Close()
+
+	logger := utils.NewLogger(utils.LoggerOptions{Level: "error"})
+	pipeline := converter.NewPipeline(converter.PipelineOptions{BaseURL: server.URL})
+	writer := output.NewWriter(output.WriterOptions{BaseDir: tmpDir, Force: true})
+
+	deps := &strategies.Dependencies{
+		Fetcher:   fetcherClient,
+		Cache:     cacheClient,
+		Converter: pipeline,
+		Writer:    writer,
+		Logger:    logger,
+	}
+
+	sitemapStrategy := strategies.NewSitemapStrategy(deps)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Filter for /book/ — none of the sitemap URLs match
+	result, err := sitemapStrategy.Execute(ctx, server.URL+"/sitemap.xml", strategies.Options{
+		Concurrency: 2,
+		FilterURL:   server.URL + "/book/",
+	})
+
+	// Strategy itself returns nil error (the counter/diagnostics are in the result)
+	// The validator would catch this at the orchestrator level
+	require.NoError(t, err, "strategy should not return error for filter zeroed")
+	require.NotNil(t, result)
+
+	snapshot := result.Snapshot()
+
+	// After filtering, discovered count reflects only URLs matching the filter
+	// All 3 sitemap URLs were excluded by the /book/ filter
+	t.Logf("filter_zeroed result: discovered=%d attempted=%d written=%d skipped=%d",
+		snapshot.URLsDiscovered, snapshot.URLsAttempted,
+		snapshot.DocsWritten, snapshot.DocsSkipped)
+
+	// Zero URLs passed the filter, so attempted and written must be 0
+	assert.Equal(t, 0, snapshot.URLsAttempted,
+		"filter should exclude all URLs, Attempted must be 0")
+	assert.Equal(t, 0, snapshot.DocsWritten,
+		"no docs should be written when filter excludes all URLs")
+
+	// Must carry the filter_zeroed diagnostic
+	found := false
+	for _, d := range result.Diagnostics {
+		if d.Code == domain.DiagFilterZeroed {
+			found = true
+			assert.Contains(t, d.Message, "filter")
+			break
+		}
+	}
+	assert.True(t, found, "result must contain DiagFilterZeroed diagnostic")
+
+	// Verify CompletedDocs() returns 0 (no docs written or skipped)
+	assert.Equal(t, 0, result.CompletedDocs(),
+		"CompletedDocs must be 0 when filter excludes everything")
 }

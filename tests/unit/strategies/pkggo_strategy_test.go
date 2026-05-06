@@ -133,7 +133,7 @@ func TestPkgGoStrategy_Execute(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Output = tmpDir
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	require.NoError(t, err)
 }
 
@@ -199,7 +199,7 @@ func TestPkgGoStrategy_Execute_SplitMode(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Split = true
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	require.NoError(t, err)
 }
 
@@ -234,7 +234,7 @@ func TestPkgGoStrategy_Execute_EmptyDocumentation(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Output = tmpDir
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	require.NoError(t, err)
 }
 
@@ -270,7 +270,7 @@ func TestPkgGoStrategy_Execute_MissingDocumentationContent(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Output = tmpDir
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	require.NoError(t, err)
 }
 
@@ -322,7 +322,7 @@ func TestPkgGoStrategy_Execute_SplitModeWithEmptySections(t *testing.T) {
 	opts.Output = tmpDir
 	opts.Split = true
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	require.NoError(t, err)
 }
 
@@ -359,7 +359,7 @@ func TestPkgGoStrategy_Execute_DryRun(t *testing.T) {
 	opts.Output = tmpDir
 	opts.DryRun = true
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	require.NoError(t, err)
 }
 
@@ -381,7 +381,7 @@ func TestPkgGoStrategy_Execute_ErrorFetching(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Output = tmpDir
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	assert.Error(t, err)
 }
 
@@ -405,7 +405,7 @@ func TestPkgGoStrategy_Execute_InvalidHTML(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Output = tmpDir
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	// Should handle invalid HTML gracefully
 	if err != nil {
 		assert.NotEmpty(t, err.Error())
@@ -446,7 +446,7 @@ func TestPkgGoStrategy_Execute_ContextCancellation(t *testing.T) {
 	opts := strategies.DefaultOptions()
 	opts.Output = tmpDir
 
-	err := strategy.Execute(ctx, server.URL, opts)
+	_, err := strategy.Execute(ctx, server.URL, opts)
 	if err != nil {
 		assert.Contains(t, err.Error(), "context canceled")
 	}
@@ -507,7 +507,7 @@ func TestPkgGoStrategy_Execute_PackageNameExtraction(t *testing.T) {
 			opts := strategies.DefaultOptions()
 			opts.Output = tmpDir
 
-			err := strategy.Execute(ctx, server.URL, opts)
+			_, err := strategy.Execute(ctx, server.URL, opts)
 			require.NoError(t, err)
 		})
 	}

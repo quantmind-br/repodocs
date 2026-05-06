@@ -47,7 +47,7 @@ func TestGitStrategy_Execute_PathFiltering(t *testing.T) {
 		opts.Output = filepath.Join(outputDir, "basic-run")
 
 		// Basic extraction - should work even if no .md files are found
-		err := strategy.Execute(context.Background(), repoURL, opts)
+		_, err := strategy.Execute(context.Background(), repoURL, opts)
 		require.NoError(t, err)
 
 		// The test completes without error
@@ -62,7 +62,7 @@ func TestGitStrategy_Execute_PathFiltering(t *testing.T) {
 		// Using a non-existent filter path to test error handling
 		opts.FilterURL = "this-directory-definitely-does-not-exist-12345"
 
-		err := strategy.Execute(context.Background(), repoURL, opts)
+		_, err := strategy.Execute(context.Background(), repoURL, opts)
 		// Should fail with clear error message
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "filter path")
@@ -74,7 +74,7 @@ func TestGitStrategy_Execute_PathFiltering(t *testing.T) {
 		opts.DryRun = true
 
 		// Dry run should not create any files
-		err := strategy.Execute(context.Background(), repoURL, opts)
+		_, err := strategy.Execute(context.Background(), repoURL, opts)
 		require.NoError(t, err)
 
 		// Verify no files were created
@@ -129,7 +129,7 @@ func TestGitStrategy_RealPublicRepo(t *testing.T) {
 			opts := strategies.DefaultOptions()
 			opts.Output = filepath.Join(outputDir, tt.name)
 
-			err := strategy.Execute(ctx, tt.repoURL, opts)
+			_, err := strategy.Execute(ctx, tt.repoURL, opts)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -166,7 +166,7 @@ func TestGitStrategy_WithSubdirectory(t *testing.T) {
 	opts.Output = filepath.Join(outputDir, "subdir-test")
 	opts.FilterURL = "hello" // Test specific subdirectory that doesn't have docs
 
-	err := strategy.Execute(context.Background(), repoURL, opts)
+	_, err := strategy.Execute(context.Background(), repoURL, opts)
 	// When a filter path is specified and no files are found, it returns an error
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no documentation files found under path: hello")
@@ -219,7 +219,7 @@ func TestGitStrategy_InvalidRepo(t *testing.T) {
 			opts := strategies.DefaultOptions()
 			opts.Output = filepath.Join(outputDir, tt.name)
 
-			err := strategy.Execute(ctx, tt.repoURL, opts)
+			_, err := strategy.Execute(ctx, tt.repoURL, opts)
 			assert.Error(t, err, "Should return error for invalid repository")
 		})
 	}
@@ -259,7 +259,7 @@ func TestGitStrategy_Concurrency(t *testing.T) {
 			opts := strategies.DefaultOptions()
 			opts.Output = filepath.Join(outputDir, "concurrent", strconv.Itoa(index))
 
-			err := strategy.Execute(ctx, repoURL, opts)
+			_, err := strategy.Execute(ctx, repoURL, opts)
 			done <- err
 		}(i)
 	}

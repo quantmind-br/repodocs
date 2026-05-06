@@ -28,6 +28,7 @@ type testStrategy struct {
 	execCalled bool
 	lastOpts   strategies.Options
 	execFunc   func(ctx context.Context, url string, opts strategies.Options) error
+	resultFunc func(url string) *domain.StrategyResult
 }
 
 func (s *testStrategy) Name() string {
@@ -38,16 +39,23 @@ func (s *testStrategy) CanHandle(url string) bool {
 	return s.canHandle
 }
 
-func (s *testStrategy) Execute(ctx context.Context, url string, opts strategies.Options) error {
+func (s *testStrategy) Execute(ctx context.Context, url string, opts strategies.Options) (*domain.StrategyResult, error) {
 	s.execCalled = true
 	s.lastOpts = opts
+	result := domain.NewBasicResult(s.name, url)
+	if s.resultFunc != nil {
+		result = s.resultFunc(url)
+	} else {
+		result.IncWritten()
+	}
 	if s.execFunc != nil {
-		return s.execFunc(ctx, url, opts)
+		return result, s.execFunc(ctx, url, opts)
 	}
 	if ctx.Err() != nil {
-		return ctx.Err()
+		return result, ctx.Err()
 	}
-	return s.execErr
+	result.Finish()
+	return result, s.execErr
 }
 
 func TestNewOrchestrator_Success(t *testing.T) {
@@ -205,7 +213,7 @@ type urlCapturingStrategy struct {
 	capturedURL *string
 }
 
-func (s *urlCapturingStrategy) Execute(ctx context.Context, url string, opts strategies.Options) error {
+func (s *urlCapturingStrategy) Execute(ctx context.Context, url string, opts strategies.Options) (*domain.StrategyResult, error) {
 	*s.capturedURL = url
 	return s.testStrategy.Execute(ctx, url, opts)
 }
@@ -836,4 +844,109 @@ func TestOrchestrator_Run_NoSitemapFallbackToCrawler(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, app.StrategyCrawler, capturedType,
 		"Should remain crawler when no sitemap is discovered")
+}
+
+func TestOrchestrator_Run_EmptyOutcomeReturnsHelpfulError(t *testing.T) {
+	cfg := config.Default()
+	cfg.Output.Directory = t.TempDir()
+	cfg.Cache.Enabled = false
+
+	mockStrategy := &testStrategy{
+		name:      "sitemap",
+		canHandle: true,
+		resultFunc: func(url string) *domain.StrategyResult {
+			r := domain.NewStrategyResult("sitemap", url)
+			r.AddDiscovered(3)
+			r.AddDiagnostic(domain.DiagFilterZeroed, "URL filter excluded every sitemap URL", "try crawler")
+			return r
+		},
+	}
+
+	opts := app.OrchestratorOptions{
+		Config:    cfg,
+		FilterURL: "https://example.com/book/",
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			return mockStrategy
+		},
+	}
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+
+	err = orchestrator.Run(context.Background(), "https://example.com", opts)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "filter_zeroed")
+	assert.Contains(t, err.Error(), "Discovered:  3 URLs")
+	assert.Contains(t, err.Error(), "Attempted:   0 URLs")
+	assert.Contains(t, err.Error(), "filtered URL as the entry point")
+}
+
+func TestOrchestrator_Run_SkippedOutcomeIsSuccess(t *testing.T) {
+	cfg := config.Default()
+	cfg.Output.Directory = t.TempDir()
+	cfg.Cache.Enabled = false
+	mockStrategy := &testStrategy{
+		name:      "crawler",
+		canHandle: true,
+		resultFunc: func(url string) *domain.StrategyResult {
+			r := domain.NewStrategyResult("crawler", url)
+			r.IncAttempted()
+			r.IncSkipped()
+			return r
+		},
+	}
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			return mockStrategy
+		},
+	}
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+	assert.NoError(t, orchestrator.Run(context.Background(), "https://example.com", opts))
+}
+
+func TestOrchestrator_Run_DryRunAttemptedOutcomeIsSuccess(t *testing.T) {
+	cfg := config.Default()
+	cfg.Output.Directory = t.TempDir()
+	cfg.Cache.Enabled = false
+	mockStrategy := &testStrategy{
+		name:      "crawler",
+		canHandle: true,
+		resultFunc: func(url string) *domain.StrategyResult {
+			r := domain.NewStrategyResult("crawler", url)
+			r.IncAttempted()
+			return r
+		},
+	}
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+		CommonOptions: domain.CommonOptions{DryRun: true},
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			return mockStrategy
+		},
+	}
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+	assert.NoError(t, orchestrator.Run(context.Background(), "https://example.com", opts))
+}
+
+func TestOrchestrator_Run_TransientErrorPropagates(t *testing.T) {
+	cfg := config.Default()
+	cfg.Output.Directory = t.TempDir()
+	cfg.Cache.Enabled = false
+	mockStrategy := &testStrategy{name: "crawler", canHandle: true, execErr: domain.ErrTimeout}
+	opts := app.OrchestratorOptions{
+		Config: cfg,
+		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
+			return mockStrategy
+		},
+	}
+	orchestrator, err := app.NewOrchestrator(opts)
+	require.NoError(t, err)
+	defer orchestrator.Close()
+	err = orchestrator.Run(context.Background(), "https://example.com", opts)
+	assert.ErrorIs(t, err, domain.ErrTimeout)
 }
