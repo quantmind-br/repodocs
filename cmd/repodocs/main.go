@@ -96,6 +96,8 @@ func init() {
 	rootCmd.PersistentFlags().Bool("full-sync", false, "Force full re-processing (ignore state)")
 	rootCmd.PersistentFlags().Bool("prune", false, "Remove files for deleted pages")
 
+	// Strategy override
+	rootCmd.PersistentFlags().String("strategy", "", "Force extraction strategy: llms, pkggo, docsrs, sitemap, wiki, github_pages, git, crawler")
 	// Bind flags to viper
 	_ = viper.BindPFlag("output.directory", rootCmd.PersistentFlags().Lookup("output"))
 	_ = viper.BindPFlag("concurrency.workers", rootCmd.PersistentFlags().Lookup("concurrency"))
@@ -190,6 +192,7 @@ func run(cmd *cobra.Command, args []string) error {
 	syncEnabled, _ := cmd.Flags().GetBool("sync")
 	fullSync, _ := cmd.Flags().GetBool("full-sync")
 	prune, _ := cmd.Flags().GetBool("prune")
+	strategyOverride, _ := cmd.Flags().GetString("strategy")
 
 	orchOpts := app.OrchestratorOptions{
 		CommonOptions: domain.CommonOptions{
@@ -202,13 +205,14 @@ func run(cmd *cobra.Command, args []string) error {
 			FullSync: fullSync,
 			Prune:    prune,
 		},
-		Config:          cfg,
-		Split:           split,
-		IncludeAssets:   includeAssets,
-		ContentSelector: contentSelector,
-		ExcludeSelector: excludeSelector,
-		ExcludePatterns: excludePatterns,
-		FilterURL:       filterURL,
+		Config:           cfg,
+		Split:            split,
+		IncludeAssets:    includeAssets,
+		ContentSelector:  contentSelector,
+		ExcludeSelector:  excludeSelector,
+		ExcludePatterns:  excludePatterns,
+		FilterURL:        filterURL,
+		StrategyOverride: strategyOverride,
 	}
 
 	// Create orchestrator
@@ -268,6 +272,7 @@ func runManifest(cmd *cobra.Command, cfg *config.Config) error {
 	syncEnabled, _ := cmd.Flags().GetBool("sync")
 	fullSync, _ := cmd.Flags().GetBool("full-sync")
 	prune, _ := cmd.Flags().GetBool("prune")
+	strategyOverride, _ := cmd.Flags().GetString("strategy")
 
 	orchOpts := app.OrchestratorOptions{
 		CommonOptions: domain.CommonOptions{
@@ -280,13 +285,14 @@ func runManifest(cmd *cobra.Command, cfg *config.Config) error {
 			FullSync: fullSync,
 			Prune:    prune,
 		},
-		Config:          cfg,
-		Split:           split,
-		IncludeAssets:   includeAssets,
-		ContentSelector: contentSelector,
-		ExcludeSelector: excludeSelector,
-		ExcludePatterns: excludePatterns,
-		FilterURL:       filterURL,
+		Config:           cfg,
+		Split:            split,
+		IncludeAssets:    includeAssets,
+		ContentSelector:  contentSelector,
+		ExcludeSelector:  excludeSelector,
+		ExcludePatterns:  excludePatterns,
+		FilterURL:        filterURL,
+		StrategyOverride: strategyOverride,
 	}
 
 	orchestrator, err := app.NewOrchestrator(orchOpts)
