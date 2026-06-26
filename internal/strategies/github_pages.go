@@ -514,7 +514,7 @@ func (s *GitHubPagesStrategy) processURLs(ctx context.Context, urls []string, op
 	}
 
 	snap := result.Snapshot()
-	if snap.URLsAttempted > 0 && snap.DocsWritten == 0 && snap.DocsSkipped == 0 {
+	if snap.URLsAttempted > 0 && snap.DocsWritten == 0 && snap.DocsSkipped == 0 && snap.DocsFailed > 0 {
 		result.AddDiagnostic(domain.DiagAllFetchesFailed,
 			"All page fetch attempts failed",
 			"Verify the site is accessible and not blocking automated access")

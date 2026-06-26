@@ -171,6 +171,8 @@ func (p *Processor) ProcessFile(ctx context.Context, path, tmpDir string, opts P
 				p.logger.Warn().Err(convErr).Str("file", relPath).Msg("RST conversion failed, falling back to raw")
 			}
 			doc.Content = "```\n" + string(content) + "\n```"
+			doc.WordCount = len(strings.Fields(doc.Content))
+			doc.CharCount = len(doc.Content)
 		} else {
 			doc.Content = string(md)
 			doc.WordCount = len(strings.Fields(doc.Content))
@@ -178,6 +180,8 @@ func (p *Processor) ProcessFile(ctx context.Context, path, tmpDir string, opts P
 		}
 	case ext != ".md" && ext != ".mdx":
 		doc.Content = "```\n" + string(content) + "\n```"
+		doc.WordCount = len(strings.Fields(doc.Content))
+		doc.CharCount = len(doc.Content)
 	}
 
 	if opts.StateManager != nil {
@@ -197,7 +201,12 @@ func (p *Processor) ProcessFile(ctx context.Context, path, tmpDir string, opts P
 			return err
 		}
 		opts.Result.IncWritten()
-		opts.Result.AddBytesWritten(int64(len(content)))
+		opts.Result.AddBytesWritten(int64(len(doc.Content)))
+	} else {
+		// Dry-run (or no writer configured): the file was processed but not
+		// written. Count it as skipped so URLsAttempted stays consistent with
+		// the terminal counters (written + skipped + failed).
+		opts.Result.IncSkipped()
 	}
 
 	return nil

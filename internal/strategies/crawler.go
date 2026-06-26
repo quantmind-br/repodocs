@@ -160,10 +160,6 @@ func (s *CrawlerStrategy) processResponse(ctx context.Context, r *colly.Response
 		return
 	}
 
-	if cctx.result != nil {
-		cctx.result.IncAttempted()
-	}
-
 	cctx.mu.Lock()
 	if cctx.opts.Limit > 0 && *cctx.processedCount >= cctx.opts.Limit {
 		cctx.mu.Unlock()
@@ -171,6 +167,13 @@ func (s *CrawlerStrategy) processResponse(ctx context.Context, r *colly.Response
 	}
 	*cctx.processedCount++
 	cctx.mu.Unlock()
+
+	// Count the attempt only after the response clears the limit gate, so
+	// URLsAttempted tracks URLs actually processed (matching the terminal
+	// IncWritten/IncSkipped/IncFailed counters) rather than every response.
+	if cctx.result != nil {
+		cctx.result.IncAttempted()
+	}
 
 	cctx.barMu.Lock()
 	cctx.bar.Add(1)
@@ -350,6 +353,9 @@ func (s *CrawlerStrategy) execute(ctx context.Context, url string, opts Options,
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
+		// A transport-level failure is still an attempt; count it so the validator
+		// can distinguish "all fetches failed" from "nothing was attempted".
+		result.IncAttempted()
 		result.IncFailed()
 		s.logger.Debug().Err(err).Str("url", r.Request.URL.String()).Msg("Request failed")
 	})
@@ -374,7 +380,7 @@ func (s *CrawlerStrategy) execute(ctx context.Context, url string, opts Options,
 
 	// Phase 2 diagnostics
 	snap := result.Snapshot()
-	if snap.URLsAttempted > 0 && snap.DocsWritten == 0 && snap.DocsSkipped == 0 {
+	if snap.URLsAttempted > 0 && snap.DocsWritten == 0 && snap.DocsSkipped == 0 && snap.DocsFailed > 0 {
 		result.AddDiagnostic(domain.DiagAllFetchesFailed,
 			"All fetch attempts failed",
 			"Verify target is reachable; try without --render-js or with --crawl")

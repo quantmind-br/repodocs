@@ -411,8 +411,12 @@ func TestOrchestrator_Run_StrategyError(t *testing.T) {
 
 	// Assert
 	require.Error(t, err)
+	// Phase 5 self-healing wraps the strategy failure in an OutcomeError; the
+	// human-facing string carries the verdict reason, while the original cause
+	// stays reachable through Unwrap (errors.Is).
+	assert.Contains(t, err.Error(), "extraction outcome unsatisfactory")
 	assert.Contains(t, err.Error(), "strategy execution failed")
-	assert.Contains(t, err.Error(), "mock strategy execution failed")
+	assert.ErrorIs(t, err, expectedErr)
 }
 
 func TestOrchestrator_Close(t *testing.T) {

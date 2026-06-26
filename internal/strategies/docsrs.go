@@ -160,12 +160,12 @@ func (s *DocsRSStrategy) execute(ctx context.Context, rawURL string, opts Option
 
 	index, err := s.fetchRustdocJSON(ctx, baseInfo.CrateName, baseInfo.Version)
 	if err != nil {
-		result.IncFailed()
+		// Discovery-phase failures (no document attempted yet) are reported via
+		// the returned error; do not inflate the DocsFailed counter.
 		return fmt.Errorf("failed to fetch rustdoc JSON: %w", err)
 	}
 
 	if err := s.checkFormatVersion(index.FormatVersion); err != nil {
-		result.IncFailed()
 		return err
 	}
 

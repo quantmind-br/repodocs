@@ -141,7 +141,7 @@ func (v *Validator) criteriaFor(opts ValidationOptions) Criteria {
 	return criteria
 }
 
-func diagnosticsOrDefault(snapshot domain.StrategyResult, code domain.DiagnosticCode, message string) []domain.Diagnostic {
+func diagnosticsOrDefault(snapshot domain.StrategyResultSnapshot, code domain.DiagnosticCode, message string) []domain.Diagnostic {
 	if len(snapshot.Diagnostics) > 0 {
 		return snapshot.Diagnostics
 	}

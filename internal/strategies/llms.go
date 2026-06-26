@@ -94,7 +94,8 @@ func (s *LLMSStrategy) execute(ctx context.Context, url string, opts Options, re
 
 	resp, err := s.fetcher.Get(ctx, url)
 	if err != nil {
-		result.IncFailed()
+		// Failing to fetch the llms.txt source itself is a discovery failure;
+		// no document was attempted, so do not inflate DocsFailed.
 		return err
 	}
 

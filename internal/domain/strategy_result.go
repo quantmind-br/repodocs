@@ -168,14 +168,30 @@ func (r *StrategyResult) CompletedDocs() int {
 	return r.DocsWritten + r.DocsSkipped
 }
 
-// Snapshot returns a copy without sharing the internal mutex.
-func (r *StrategyResult) Snapshot() StrategyResult {
+// StrategyResultSnapshot is an immutable, lock-free view of a StrategyResult.
+// It carries no mutex, so it is safe to copy and pass by value.
+type StrategyResultSnapshot struct {
+	Strategy       string
+	EntryURL       string
+	URLsDiscovered int
+	URLsAttempted  int
+	DocsWritten    int
+	DocsSkipped    int
+	DocsFailed     int
+	BytesWritten   int64
+	Diagnostics    []Diagnostic
+	Duration       time.Duration
+}
+
+// Snapshot returns a lock-free copy of the current counters. The returned value
+// carries no mutex, so callers may freely copy it or pass it by value.
+func (r *StrategyResult) Snapshot() StrategyResultSnapshot {
 	if r == nil {
-		return StrategyResult{}
+		return StrategyResultSnapshot{}
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return StrategyResult{
+	return StrategyResultSnapshot{
 		Strategy:       r.Strategy,
 		EntryURL:       r.EntryURL,
 		URLsDiscovered: r.URLsDiscovered,

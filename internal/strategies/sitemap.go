@@ -159,7 +159,8 @@ func (s *SitemapStrategy) processSitemapIndex(ctx context.Context, sitemap *doma
 		totalDiscovered += discovered
 		result.AddDiscovered(discovered)
 		if err != nil {
-			result.IncFailed()
+			// A nested sitemap (index entry) that fails to fetch is a discovery
+			// failure, not a document failure; do not inflate DocsFailed.
 			s.logger.Warn().Err(err).Str("url", sitemapURL).Msg("Failed to fetch nested sitemap")
 			continue
 		}
