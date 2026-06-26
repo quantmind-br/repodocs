@@ -57,6 +57,39 @@ func newRustBookLikeServer() *httptest.Server {
 	return httptest.NewServer(mux)
 }
 
+// newLLMSRecoveryServer models a site where both the primary strategy and the
+// static fallback yield nothing, but a diagnostic probe can still recover docs.
+// The sitemap omits /book/ (so --filter zeroes it), /book/ 404s (so the static
+// crawler fallback writes nothing), and an llms.txt at the origin lists a real
+// page — the Phase 3 probe path that recovers via the LLMS strategy.
+func newLLMSRecoveryServer() *httptest.Server {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/sitemap.xml", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml")
+		baseURL := "http://" + r.Host
+		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url><loc>` + baseURL + `/reference/foo</loc></url>
+    <url><loc>` + baseURL + `/std/bar</loc></url>
+</urlset>`))
+	})
+
+	// llms.txt lives at the origin and points to a real page. Note /book/ is
+	// intentionally never registered, so it (and its sitemap) returns 404.
+	mux.HandleFunc("/llms.txt", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = w.Write([]byte("# Project Docs\n\n- [Guide Intro](/guide/intro)\n"))
+	})
+	mux.HandleFunc("/guide/intro", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<!DOCTYPE html><html><head><title>Guide Intro</title></head>
+<body><main><h1>Guide Intro</h1><p>Getting started content.</p></main></body></html>`))
+	})
+
+	return httptest.NewServer(mux)
+}
+
 func countMarkdownFiles(t *testing.T, dir string) int {
 	t.Helper()
 	count := 0
@@ -159,6 +192,63 @@ func TestE2E_SelfHealingFallback_RustBook(t *testing.T) {
 			},
 		})
 		require.Error(t, err, "an explicitly forced strategy must not trigger fallback")
+		assert.Equal(t, 0, countMarkdownFiles(t, tmpDir), "no docs should be written")
+	})
+}
+
+// TestE2E_SelfHealingProbeRecovery verifies the Phase 3 probe path: when both
+// the primary strategy (filter-zeroed sitemap) and the static crawler fallback
+// (/book/ 404s) produce nothing, a diagnostic probe discovers the origin
+// llms.txt and the orchestrator recovers via the LLMS strategy.
+func TestE2E_SelfHealingProbeRecovery(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	server := newLLMSRecoveryServer()
+	defer server.Close()
+
+	t.Run("recovers via llms.txt probe when static fallback fails", func(t *testing.T) {
+		tmpDir, err := os.MkdirTemp("", "repodocs-e2e-probe-ok-*")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpDir)
+
+		orch := newFallbackOrchestrator(t, tmpDir)
+		defer orch.Close()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		err = orch.Run(ctx, server.URL+"/sitemap.xml", app.OrchestratorOptions{
+			FilterURL: server.URL + "/book/",
+			CommonOptions: domain.CommonOptions{
+				Limit: 10,
+			},
+		})
+		require.NoError(t, err, "probe path should recover docs via the origin llms.txt")
+		assert.GreaterOrEqual(t, countMarkdownFiles(t, tmpDir), 1,
+			"the LLMS fallback should have written the page listed in llms.txt")
+	})
+
+	t.Run("--no-fallback disables the probe path", func(t *testing.T) {
+		tmpDir, err := os.MkdirTemp("", "repodocs-e2e-probe-nofb-*")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpDir)
+
+		orch := newFallbackOrchestrator(t, tmpDir)
+		defer orch.Close()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		err = orch.Run(ctx, server.URL+"/sitemap.xml", app.OrchestratorOptions{
+			FilterURL:  server.URL + "/book/",
+			NoFallback: true,
+			CommonOptions: domain.CommonOptions{
+				Limit: 10,
+			},
+		})
+		require.Error(t, err, "with --no-fallback no probe recovery may run")
 		assert.Equal(t, 0, countMarkdownFiles(t, tmpDir), "no docs should be written")
 	})
 }

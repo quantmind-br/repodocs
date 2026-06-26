@@ -89,3 +89,63 @@ func TestPlanner_Plan(t *testing.T) {
 		})
 	}
 }
+
+func TestPlanner_RefineWith(t *testing.T) {
+	llms := ProbeResult{Probe: probeLLMSTxtOnAncestor, Outcome: ProbeSuccess, Data: map[string]string{"llms_url": "https://x.dev/llms.txt"}}
+	sitemap := ProbeResult{Probe: probeHasOwnSitemap, Outcome: ProbeSuccess, Data: map[string]string{"sitemap_url": "https://x.dev/book/sitemap.xml"}}
+	index := ProbeResult{Probe: probeLooksLikeIndex, Outcome: ProbeSuccess, Data: map[string]string{"crawl_url": "https://x.dev"}}
+	git := ProbeResult{Probe: probeGitHubPagesBacked, Outcome: ProbeSuccess, Data: map[string]string{"repo_url": "https://github.com/o/r"}}
+
+	tests := []struct {
+		name   string
+		failed Attempt
+		probes []ProbeResult
+		want   []Attempt
+	}{
+		{
+			name:   "all probes succeed -> ordered cheapest first",
+			failed: Attempt{Strategy: "sitemap", URL: "https://x.dev/sitemap.xml"},
+			probes: []ProbeResult{git, index, sitemap, llms},
+			want: []Attempt{
+				{Strategy: "llms", URL: "https://x.dev/llms.txt", Reason: "llms.txt discovered on an ancestor path"},
+				{Strategy: "sitemap", URL: "https://x.dev/book/sitemap.xml", Reason: "entry subtree exposes its own sitemap"},
+				{Strategy: "crawler", URL: "https://x.dev", Reason: "entry looks like a crawlable index page"},
+				{Strategy: "git", URL: "https://github.com/o/r", Reason: "github pages site backed by a git repository"},
+			},
+		},
+		{
+			name:   "failed strategy is not re-proposed",
+			failed: Attempt{Strategy: "llms", URL: "https://x.dev/llms.txt"},
+			probes: []ProbeResult{llms},
+			want:   nil,
+		},
+		{
+			name:   "sub-sitemap equal to failed URL is skipped",
+			failed: Attempt{Strategy: "crawler", URL: "https://x.dev/book/sitemap.xml"},
+			probes: []ProbeResult{sitemap},
+			want:   nil,
+		},
+		{
+			name:   "index probe skipped when failed strategy is crawler",
+			failed: Attempt{Strategy: "crawler", URL: "https://x.dev"},
+			probes: []ProbeResult{index},
+			want:   nil,
+		},
+		{
+			name:   "failed/inconclusive probes yield nothing",
+			failed: Attempt{Strategy: "sitemap", URL: "https://x.dev/sitemap.xml"},
+			probes: []ProbeResult{
+				{Probe: probeLLMSTxtOnAncestor, Outcome: ProbeFailure},
+				{Probe: probeLooksLikeIndex, Outcome: ProbeInconclusive},
+			},
+			want: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Planner{}.RefineWith(tt.failed, VerdictRetryAlternative{}, domain.StrategyResultSnapshot{}, tt.probes)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

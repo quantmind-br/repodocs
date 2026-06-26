@@ -23,6 +23,7 @@ type Orchestrator struct {
 	strategyFactory func(StrategyType, *strategies.Dependencies) strategies.Strategy
 	validator       *recovery.Validator
 	planner         *recovery.Planner
+	probeRunner     *recovery.ProbeRunner
 }
 
 // OrchestratorOptions contains options for creating an orchestrator
@@ -130,6 +131,7 @@ func NewOrchestrator(opts OrchestratorOptions) (*Orchestrator, error) {
 		strategyFactory: strategyFactory,
 		validator:       recovery.NewValidator(nil),
 		planner:         recovery.NewPlanner(),
+		probeRunner:     recovery.NewProbeRunner(deps.Fetcher),
 	}, nil
 }
 
