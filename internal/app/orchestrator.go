@@ -22,6 +22,7 @@ type Orchestrator struct {
 	logger          *utils.Logger
 	strategyFactory func(StrategyType, *strategies.Dependencies) strategies.Strategy
 	validator       *recovery.Validator
+	planner         *recovery.Planner
 }
 
 // OrchestratorOptions contains options for creating an orchestrator
@@ -37,6 +38,7 @@ type OrchestratorOptions struct {
 	StrategyFactory  func(StrategyType, *strategies.Dependencies) strategies.Strategy
 	StrategyOverride string
 	MinDocs          int
+	NoFallback       bool
 }
 
 // NewOrchestrator creates a new orchestrator with the given configuration
@@ -127,6 +129,7 @@ func NewOrchestrator(opts OrchestratorOptions) (*Orchestrator, error) {
 		logger:          logger,
 		strategyFactory: strategyFactory,
 		validator:       recovery.NewValidator(nil),
+		planner:         recovery.NewPlanner(),
 	}, nil
 }
 
@@ -193,51 +196,28 @@ func (o *Orchestrator) Run(ctx context.Context, url string, opts OrchestratorOpt
 		}
 	}
 
-	// Create strategy using strategy factory (allows injection for testing)
-	strategy := o.strategyFactory(strategyType, o.deps)
-	if strategy == nil {
+	// Fail fast when the initial strategy cannot be created (e.g. a
+	// misconfigured factory). This is a setup error, not an extraction
+	// outcome, so it is surfaced directly rather than wrapped as a verdict.
+	if o.strategyFactory(strategyType, o.deps) == nil {
 		return fmt.Errorf("failed to create strategy for URL: %s", url)
 	}
 
-	o.logger.Info().
-		Str("strategy", strategy.Name()).
-		Msg("Using extraction strategy")
-
-	o.deps.SetSourceURL(url)
-	o.deps.SetStrategy(strategy.Name())
-
-	strategyOpts := strategies.Options{
-		CommonOptions: domain.CommonOptions{
-			Verbose:  opts.Verbose,
-			DryRun:   opts.DryRun,
-			Force:    opts.Force || o.config.Output.Overwrite,
-			RenderJS: opts.RenderJS || o.config.Rendering.ForceJS,
-			Limit:    opts.Limit,
-		},
-		Output:          o.config.Output.Directory,
-		Concurrency:     o.config.Concurrency.Workers,
-		MaxDepth:        o.config.Concurrency.MaxDepth,
-		Exclude:         append(o.config.Exclude, opts.ExcludePatterns...),
-		NoFolders:       o.config.Output.Flat,
-		Split:           opts.Split,
-		IncludeAssets:   opts.IncludeAssets,
-		ContentSelector: opts.ContentSelector,
-		ExcludeSelector: opts.ExcludeSelector,
-		FilterURL:       opts.FilterURL,
+	// Phase 5: execute the strategy and, when the outcome is judged
+	// recoverable (zero usable output), automatically retry one level deep
+	// with an alternative strategy via the recovery planner.
+	initial := recovery.Attempt{
+		Strategy:  string(strategyType),
+		URL:       url,
+		FilterURL: opts.FilterURL,
+		Reason:    "initial detection",
 	}
 
-	result, execErr := strategy.Execute(ctx, url, strategyOpts)
+	result, verdict, _ := o.runWithFallback(ctx, initial, opts)
 	if ctx.Err() != nil {
 		o.logger.Warn().Msg("Extraction cancelled")
 		return ctx.Err()
 	}
-
-	// Phase 5: validate extraction outcome via recovery validator
-	verdict := o.validator.Validate(result, execErr, recovery.ValidationOptions{
-		FilterURL: opts.FilterURL,
-		DryRun:    opts.DryRun,
-		MinDocs:   opts.MinDocs,
-	})
 
 	switch v := verdict.(type) {
 	case recovery.VerdictOK:

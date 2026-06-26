@@ -100,6 +100,10 @@ func init() {
 
 	// Strategy override
 	rootCmd.PersistentFlags().String("strategy", "", "Force extraction strategy: llms, pkggo, docsrs, sitemap, wiki, github_pages, git, crawler")
+
+	// Self-healing fallback
+	rootCmd.PersistentFlags().Bool("no-fallback", false, "Disable automatic strategy fallback when extraction yields zero documents")
+	rootCmd.PersistentFlags().Int("min-docs", 0, "Minimum documents for a successful extraction (0 = default of 1); triggers fallback below this")
 	// Bind flags to viper
 	_ = viper.BindPFlag("output.directory", rootCmd.PersistentFlags().Lookup("output"))
 	_ = viper.BindPFlag("concurrency.workers", rootCmd.PersistentFlags().Lookup("concurrency"))
@@ -202,6 +206,8 @@ func run(cmd *cobra.Command, args []string) error {
 	fullSync, _ := cmd.Flags().GetBool("full-sync")
 	prune, _ := cmd.Flags().GetBool("prune")
 	strategyOverride, _ := cmd.Flags().GetString("strategy")
+	noFallback, _ := cmd.Flags().GetBool("no-fallback")
+	minDocs, _ := cmd.Flags().GetInt("min-docs")
 
 	orchOpts := app.OrchestratorOptions{
 		CommonOptions: domain.CommonOptions{
@@ -222,6 +228,8 @@ func run(cmd *cobra.Command, args []string) error {
 		ExcludePatterns:  excludePatterns,
 		FilterURL:        filterURL,
 		StrategyOverride: strategyOverride,
+		NoFallback:       noFallback,
+		MinDocs:          minDocs,
 	}
 
 	// Create orchestrator
@@ -305,6 +313,8 @@ func runManifest(cmd *cobra.Command, cfg *config.Config) error {
 	fullSync, _ := cmd.Flags().GetBool("full-sync")
 	prune, _ := cmd.Flags().GetBool("prune")
 	strategyOverride, _ := cmd.Flags().GetString("strategy")
+	noFallback, _ := cmd.Flags().GetBool("no-fallback")
+	minDocs, _ := cmd.Flags().GetInt("min-docs")
 
 	orchOpts := app.OrchestratorOptions{
 		CommonOptions: domain.CommonOptions{
@@ -325,6 +335,8 @@ func runManifest(cmd *cobra.Command, cfg *config.Config) error {
 		ExcludePatterns:  excludePatterns,
 		FilterURL:        filterURL,
 		StrategyOverride: strategyOverride,
+		NoFallback:       noFallback,
+		MinDocs:          minDocs,
 	}
 
 	orchestrator, err := app.NewOrchestrator(orchOpts)
