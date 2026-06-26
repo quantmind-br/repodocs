@@ -78,6 +78,7 @@ func init() {
 	// Rendering flags
 	rootCmd.PersistentFlags().Bool("render-js", false, "Force JS rendering")
 	rootCmd.PersistentFlags().Duration("timeout", 90*time.Second, "Request timeout")
+	rootCmd.PersistentFlags().String("cdp-endpoint", "", "Connect to an external CDP browser (e.g. http://127.0.0.1:9222) for JS rendering instead of launching Chrome; proxy/stealth delegated to the sidecar")
 
 	// Output flags
 	rootCmd.PersistentFlags().Bool("json-meta", false, "Generate JSON metadata files")
@@ -87,6 +88,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("split", false, "Split output by sections (pkg.go.dev)")
 	rootCmd.PersistentFlags().Bool("include-assets", false, "Include referenced images (git)")
 	rootCmd.PersistentFlags().String("user-agent", "", "Custom User-Agent")
+	rootCmd.PersistentFlags().String("proxy", "", "Proxy URL, e.g. socks5://user:pass@host:port (schemes: http, https, socks5, socks5h)")
 	rootCmd.PersistentFlags().String("content-selector", "", "CSS selector for main content")
 	rootCmd.PersistentFlags().String("exclude-selector", "", "CSS selector for elements to exclude from content")
 	rootCmd.PersistentFlags().StringVar(&manifestPath, "manifest", "", "Path to manifest file (YAML/JSON) for batch processing")
@@ -108,6 +110,7 @@ func init() {
 	_ = viper.BindPFlag("cache.enabled", rootCmd.PersistentFlags().Lookup("no-cache"))
 	_ = viper.BindPFlag("cache.ttl", rootCmd.PersistentFlags().Lookup("cache-ttl"))
 	_ = viper.BindPFlag("rendering.force_js", rootCmd.PersistentFlags().Lookup("render-js"))
+	_ = viper.BindPFlag("rendering.cdp_endpoint", rootCmd.PersistentFlags().Lookup("cdp-endpoint"))
 	_ = viper.BindPFlag("output.json_metadata", rootCmd.PersistentFlags().Lookup("json-meta"))
 	_ = viper.BindPFlag("stealth.user_agent", rootCmd.PersistentFlags().Lookup("user-agent"))
 
@@ -139,6 +142,12 @@ func run(cmd *cobra.Command, args []string) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Apply the --proxy flag override (also covers the manifest path below,
+	// which reuses this same config).
+	if err := applyProxyFlag(cmd, cfg); err != nil {
+		return err
 	}
 
 	if manifestPath != "" {
@@ -228,6 +237,29 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	return orchestrator.Run(ctx, url, orchOpts)
+}
+
+// applyProxyFlag overrides the proxy configuration from the --proxy flag.
+// Supplying the flag implicitly enables the proxy; an empty value disables a
+// proxy that may have been set via config file or environment.
+func applyProxyFlag(cmd *cobra.Command, cfg *config.Config) error {
+	if !cmd.Flags().Changed("proxy") {
+		return nil
+	}
+	proxyURL, _ := cmd.Flags().GetString("proxy")
+	// --proxy is a complete override: discard any structured fields and
+	// credentials coming from the config file or environment so they are never
+	// blended into the flag-specified proxy.
+	cfg.Proxy = config.ProxyConfig{
+		Enabled: proxyURL != "",
+		URL:     proxyURL,
+	}
+	if cfg.Proxy.Enabled {
+		if _, err := cfg.Proxy.Resolve(); err != nil {
+			return fmt.Errorf("invalid --proxy value: %w", err)
+		}
+	}
+	return nil
 }
 
 func runManifest(cmd *cobra.Command, cfg *config.Config) error {

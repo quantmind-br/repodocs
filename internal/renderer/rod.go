@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-rod/rod"
@@ -35,6 +36,9 @@ type Renderer struct {
 	timeout  time.Duration
 	stealth  bool
 	headless bool
+	// ownsBrowser is false when the renderer connected to an externally managed
+	// CDP browser (a sidecar). In that case Close must not terminate the browser.
+	ownsBrowser bool
 }
 
 // RendererOptions contains options for creating a Renderer
@@ -45,6 +49,19 @@ type RendererOptions struct {
 	Headless    bool
 	BrowserPath string
 	NoSandbox   bool // Required for running in CI/Docker environments
+	// ProxyURL is a fully-qualified proxy URL (scheme://[user:pass@]host:port).
+	// Supported schemes: http, https, socks5, socks5h. Credentials are honored
+	// for http/https proxies via a CDP auth handler; headless Chrome cannot
+	// authenticate SOCKS5 proxies, so credentials on a socks5 URL are ignored.
+	ProxyURL string
+	// CDPEndpoint, when set, makes the renderer connect to an externally managed
+	// browser over the Chrome DevTools Protocol (e.g. CloakBrowser or Camoufox
+	// running as a sidecar) instead of launching a local Chrome. The endpoint may
+	// be "host:port", "http://host:port", or a "ws(s)://" debugger URL. In this
+	// mode proxy and stealth are delegated to the sidecar: ProxyURL, BrowserPath,
+	// Headless, NoSandbox and the local Chrome launch flags are not applied, and
+	// the sidecar is left running when the renderer is closed.
+	CDPEndpoint string
 }
 
 // DefaultRendererOptions returns default renderer options
@@ -73,6 +90,58 @@ func NewRenderer(opts RendererOptions) (*Renderer, error) {
 		opts.MaxTabs = 5
 	}
 
+	// Connect to the browser: either an externally managed CDP endpoint (sidecar)
+	// or a freshly launched local headless Chrome.
+	browser, ownsBrowser, err := connectBrowser(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create tab pool
+	pool, err := NewTabPool(browser, opts.MaxTabs)
+	if err != nil {
+		if ownsBrowser {
+			browser.Close()
+		}
+		return nil, fmt.Errorf("failed to create tab pool: %w", err)
+	}
+
+	return &Renderer{
+		browser:     browser,
+		pool:        pool,
+		timeout:     opts.Timeout,
+		stealth:     opts.Stealth,
+		headless:    opts.Headless,
+		ownsBrowser: ownsBrowser,
+	}, nil
+}
+
+// connectBrowser returns a connected browser and whether the renderer owns its
+// lifecycle. When opts.CDPEndpoint is set it attaches to an externally managed
+// browser (a sidecar) and ownsBrowser is false; otherwise it launches a local
+// headless Chrome and ownsBrowser is true.
+func connectBrowser(opts RendererOptions) (*rod.Browser, bool, error) {
+	if endpoint := strings.TrimSpace(opts.CDPEndpoint); endpoint != "" {
+		// External CDP browser: proxy and stealth are delegated to the sidecar,
+		// so the local launch flags (proxy, headless, sandbox, binary) are skipped.
+		// ResolveURL normalizes host:port / http:// forms by querying /json/version.
+		controlURL, err := launcher.ResolveURL(endpoint)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to resolve CDP endpoint %q: %w", endpoint, err)
+		}
+		browser := rod.New().ControlURL(controlURL)
+		if err := browser.Connect(); err != nil {
+			return nil, false, fmt.Errorf("failed to connect to CDP endpoint %q: %w", endpoint, err)
+		}
+		return browser, false, nil
+	}
+
+	// Parse proxy configuration (empty ProxyURL → no proxy).
+	proxy, err := parseProxyURL(opts.ProxyURL)
+	if err != nil {
+		return nil, false, err
+	}
+
 	// Create launcher
 	l := launcher.New()
 
@@ -94,31 +163,31 @@ func NewRenderer(opts RendererOptions) (*Renderer, error) {
 		l = l.NoSandbox(true)
 	}
 
+	// Route browser traffic through the proxy. Chrome's --proxy-server only
+	// accepts scheme://host:port; credentials are handled separately below.
+	if proxy.enabled {
+		l = l.Proxy(proxy.server)
+	}
+
 	// Launch browser
 	controlURL, err := l.Launch()
 	if err != nil {
-		return nil, fmt.Errorf("failed to launch browser: %w", err)
+		return nil, false, fmt.Errorf("failed to launch browser: %w", err)
 	}
 
 	browser := rod.New().ControlURL(controlURL)
 	if err := browser.Connect(); err != nil {
-		return nil, fmt.Errorf("failed to connect to browser: %w", err)
+		return nil, false, fmt.Errorf("failed to connect to browser: %w", err)
 	}
 
-	// Create tab pool
-	pool, err := NewTabPool(browser, opts.MaxTabs)
-	if err != nil {
-		browser.Close()
-		return nil, fmt.Errorf("failed to create tab pool: %w", err)
+	// Authenticate the proxy when credentials are present. Chrome only supports
+	// proxy authentication for http/https proxies, so SOCKS5 credentials are
+	// silently skipped here (the HTTP fetcher path handles SOCKS5 auth fully).
+	if proxy.enabled && proxy.username != "" && (proxy.scheme == "http" || proxy.scheme == "https") {
+		startProxyAuth(browser, proxy.username, proxy.password)
 	}
 
-	return &Renderer{
-		browser:  browser,
-		pool:     pool,
-		timeout:  opts.Timeout,
-		stealth:  opts.Stealth,
-		headless: opts.Headless,
-	}, nil
+	return browser, true, nil
 }
 
 // Render fetches and renders a page with JavaScript
@@ -280,7 +349,9 @@ func DefaultRenderOptions() domain.RenderOptions {
 	}
 }
 
-// Close releases browser resources
+// Close releases browser resources. Tabs created by the pool are always closed.
+// A locally launched browser is terminated; an externally managed CDP browser
+// (sidecar) is left running so it can be reused across runs.
 func (r *Renderer) Close() error {
 	if r.pool != nil {
 		r.pool.Close()
@@ -289,6 +360,9 @@ func (r *Renderer) Close() error {
 	if r.browser != nil {
 		browser := r.browser
 		r.browser = nil
+		if !r.ownsBrowser {
+			return nil
+		}
 		return browser.Close()
 	}
 	return nil
@@ -311,4 +385,81 @@ func (r *Renderer) GetTabPool() (*TabPool, error) {
 		return nil, fmt.Errorf("pool not initialized")
 	}
 	return r.pool, nil
+}
+
+// proxyInfo holds the parsed components of a proxy URL needed to configure the
+// headless browser: the credential-free server string for --proxy-server and
+// the credentials for the CDP authentication handler.
+type proxyInfo struct {
+	enabled  bool
+	server   string // scheme://host:port, without credentials
+	scheme   string
+	username string
+	password string
+}
+
+// parseProxyURL splits a fully-qualified proxy URL into the pieces required by
+// headless Chrome. An empty input yields a disabled proxyInfo with no error.
+func parseProxyURL(raw string) (proxyInfo, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return proxyInfo{}, nil
+	}
+
+	u, err := url.Parse(raw)
+	if err != nil {
+		return proxyInfo{}, fmt.Errorf("invalid proxy url %q: %w", raw, err)
+	}
+	if u.Host == "" {
+		return proxyInfo{}, fmt.Errorf("invalid proxy url %q: missing host", raw)
+	}
+
+	scheme := strings.ToLower(u.Scheme)
+	// Chrome's --proxy-server does not recognize the "socks5h" scheme and would
+	// silently route DIRECT (an IP leak). Chrome's "socks5" already resolves DNS
+	// at the proxy, so map socks5h→socks5 for the launcher flag while keeping the
+	// original scheme for the http/https auth-handler gating below.
+	chromeScheme := scheme
+	if chromeScheme == "socks5h" {
+		chromeScheme = "socks5"
+	}
+	info := proxyInfo{
+		enabled: true,
+		server:  chromeScheme + "://" + u.Host,
+		scheme:  scheme,
+	}
+	if u.User != nil {
+		info.username = u.User.Username()
+		info.password, _ = u.User.Password()
+	}
+	return info, nil
+}
+
+// startProxyAuth installs a persistent CDP handler that answers proxy
+// authentication challenges (HTTP 407) with the supplied credentials. It enables
+// the Fetch domain browser-wide with auth interception and continues every
+// paused request, mirroring rod's HandleAuth but without the one-shot lifetime.
+// The goroutine exits when the browser event stream closes (on Close).
+func startProxyAuth(browser *rod.Browser, username, password string) {
+	go func() {
+		if err := (proto.FetchEnable{HandleAuthRequests: true}).Call(browser); err != nil {
+			return
+		}
+		for msg := range browser.Event() {
+			if auth := (&proto.FetchAuthRequired{}); msg.Load(auth) {
+				_ = proto.FetchContinueWithAuth{
+					RequestID: auth.RequestID,
+					AuthChallengeResponse: &proto.FetchAuthChallengeResponse{
+						Response: proto.FetchAuthChallengeResponseResponseProvideCredentials,
+						Username: username,
+						Password: password,
+					},
+				}.Call(browser)
+				continue
+			}
+			if paused := (&proto.FetchRequestPaused{}); msg.Load(paused) {
+				_ = proto.FetchContinueRequest{RequestID: paused.RequestID}.Call(browser)
+			}
+		}
+	}()
 }

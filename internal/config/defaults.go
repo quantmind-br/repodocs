@@ -116,6 +116,9 @@ func Default() *Config {
 			RandomDelayMin: DefaultRandomDelayMin,
 			RandomDelayMax: DefaultRandomDelayMax,
 		},
+		Proxy: ProxyConfig{
+			Enabled: false,
+		},
 		Exclude: DefaultExcludePatterns,
 		Logging: LoggingConfig{
 			Level:  DefaultLogLevel,

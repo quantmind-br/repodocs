@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +16,7 @@ type Config struct {
 	Cache       CacheConfig       `mapstructure:"cache" yaml:"cache"`
 	Rendering   RenderingConfig   `mapstructure:"rendering" yaml:"rendering"`
 	Stealth     StealthConfig     `mapstructure:"stealth" yaml:"stealth"`
+	Proxy       ProxyConfig       `mapstructure:"proxy" yaml:"proxy"`
 	Exclude     []string          `mapstructure:"exclude" yaml:"exclude"`
 	Logging     LoggingConfig     `mapstructure:"logging" yaml:"logging"`
 	LLM         LLMConfig         `mapstructure:"llm" yaml:"llm"`
@@ -82,6 +85,9 @@ type RenderingConfig struct {
 	ForceJS     bool          `mapstructure:"force_js" yaml:"force_js"`
 	JSTimeout   time.Duration `mapstructure:"js_timeout" yaml:"js_timeout"`
 	ScrollToEnd bool          `mapstructure:"scroll_to_end" yaml:"scroll_to_end"`
+	// CDPEndpoint, when set, connects JS rendering to an external CDP browser
+	// (e.g. CloakBrowser or Camoufox sidecar) instead of launching local Chrome.
+	CDPEndpoint string `mapstructure:"cdp_endpoint" yaml:"cdp_endpoint"`
 }
 
 // StealthConfig contains stealth mode settings
@@ -89,6 +95,123 @@ type StealthConfig struct {
 	UserAgent      string        `mapstructure:"user_agent" yaml:"user_agent"`
 	RandomDelayMin time.Duration `mapstructure:"random_delay_min" yaml:"random_delay_min"`
 	RandomDelayMax time.Duration `mapstructure:"random_delay_max" yaml:"random_delay_max"`
+}
+
+// ProxyConfig contains proxy settings applied to both HTTP fetching and JS
+// rendering. A proxy can be configured either as a single fully-qualified URL
+// (e.g. "socks5://user:pass@host:1080") or via the structured Type/Host/Port/
+// Username/Password fields. When both are present, URL takes precedence.
+//
+// Supported schemes: http, https, socks5, socks5h. SOCKS5 supports username/
+// password authentication for the HTTP fetcher. Note that headless Chrome (used
+// for JS rendering) cannot authenticate SOCKS5 proxies — see the renderer docs.
+type ProxyConfig struct {
+	Enabled  bool   `mapstructure:"enabled" yaml:"enabled"`
+	URL      string `mapstructure:"url" yaml:"url"`
+	Type     string `mapstructure:"type" yaml:"type"`
+	Host     string `mapstructure:"host" yaml:"host"`
+	Port     int    `mapstructure:"port" yaml:"port"`
+	Username string `mapstructure:"username" yaml:"username"`
+	Password string `mapstructure:"password" yaml:"password"`
+}
+
+// supportedProxySchemes lists the proxy schemes accepted by both the HTTP
+// fetcher (tls-client) and the JS renderer (headless Chrome).
+var supportedProxySchemes = map[string]struct{}{
+	"http":    {},
+	"https":   {},
+	"socks5":  {},
+	"socks5h": {},
+}
+
+// normalizeProxyScheme lower-cases the scheme and applies sensible aliases.
+// An empty scheme defaults to socks5, matching this feature's primary use case.
+func normalizeProxyScheme(scheme string) string {
+	scheme = strings.ToLower(strings.TrimSpace(scheme))
+	switch scheme {
+	case "":
+		return "socks5"
+	case "socks":
+		return "socks5"
+	default:
+		return scheme
+	}
+}
+
+// validateProxyScheme returns an error if scheme is not supported.
+func validateProxyScheme(scheme string) error {
+	if _, ok := supportedProxySchemes[scheme]; !ok {
+		return fmt.Errorf("unsupported proxy scheme %q (supported: http, https, socks5, socks5h)", scheme)
+	}
+	return nil
+}
+
+// requireProxyPort enforces an explicit port for SOCKS5 proxies. Unlike http/
+// https (where tls-client defaults to 80/443), the SOCKS5 dialer passes the
+// host straight to net.Dial and fails with an opaque "missing port in address"
+// at request time, so we reject it early. u.Hostname()/u.Port() exclude any
+// userinfo, keeping credentials out of the error message.
+func requireProxyPort(scheme string, u *url.URL) error {
+	if (scheme == "socks5" || scheme == "socks5h") && u.Port() == "" {
+		return fmt.Errorf("%s proxy requires an explicit port (host %q)", scheme, u.Hostname())
+	}
+	return nil
+}
+
+// Resolve builds the effective proxy URL from the configuration, including any
+// credentials. It returns ("", nil) when the proxy is disabled. When the proxy
+// is enabled but misconfigured (missing host, unsupported scheme, malformed
+// URL) it returns a descriptive error.
+func (p ProxyConfig) Resolve() (string, error) {
+	if !p.Enabled {
+		return "", nil
+	}
+
+	// Explicit URL form takes precedence.
+	if raw := strings.TrimSpace(p.URL); raw != "" {
+		u, err := url.Parse(raw)
+		if err != nil {
+			// Never echo the raw URL or wrap the url.Error: both may embed the password.
+			return "", fmt.Errorf("proxy.url could not be parsed")
+		}
+		scheme := normalizeProxyScheme(u.Scheme)
+		if err := validateProxyScheme(scheme); err != nil {
+			return "", err
+		}
+		u.Scheme = scheme
+		if u.Host == "" {
+			return "", fmt.Errorf("invalid proxy.url: missing host in %q", u.Redacted())
+		}
+		// Allow credentials to be supplied separately from the URL.
+		if u.User == nil && p.Username != "" {
+			u.User = url.UserPassword(p.Username, p.Password)
+		}
+		if err := requireProxyPort(scheme, u); err != nil {
+			return "", err
+		}
+		return u.String(), nil
+	}
+
+	// Structured form.
+	host := strings.TrimSpace(p.Host)
+	if host == "" {
+		return "", fmt.Errorf("proxy is enabled but neither proxy.url nor proxy.host is configured")
+	}
+	scheme := normalizeProxyScheme(p.Type)
+	if err := validateProxyScheme(scheme); err != nil {
+		return "", err
+	}
+	if p.Port > 0 {
+		host = net.JoinHostPort(host, strconv.Itoa(p.Port))
+	}
+	u := &url.URL{Scheme: scheme, Host: host}
+	if p.Username != "" {
+		u.User = url.UserPassword(p.Username, p.Password)
+	}
+	if err := requireProxyPort(scheme, u); err != nil {
+		return "", err
+	}
+	return u.String(), nil
 }
 
 // LoggingConfig contains logging settings
@@ -126,6 +249,12 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("invalid git.max_file_size: %w", err)
 		}
 	}
+
+	// Note: proxy configuration is intentionally validated lazily, at its point
+	// of use (applyProxyFlag and NewOrchestrator both call Proxy.Resolve and
+	// surface a descriptive error). Validating here would let a broken proxy in
+	// the config file block every command — even an attempt to override it with
+	// the --proxy flag, which runs after config load.
 
 	// Validate rate limit configuration
 	rl := &c.LLM.RateLimit

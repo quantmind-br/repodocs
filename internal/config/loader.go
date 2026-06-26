@@ -115,11 +115,21 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rendering.force_js", false)
 	v.SetDefault("rendering.js_timeout", DefaultJSTimeout)
 	v.SetDefault("rendering.scroll_to_end", DefaultScrollToEnd)
+	v.SetDefault("rendering.cdp_endpoint", "")
 
 	// Stealth defaults
 	v.SetDefault("stealth.user_agent", "")
 	v.SetDefault("stealth.random_delay_min", DefaultRandomDelayMin)
 	v.SetDefault("stealth.random_delay_max", DefaultRandomDelayMax)
+
+	// Proxy defaults (all keys must be registered for env var binding)
+	v.SetDefault("proxy.enabled", false)
+	v.SetDefault("proxy.url", "")
+	v.SetDefault("proxy.type", "")
+	v.SetDefault("proxy.host", "")
+	v.SetDefault("proxy.port", 0)
+	v.SetDefault("proxy.username", "")
+	v.SetDefault("proxy.password", "")
 
 	// Exclude defaults
 	v.SetDefault("exclude", DefaultExcludePatterns)

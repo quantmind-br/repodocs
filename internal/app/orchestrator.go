@@ -74,6 +74,12 @@ func NewOrchestrator(opts OrchestratorOptions) (*Orchestrator, error) {
 	}
 	cacheDir = utils.ExpandPath(cacheDir)
 
+	// Resolve the proxy URL (validated in cfg.Validate()); empty when disabled.
+	proxyURL, err := cfg.Proxy.Resolve()
+	if err != nil {
+		return nil, fmt.Errorf("invalid proxy configuration: %w", err)
+	}
+
 	// Create dependencies
 	deps, err := strategies.NewDependencies(strategies.DependencyOptions{
 		CommonOptions: domain.CommonOptions{
@@ -100,6 +106,8 @@ func NewOrchestrator(opts OrchestratorOptions) (*Orchestrator, error) {
 		Flat:            cfg.Output.Flat,
 		JSONMetadata:    cfg.Output.JSONMetadata,
 		LLMConfig:       &cfg.LLM,
+		ProxyURL:        proxyURL,
+		CDPEndpoint:     cfg.Rendering.CDPEndpoint,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create dependencies: %w", err)

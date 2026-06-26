@@ -122,6 +122,15 @@ rendering:
   # Scroll to end of page (for infinite scroll sites)
   scroll_to_end: false
 
+  # Connect JS rendering to an external CDP browser running as a sidecar
+  # (e.g. CloakBrowser or Camoufox) instead of launching a local Chrome.
+  # Accepts "host:port", "http://host:port", or a "ws(s)://" debugger URL.
+  # When set, the sidecar owns proxy + stealth (the `proxy` setting still
+  # applies to the HTTP fetcher) and is left running between executions.
+  # This does NOT enable rendering by itself -- combine with force_js or
+  # --render-js. CLI override: --cdp-endpoint  Env: REPODOCS_RENDERING_CDP_ENDPOINT
+  cdp_endpoint: ""
+
 # =============================================================================
 # Stealth Configuration
 # =============================================================================
@@ -132,6 +141,34 @@ stealth:
   # Random delay between requests (anti-detection)
   random_delay_min: 500ms
   random_delay_max: 2s
+
+# =============================================================================
+# Proxy Configuration
+# =============================================================================
+# Routes HTTP fetching (and, when possible, JS rendering) through a proxy.
+# Supported schemes: http, https, socks5, socks5h.
+#
+# SOCKS5 with username/password authentication is fully supported by the HTTP
+# fetcher. Note: headless Chrome (JS rendering) cannot authenticate SOCKS5
+# proxies — use an http(s) proxy or an IP-allowlisted SOCKS5 endpoint when JS
+# rendering is required.
+#
+# The --proxy CLI flag (e.g. --proxy socks5://user:pass@host:port) overrides
+# this section and implicitly enables the proxy.
+proxy:
+  # Master switch. Must be true for the proxy to be used.
+  enabled: false
+
+  # Option A — full proxy URL (takes precedence over the structured fields):
+  # url: "socks5://user:pass@p.example.io:1080"
+
+  # Option B — structured fields (used when 'url' is empty):
+  # type defaults to socks5 when omitted.
+  # type: socks5
+  # host: p.example.io
+  # port: 1080
+  # username: ""
+  # password: ""
 
 # =============================================================================
 # Logging Configuration

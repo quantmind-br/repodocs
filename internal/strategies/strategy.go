@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -87,6 +89,7 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 		EnableCache: opts.EnableCache,
 		CacheTTL:    opts.CacheTTL,
 		UserAgent:   opts.UserAgent,
+		ProxyURL:    opts.ProxyURL,
 	})
 	if err != nil {
 		return nil, err
@@ -112,6 +115,8 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 	if opts.Concurrency > 0 {
 		rendererOpts.MaxTabs = opts.Concurrency
 	}
+	rendererOpts.ProxyURL = opts.ProxyURL
+	rendererOpts.CDPEndpoint = opts.CDPEndpoint
 
 	// Create renderer eagerly only if explicitly requested
 	var rendererImpl domain.Renderer
@@ -154,6 +159,29 @@ func NewDependencies(opts DependencyOptions) (*Dependencies, error) {
 		Format:  "pretty",
 		Verbose: opts.Verbose,
 	})
+
+	// Surface proxy status and warn about Chrome's inability to authenticate
+	// SOCKS5 proxies when JS rendering is in play (the HTTP fetcher is unaffected).
+	if opts.ProxyURL != "" {
+		if u, perr := url.Parse(opts.ProxyURL); perr == nil {
+			scheme := strings.ToLower(u.Scheme)
+			hasAuth := u.User != nil && u.User.Username() != ""
+			logger.Info().Str("scheme", scheme).Bool("auth", hasAuth).Str("host", u.Host).Msg("Proxy enabled")
+			// Warn regardless of eager renderer init: JS rendering can still be
+			// triggered lazily (e.g. the HTTP 403 fallback), and headless Chrome
+			// cannot authenticate SOCKS5 proxies.
+			if hasAuth && (scheme == "socks5" || scheme == "socks5h") {
+				logger.Warn().Msg("JS rendering uses headless Chrome, which cannot authenticate SOCKS5 proxies; rendered pages (including the HTTP 403 fallback) will not use the proxy. Use an http(s) proxy or an IP-allowlisted SOCKS5 endpoint for rendering.")
+			}
+		}
+	}
+
+	// When an external CDP browser is configured, JS rendering runs through the
+	// sidecar (which owns its proxy and stealth); the ProxyURL above still applies
+	// to the HTTP fetcher.
+	if opts.CDPEndpoint != "" {
+		logger.Info().Str("endpoint", opts.CDPEndpoint).Msg("External CDP browser configured for JS rendering; proxy and stealth delegated to the sidecar")
+	}
 
 	var llmProvider domain.LLMProvider
 	var metadataEnhancer *llm.MetadataEnhancer
@@ -367,4 +395,10 @@ type DependencyOptions struct {
 	JSONMetadata    bool
 	LLMConfig       *config.LLMConfig
 	SourceURL       string
+	// ProxyURL is the resolved proxy URL (scheme://[user:pass@]host:port) shared
+	// by the HTTP fetcher and the JS renderer. Empty disables proxying.
+	ProxyURL string
+	// CDPEndpoint, when set, makes the JS renderer attach to an external CDP
+	// browser (sidecar) instead of launching local Chrome. Empty launches Chrome.
+	CDPEndpoint string
 }
