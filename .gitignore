@@ -2,8 +2,9 @@
 /repodocs
 /build/
 /dist/
+*.exe
 
-# Coverage files
+# Coverage
 *.out
 *.html
 /coverage/
@@ -13,8 +14,29 @@
 .vscode/
 .cursor/
 .claude/
-.omc/
+
+# Agent tooling / internal working directories
+.omp/
 .serena/
+.ai/
+.beads/
+.omc/
+.pi/
+.planning/
+.rpiv/
+.sisyphus/
+.worktrees/
+thoughts/
+.shotgunignore
+
+# AI assistant context files (generated locally, not shipped)
+CLAUDE.md
+AGENTS.md
+
+# Local config / secrets
+*.env
+.env
+.env.local
 
 # OS files
 .DS_Store
@@ -22,16 +44,5 @@ Thumbs.db
 
 # Temporary files
 *.tmp
-*.temp
-*.log
-
-# Go
-vendor/
-e2e_output/
-
-# Auto Claude data directory
-.auto-claude/
-
-# Worktrees
-.worktrees/
-.gitnexus
+*.bak
+tmp/
