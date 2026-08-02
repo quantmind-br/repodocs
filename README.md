@@ -1,6 +1,12 @@
 # RepoDocs
 
-RepoDocs is a powerful Go-based CLI tool and library designed to extract documentation from diverse sources—including websites, Git repositories, Sitemaps, and Wikis—and convert them into clean, structured Markdown. It is built to facilitate the creation of high-quality datasets for LLM training, RAG (Retrieval-Augmented Generation) pipelines, or local documentation mirrors.
+[![CI](https://github.com/quantmind-br/repodocs/actions/workflows/ci.yml/badge.svg)](https://github.com/quantmind-br/repodocs/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
+
+Extract documentation from websites, Git repositories, sitemaps, package
+indexes, and wikis into structured Markdown. RepoDocs supports reproducible RAG
+ingestion, local documentation mirrors, and dataset preparation from a single
+CLI or manifest.
 
 ## Features
 
@@ -14,8 +20,8 @@ RepoDocs is a powerful Go-based CLI tool and library designed to extract documen
     -   **HTML to Markdown**: Converts complex HTML into clean Markdown using a multi-stage pipeline.
     -   **Content Extraction**: Uses "readability" logic and CSS selectors to isolate main content and remove noise (navbars, footers, scripts).
     -   **JS Rendering**: Headless browser support (via `go-rod`) for Single Page Applications (SPAs) and JavaScript-heavy sites.
--   **Stealth & Robustness**:
-    -   **Bot Avoidance**: User-Agent rotation and TLS fingerprinting to bypass basic bot detection.
+-   **Responsible & Robust Fetching**:
+    -   **Site-aware requests**: Configurable HTTP behavior for compatible documentation hosts. Respect each site's robots policy and terms of service.
     -   **Caching**: Persistent caching using BadgerDB to minimize network load and respect rate limits.
     -   **Retries**: Exponential backoff for transient network errors.
 -   **AI Integration**: Optional metadata enrichment using LLMs (OpenAI, Anthropic, Google) to generate summaries, tags, and categories.
@@ -31,7 +37,7 @@ RepoDocs is a powerful Go-based CLI tool and library designed to extract documen
 ### From Source
 
 ```bash
-git clone https://github.com/yourusername/repodocs.git
+git clone https://github.com/quantmind-br/repodocs.git
 cd repodocs
 go build -o repodocs ./cmd/repodocs
 ```
