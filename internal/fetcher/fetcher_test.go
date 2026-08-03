@@ -567,3 +567,23 @@ func (m *mockCache) Size() int64 {
 	}
 	return 0
 }
+
+func TestEffectiveTLSTimeout_Floor(t *testing.T) {
+	cases := []struct {
+		name string
+		base time.Duration
+		want time.Duration
+	}{
+		{"zero base floored", 0, 3 * time.Minute},
+		{"1s base floored", 1 * time.Second, 3 * time.Minute},
+		{"30s base floored", 30 * time.Second, 3 * time.Minute},
+		{"90s base tripled", 90 * time.Second, 4*time.Minute + 30*time.Second},
+		{"2m base tripled", 2 * time.Minute, 6 * time.Minute},
+		{"5m base tripled", 5 * time.Minute, 15 * time.Minute},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, effectiveTLSTimeout(tc.base))
+		})
+	}
+}

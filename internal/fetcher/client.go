@@ -47,16 +47,24 @@ func DefaultClientOptions() ClientOptions {
 	}
 }
 
+// effectiveTLSTimeout returns the TLS client timeout for a given base timeout.
+// The TLS client timeout is 3x the base timeout, floored at 3 minutes to avoid
+// truncated requests on slow networks (see commit 1217ae1b).
+func effectiveTLSTimeout(base time.Duration) time.Duration {
+	tlsTimeout := base * 3
+	if tlsTimeout < 3*time.Minute {
+		tlsTimeout = 3 * time.Minute
+	}
+	return tlsTimeout
+}
+
 // NewClient creates a new stealth HTTP client
 func NewClient(opts ClientOptions) (*Client, error) {
 	if opts.Timeout <= 0 {
 		opts.Timeout = 90 * time.Second
 	}
 
-	tlsTimeout := opts.Timeout * 3
-	if tlsTimeout < 3*time.Minute {
-		tlsTimeout = 3 * time.Minute
-	}
+	tlsTimeout := effectiveTLSTimeout(opts.Timeout)
 
 	tlsOpts := []tls_client.HttpClientOption{
 		tls_client.WithTimeoutSeconds(int(tlsTimeout.Seconds())),

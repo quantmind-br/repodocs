@@ -925,7 +925,7 @@ func TestOrchestrator_Run_DryRunAttemptedOutcomeIsSuccess(t *testing.T) {
 		},
 	}
 	opts := app.OrchestratorOptions{
-		Config: cfg,
+		Config:        cfg,
 		CommonOptions: domain.CommonOptions{DryRun: true},
 		StrategyFactory: func(st app.StrategyType, deps *strategies.Dependencies) strategies.Strategy {
 			return mockStrategy

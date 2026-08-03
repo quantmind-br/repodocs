@@ -3,10 +3,12 @@ package integration
 import (
 	"context"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -353,15 +355,24 @@ func TestConcurrency_MultipleURLs(t *testing.T) {
 	}
 
 	start := time.Now()
-	for i, url := range urls {
-		t.Run("concurrent-run-"+string(rune('A'+i)), func(t *testing.T) {
-			err := orchestrator.Run(context.Background(), url, app.OrchestratorOptions{
+	var wg sync.WaitGroup
+	errCh := make(chan error, len(urls))
+	for _, url := range urls {
+		wg.Add(1)
+		go func(u string) {
+			defer wg.Done()
+			err := orchestrator.Run(context.Background(), u, app.OrchestratorOptions{
 				CommonOptions: domain.CommonOptions{
 					Limit: 1,
 				},
 			})
-			require.NoError(t, err)
-		})
+			errCh <- err
+		}(url)
+	}
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		require.NoError(t, err)
 	}
 	duration := time.Since(start)
 
@@ -451,7 +462,15 @@ func TestErrorHandling_Graceful(t *testing.T) {
 	})
 
 	t.Run("Non-existent server", func(t *testing.T) {
-		// Arrange
+		// Arrange - Reserve a local port and release it so the address refuses
+		// connections immediately (deterministic, no external network). A
+		// non-routable IP (e.g. 192.0.2.1) would hang for the TLS client's
+		// 3-minute timeout floor instead.
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		addr := ln.Addr().String()
+		require.NoError(t, ln.Close())
+
 		cfg := config.Default()
 		tmpDir := testutil.TempDir(t)
 		cfg.Output.Directory = tmpDir
@@ -464,8 +483,8 @@ func TestErrorHandling_Graceful(t *testing.T) {
 		require.NoError(t, err)
 		defer orchestrator.Close()
 
-		// Act - Non-routable IP (should timeout or fail quickly)
-		err = orchestrator.Run(context.Background(), "http://192.0.2.1", app.OrchestratorOptions{
+		// Act - Connection refused (should fail quickly)
+		err = orchestrator.Run(context.Background(), "http://"+addr, app.OrchestratorOptions{
 			CommonOptions: domain.CommonOptions{
 				Limit: 1,
 			},

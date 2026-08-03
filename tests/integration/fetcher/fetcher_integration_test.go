@@ -456,18 +456,21 @@ func TestFetcherIntegration_Timeout(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("request timeout", func(t *testing.T) {
-		// Setup: Create test server with delay
+	t.Run("timeout floor respects 3-minute minimum", func(t *testing.T) {
+		// Setup: Create test server that responds after a delay longer than the
+		// configured Timeout but shorter than the 3-minute TLS floor.
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Sleep longer than client timeout
-			time.Sleep(5 * time.Second)
+			time.Sleep(2 * time.Second)
 			w.WriteHeader(200)
 			w.Write([]byte("Response"))
 		}))
 		defer server.Close()
 
-		// Setup: Create fetcher client with short timeout
-		// Note: tls-client uses seconds (int), so minimum effective timeout is 1 second
+		// Setup: Create fetcher client with a short timeout.
+		// NewClient enforces EffectiveTLSTimeout (max(Timeout*3, 3m)), so a 1s
+		// Timeout does NOT truncate a request that completes in 2s. Under the old
+		// 1:1 behavior this request would have failed, so a successful response
+		// proves the floor is applied.
 		client, err := fetcher.NewClient(fetcher.ClientOptions{
 			Timeout:     1 * time.Second,
 			MaxRetries:  0,
@@ -476,15 +479,11 @@ func TestFetcherIntegration_Timeout(t *testing.T) {
 		require.NoError(t, err)
 		defer client.Close()
 
-		// Execute: Fetch content (should timeout)
-		startTime := time.Now()
+		// Execute: The 2s server response completes despite the 1s Timeout.
 		resp, err := client.Get(ctx, server.URL)
-		duration := time.Since(startTime)
-
-		// Verify: Request timed out
-		assert.Error(t, err)
-		assert.Nil(t, resp)
-		assert.Less(t, duration, 3*time.Second, "Should timeout before server responds")
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Equal(t, 200, resp.StatusCode)
 	})
 
 	t.Run("context timeout", func(t *testing.T) {

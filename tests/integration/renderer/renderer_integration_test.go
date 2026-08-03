@@ -286,21 +286,21 @@ func TestRendererIntegration_TabPoolConcurrency(t *testing.T) {
 		pool, err := r.GetTabPool()
 		require.NoError(t, err)
 
-		// Verify: Initial pool size
+		// Verify: Initial pool size (lazy: tabs are created on first acquire)
 		assert.Equal(t, 2, pool.MaxSize())
-		assert.Equal(t, 2, pool.Size())
+		assert.Equal(t, 0, pool.Size())
 
 		// Execute: Acquire both tabs
 		ctx := context.Background()
 		tab1, err := pool.Acquire(ctx)
 		require.NoError(t, err)
 		assert.NotNil(t, tab1)
-		assert.Equal(t, 1, pool.Size())
+		assert.Equal(t, 0, pool.Size()) // In use
 
 		tab2, err := pool.Acquire(ctx)
 		require.NoError(t, err)
 		assert.NotNil(t, tab2)
-		assert.Equal(t, 0, pool.Size())
+		assert.Equal(t, 0, pool.Size()) // Both in use
 
 		// Release tabs
 		pool.Release(tab1)
@@ -496,7 +496,9 @@ func TestRendererIntegration_Close(t *testing.T) {
 
 		pool, err := r.GetTabPool()
 		require.NoError(t, err)
-		assert.Equal(t, 3, pool.Size())
+		// Lazy pool: capacity is 3, but no tabs are created until first acquire
+		assert.Equal(t, 3, pool.MaxSize())
+		assert.Equal(t, 0, pool.Size())
 
 		// Execute: Close renderer
 		err = r.Close()

@@ -602,8 +602,8 @@ func (m *mockSelectorStrategy) Execute(ctx context.Context, url string, opts str
 
 type mockEmptyStrategy struct{ name string }
 
-func (m *mockEmptyStrategy) Name() string                 { return m.name }
-func (m *mockEmptyStrategy) CanHandle(url string) bool    { return true }
+func (m *mockEmptyStrategy) Name() string              { return m.name }
+func (m *mockEmptyStrategy) CanHandle(url string) bool { return true }
 func (m *mockEmptyStrategy) Execute(ctx context.Context, url string, opts strategies.Options) (*domain.StrategyResult, error) {
 	result := domain.NewStrategyResult(m.name, url)
 	result.Finish()
