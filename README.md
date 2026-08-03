@@ -1,3 +1,5 @@
+<div align="center">
+
 # RepoDocs
 
 [![CI](https://github.com/quantmind-br/repodocs/actions/workflows/ci.yml/badge.svg)](https://github.com/quantmind-br/repodocs/actions/workflows/ci.yml)
@@ -31,102 +33,113 @@ CLI or manifest.
 
 ### Prerequisites
 
--   **Go**: 1.24 or later.
--   **Chrome/Chromium**: Required if using the `--render-js` feature for JavaScript rendering.
+- **Go 1.24+**
+- **Chrome or Chromium** — required only for the `--render-js` feature
 
 ### From Source
 
 ```bash
 git clone https://github.com/quantmind-br/repodocs.git
 cd repodocs
-go build -o repodocs ./cmd/repodocs
+make deps
+make build
+./build/repodocs version
+```
+
+### With Go Install
+
+```bash
+go install github.com/quantmind-br/repodocs/cmd/repodocs@latest
+```
+
+### Install to ~/.local/bin
+
+```bash
+make install
 ```
 
 ### Dependency Check
-Use the built-in "doctor" command to verify your environment:
-```bash
-./repodocs doctor
-```
-
-## Testing
-
-RepoDocs has comprehensive test coverage with **64.8% overall coverage** and **9 packages above 90%**.
-
-### Running Tests
 
 ```bash
-# Unit tests (fast)
-make test
-# or
-go test ./... -short
-
-# Integration tests
-make test-integration
-# or
-go test ./tests/integration/... -tags=integration
-
-# Full test suite
-go test ./...
-
-# Coverage report
-go test ./... -coverprofile=coverage.out
-go tool cover -html=coverage.html
+repodocs doctor
 ```
 
-### Test Coverage
-
-| Package | Coverage | Status |
-|---------|----------|--------|
-| git | 100.0% | ✅ Excellent |
-| domain | 97.1% | ✅ Excellent |
-| manifest | 97.0% | ✅ Excellent |
-| state | 95.5% | ✅ Excellent |
-| output | 94.4% | ✅ Excellent |
-| llm | 93.0% | ✅ Excellent |
-| cache | 91.3% | ✅ Excellent |
-| utils | 90.1% | ✅ Excellent |
-| renderer | 89.1% | ✅ Excellent |
-| converter | 87.1% | ✅ Good |
-| fetcher | 84.1% | ✅ Good |
-| strategies/git | 79.5% | ✅ Good |
-| config | 76.0% | ✅ Good |
-
-See [TESTING.md](TESTING.md) for detailed testing guidelines, patterns, and best practices.
+Checks for required runtime dependencies (e.g., Chromium for JS rendering).
 
 ## Quick Start
 
 Extract documentation from a URL to the default `./docs` directory:
+
 ```bash
 repodocs https://docs.example.com
 ```
 
-Extract a specific GitHub repository with a maximum depth of 2:
+Extract a GitHub repository with a maximum depth of 2:
+
 ```bash
 repodocs https://github.com/user/repo --max-depth 2
 ```
 
 Force JavaScript rendering for a React-based documentation site:
+
 ```bash
 repodocs https://spa-docs.com --render-js
 ```
 
 Generate JSON metadata and limit to 10 pages:
+
 ```bash
 repodocs https://example.com --json-meta --limit 10
 ```
 
 Process multiple sources from a manifest file:
+
 ```bash
 repodocs --manifest sources.yaml
 ```
 
-## Batch Processing with Manifests
+## Usage
 
-For processing multiple documentation sources, RepoDocs supports manifest files in YAML or JSON format. This enables reproducible, one-command data ingestion for complex RAG pipelines.
+### Common Flags
 
-### Creating a Manifest
+| Flag | Short | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `--manifest` | | Path to manifest file (YAML/JSON) for batch processing | |
+| `--output` | `-o` | Output directory | `./docs` |
+| `--concurrency` | `-j` | Number of concurrent workers | `5` |
+| `--max-depth` | `-d` | Maximum crawl depth | `4` |
+| `--limit` | `-l` | Maximum pages to process | `0` (unlimited) |
+| `--strategy` | | Force strategy: `llms`, `pkggo`, `docsrs`, `sitemap`, `wiki`, `github_pages`, `git`, `crawler` | auto |
+| `--render-js` | | Force JavaScript rendering | `false` |
+| `--cdp-endpoint` | | Use external CDP browser (e.g. `http://127.0.0.1:9222`) instead of launching Chrome | |
+| `--proxy` | | Proxy URL (`http`, `https`, `socks5`, `socks5h`) | |
+| `--content-selector` | | CSS selector for main content | |
+| `--exclude-selector` | | CSS selector for elements to exclude | |
+| `--exclude` | | Regex patterns to exclude | |
+| `--filter` | | Path filter (web: base URL; git: subdirectory) | |
+| `--include-assets` | | Include referenced images (git strategy) | `false` |
+| `--min-docs` | | Min documents for successful extraction; triggers fallback below this | `1` |
+| `--no-fallback` | | Disable strategy fallback | `false` |
+| `--no-cache` | | Disable the BadgerDB caching layer | `false` |
+| `--refresh-cache` | | Force cache refresh | `false` |
+| `--cache-ttl` | | Cache TTL | `24h` |
+| `--timeout` | | Request timeout | `1m30s` |
+| `--user-agent` | | Custom User-Agent | |
+| `--json-meta` | | Generate JSON metadata files | `false` |
+| `--sync` | | Incremental sync (skip unchanged pages) | `false` |
+| `--full-sync` | | Force full re-processing (ignore state) | `false` |
+| `--prune` | | Remove files for deleted pages | `false` |
+| `--dry-run` | | Simulate without writing files | `false` |
+| `--force` | | Overwrite existing files | `false` |
+| `--split` | | Split output by sections (pkg.go.dev) | `false` |
+| `--config` | | Config file path | `~/.repodocs/config.yaml` |
+| `--verbose` | `-v` | Verbose output | `false` |
 
-Create a `sources.yaml` file:
+### Batch Processing with Manifests
+
+For multiple documentation sources, use a manifest file in YAML or JSON. This enables reproducible, one-command data ingestion for complex RAG pipelines.
+
+**Create `sources.yaml`:**
 
 ```yaml
 sources:
@@ -146,22 +159,20 @@ options:
   continue_on_error: true
 ```
 
-### Running with a Manifest
+**Run:**
 
 ```bash
 repodocs --manifest sources.yaml
 ```
 
-### Manifest Schema
+#### Manifest Schema
 
-#### Sources
-
-Each source defines a documentation URL and optional configuration:
+**Sources** — each source defines a documentation URL and optional configuration:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `url` | string | Yes | URL to extract documentation from |
-| `strategy` | string | No | Force a specific strategy (`crawler`, `git`, `sitemap`, etc.) |
+| `strategy` | string | No | Force a strategy (`crawler`, `git`, `sitemap`, etc.) |
 | `content_selector` | string | No | CSS selector for main content |
 | `exclude_selector` | string | No | CSS selector for elements to remove |
 | `exclude` | array | No | URL/path patterns to skip |
@@ -170,9 +181,7 @@ Each source defines a documentation URL and optional configuration:
 | `render_js` | bool | No | Force JavaScript rendering |
 | `limit` | int | No | Maximum pages from this source |
 
-#### Options
-
-Global options that apply to the entire manifest:
+**Options** — global settings for the whole manifest:
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -180,28 +189,60 @@ Global options that apply to the entire manifest:
 | `output` | string | `./docs` | Output directory for all sources |
 | `concurrency` | int | `5` | Number of concurrent workers |
 
-### Error Handling
+#### Error Handling
 
-By default, execution stops on the first source failure. Use `continue_on_error: true` to process all sources regardless of individual failures:
+By default, execution stops on the first source failure. Use `continue_on_error: true` to process all sources:
 
 ```yaml
 options:
   continue_on_error: true
 ```
 
-With this option:
-- Failed sources are logged but don't stop execution
-- All sources are attempted
-- Summary shows success/failure counts
-- Exit code is non-zero if any source failed
+With this option, failed sources are logged but don't stop execution, all sources are attempted, and the summary shows success/failure counts. The exit code is non-zero if any source failed.
 
-### Example Manifests
+#### Example Manifests
 
-See the `examples/manifests/` directory for sample manifest files:
-- `simple.yaml` - Basic single-source manifest
-- `multi-source.yaml` - Multiple sources with different strategies
-- `error-tolerant.yaml` - Continues on errors
-- `full-options.yaml` - All available options documented
+See `examples/manifests/` for sample files: `simple.yaml`, `multi-source.yaml`, `error-tolerant.yaml`, and `full-options.yaml`.
+
+## Configuration
+
+RepoDocs can be configured via CLI flags, environment variables, or a configuration file (default: `~/.repodocs/config.yaml`).
+
+### Configuration Commands
+
+| Command | Description |
+|---------|-------------|
+| `repodocs config` | Open interactive configuration TUI |
+| `repodocs config edit` | Open interactive configuration TUI |
+| `repodocs config show` | Display current configuration as YAML |
+| `repodocs config init` | Create default config file at `~/.repodocs/config.yaml` |
+| `repodocs config path` | Show configuration file path |
+
+### Accessibility
+
+For screen reader support, enable accessible mode:
+
+```bash
+# Environment variable
+ACCESSIBLE=1 repodocs config
+
+# Flag
+repodocs config --accessible
+```
+
+### Configuration Categories
+
+The interactive TUI organizes settings into categories: **Output**, **Concurrency**, **Cache**, **Rendering**, **Stealth**, **Logging**, and **LLM** (provider, API key, model, temperature, metadata enhancement).
+
+## How URL Detection Works
+
+RepoDocs tries strategies in a fixed order and uses the first one that matches:
+
+```
+llms.txt → pkg.go.dev → docs.rs → sitemap.xml → wiki → GitHub Pages → Git → crawler
+```
+
+The crawler is the universal fallback. Pass `--strategy <name>` to force a specific strategy, or `--no-fallback` to disable automatic fallback.
 
 ## Architecture
 
@@ -218,162 +259,49 @@ graph LR
     F -.-> H[Metadata Collector]
 ```
 
-1.  **Detection**: The `Orchestrator` uses a `Strategy Factory` to identify the correct approach (Git, Crawler, Sitemap, etc.) based on the input URL.
-2.  **Execution**: The selected `Strategy` orchestrates fetching or cloning content.
-3.  **Processing**: The `Converter Pipeline` transforms raw content:
-    -   **Encoding**: Normalizes text to UTF-8.
-    -   **Sanitization**: Removes unwanted HTML tags and noise.
-    -   **Conversion**: Transforms cleaned HTML into Markdown.
-4.  **Enhancement**: The `MetadataEnhancer` (optional) uses LLMs to enrich the document with summaries and tags.
-5.  **Output**: The `Writer` persists the final Markdown and metadata to the local filesystem.
-
 ### Core Components
 
--   **Internal Domain**: Defines core models (`Document`, `Page`) and interfaces (`Fetcher`, `Renderer`, `Cache`).
--   **Fetcher**: High-level HTTP client with stealth capabilities and caching.
--   **Renderer**: Manages a pool of headless browser tabs for dynamic content.
--   **Strategies**: Specialized logic for different documentation sources.
+| Component | Location | Responsibility |
+|-----------|----------|----------------|
+| Detector & orchestrator | `internal/app/` | Strategy detection, single-URL and manifest runs |
+| Strategies | `internal/strategies/` | Per-source extraction (`llms`, `git`, `sitemap`, `pkggo`, `docsrs`, `wiki`, `crawler`) |
+| Fetcher | `internal/fetcher/` | Stealth HTTP client, retries, transport |
+| Renderer | `internal/renderer/` | Rod/Chromium JS rendering, tab pool |
+| Converter | `internal/converter/` | HTML → Markdown pipeline |
+| LLM | `internal/llm/` | Provider factory, resilience wrappers, metadata enrichment |
+| Cache | `internal/cache/` | BadgerDB-backed persistent cache |
+| State | `internal/state/` | Incremental sync state |
+| Output | `internal/output/` | Markdown writer, metadata collector |
+| TUI | `internal/tui/` | Bubble Tea/Huh config editor |
+| CLI | `cmd/repodocs/` | Cobra entrypoint |
 
-## How URL Detection Works
-
-RepoDocs checks each registered strategy in a fixed order and uses the first one that can handle the URL:
-
-```text
-LLMS → PkgGo → DocsRS → Sitemap → Wiki → GitHubPages → Git → Crawler
-```
-
-Each strategy inspects the input URL and returns whether it supports that source. The first matching strategy wins, which means specialized handlers run before the generic crawler. Use `--strategy` to force a specific strategy when auto-detection is not what you want.
-
-Examples:
-
--   `https://pkg.go.dev/...` → `PkgGo`
--   `https://docs.rs/...` → `DocsRS`
--   `https://github.com/org/repo` → `Git`
--   `https://example.com/sitemap.xml` → `Sitemap`
--   `https://example.com/docs` → `Crawler`
-
-## Configuration
-
-RepoDocs can be configured via CLI flags, environment variables, or a configuration file (default: `~/.repodocs/config.yaml`).
-
-### Interactive Configuration
-
-Use the interactive TUI to configure RepoDocs:
+## Testing
 
 ```bash
-repodocs config
+make test        # unit tests (short, race-enabled)
+make test-all    # full suite (unit + integration + e2e, race-enabled)
+make coverage    # coverage report in ./coverage/
 ```
 
-This opens an interactive terminal interface where you can navigate through configuration categories, edit values with validation, and save changes.
-
-### Configuration Commands
-
-| Command | Description |
-|---------|-------------|
-| `repodocs config` | Open interactive configuration TUI |
-| `repodocs config edit` | Open interactive configuration TUI |
-| `repodocs config show` | Display current configuration as YAML |
-| `repodocs config init` | Create default config file at ~/.repodocs/config.yaml |
-| `repodocs config path` | Show configuration file path |
-
-### Accessibility
-
-For screen reader support, enable accessible mode:
+Additional suites may be run directly:
 
 ```bash
-# Using environment variable
-ACCESSIBLE=1 repodocs config
-
-# Using flag
-repodocs config --accessible
+go test ./tests/unit/...
+go test ./tests/integration/...
+go test ./tests/e2e/...
 ```
 
-### Configuration Categories
-
-The interactive TUI organizes settings into categories:
-
-- **Output**: Directory, flat structure, overwrite behavior, JSON metadata
-- **Concurrency**: Workers, timeout, max crawl depth
-- **Cache**: Enable/disable, TTL, cache directory
-- **Rendering**: JavaScript rendering, JS timeout, scroll behavior
-- **Stealth**: User-Agent, random delays
-- **Logging**: Log level, log format
-- **LLM**: Provider, API key, model, temperature, metadata enhancement
-
-### Common Flags
-
-| Flag | Short | Description | Default |
-| :--- | :--- | :--- | :--- |
-| `--manifest` | | Path to manifest file (YAML/JSON) for batch processing | |
-| `--output` | `-o` | Output directory | `./docs` |
-| `--concurrency` | `-j` | Number of concurrent workers | `5` |
-| `--max-depth` | `-d` | Maximum crawl depth | `4` |
-| `--limit` | `-l` | Maximum number of pages to process | `0` (unlimited) |
-| `--render-js` | | Force JavaScript rendering | `false` |
-| `--no-cache` | | Disable the BadgerDB caching layer | `false` |
-| `--accessible` | | Enable screen reader support for interactive commands | `false` |
-| `--exclude` | | Regex patterns to exclude specific paths | |
-| `--json-meta` | | Generate individual `.json` metadata files | `false` |
-
-## FAQ
-
-### "Chrome/Chromium not found" error
-
-Install Chrome or Chromium if you need JavaScript rendering. If the site works without a browser, run with `--no-render-js` to disable rendering.
-
-### "No strategy found for URL"
-
-Check that the URL is valid and includes the expected scheme (`https://` or `http://`). If auto-detection chooses the wrong path or cannot match the source, specify one with `--strategy`.
-
-### How do I clear the cache?
-
-Remove the cache directory:
-
-```bash
-rm -rf ~/.repodocs/cache
-```
-
-For one-off runs, use `--no-cache` to bypass the cache without deleting it.
-
-### How is the output directory structured?
-
-RepoDocs writes Markdown files under the configured output directory. Flat output keeps pages at a single level for easier ingestion, while nested output mirrors source paths when preserving site structure matters. Downloaded or referenced assets are kept alongside generated documents when asset handling is enabled.
-
-### How does rate limiting work?
-
-RepoDocs includes retries with exponential backoff for transient failures. The persistent cache reduces repeat requests, which helps avoid hitting remote rate limits during repeated runs.
-
-### How do I fix manifest validation errors?
-
-Check YAML or JSON syntax first, then verify required fields such as `url` are present for each source. See the manifest schema above for supported fields and types.
-
-## Development
-
-### Running Tests
-Execute the test suite:
-```bash
-go test ./...
-```
-
-### Linting
-The project follows standard Go formatting. Run the linter:
-```bash
-go vet ./...
-```
-
-### Building
-Build the binary for your local architecture:
-```bash
-go build -o repodocs ./cmd/repodocs
-```
+Coverage thresholds per package are enforced in CI (`.github/workflows/ci.yml`). See [TESTING.md](TESTING.md) for the full guide.
 
 ## Contributing
 
-1.  Ensure all core services are defined via interfaces in the `internal/domain` package.
-2.  When adding new extraction logic, implement the `Strategy` interface in `internal/strategies`.
-3.  Add unit tests for new components using `go.uber.org/mock` for dependency mocking.
-4.  Ensure any changes to the HTML-to-Markdown pipeline are reflected in the `internal/converter` package.
+Contributions are welcome! Please read:
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — setup, code style, and PR process
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — community guidelines
+- [SECURITY.md](SECURITY.md) — how to report vulnerabilities
+- [CHANGELOG.md](CHANGELOG.md) — version history
 
 ## License
 
-Refer to the `LICENSE` file for details.
+This project is licensed under the [MIT License](LICENSE). © 2025-2026 Diogo Soares Rodrigues.

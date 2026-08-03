@@ -1,137 +1,116 @@
 # Testing Guide
 
-This document provides comprehensive information about testing practices in the repodocs project.
+This document describes how RepoDocs is tested, how to run the suites, and the coverage rules enforced in CI.
 
-## Test Coverage Overview
+## Test Layout
 
-**Current Coverage**: 64.8% overall
-
-### Coverage by Package
-
-| Package | Coverage | Status |
-|---------|----------|--------|
-| git | 100.0% | ✅ Excellent |
-| domain | 97.1% | ✅ Excellent |
-| manifest | 97.0% | ✅ Excellent |
-| state | 95.5% | ✅ Excellent |
-| output | 94.4% | ✅ Excellent |
-| llm | 92.9% | ✅ Excellent |
-| utils | 90.9% | ✅ Excellent |
-| cache | 91.3% | ✅ Excellent |
-| config | 91.4% | ✅ Excellent |
-| converter | 87.3% | ✅ Good |
-| fetcher | 84.1% | ✅ Good |
-| strategies/git | 79.5% | ✅ Good |
-| app | 58.8% | ⚠️ Needs improvement |
-| strategies | 40.0% | ⚠️ Needs improvement |
-| renderer | 30.3% | ⚠️ Needs work |
-
-## Running Tests
-
-### Unit Tests (Fast)
-```bash
-make test
-# or
-go test ./... -short
-```
-
-### Integration Tests
-```bash
-make test-integration
-# or
-go test ./tests/integration/... -tags=integration
-```
-
-### E2E Tests
-```bash
-make test-e2e
-# or
-go test ./tests/e2e/... -tags=e2e
-```
-
-### Coverage Report
-```bash
-go test ./... -coverprofile=coverage.out
-go tool cover -html=coverage.html
-open coverage.html
-```
-
-## Test Structure
+The project keeps its tests in the `tests/` directory alongside the main module:
 
 ```
 tests/
-├── unit/               # Fast unit tests with mocks
-│   ├── app/           # Application orchestrator tests
-│   ├── cache/         # Cache implementation tests
-│   ├── config/        # Configuration tests
-│   ├── converter/     # HTML/Markdown conversion tests
-│   ├── domain/        # Domain models and interfaces
-│   ├── fetcher/       # HTTP client tests
-│   ├── git/           # Git operations tests
-│   ├── llm/           # LLM provider tests
-│   ├── manifest/      # Manifest parsing tests
-│   ├── output/        # Output writer tests
-│   ├── renderer/      # Browser renderer tests
-│   ├── state/         # State manager tests
-│   └── strategies/    # Strategy pattern tests
-├── integration/       # Integration tests with real services
-│   ├── fetcher/
-│   ├── llm/
-│   ├── renderer/
-│   └── strategies/
-└── e2e/              # End-to-end tests
+├── unit/          # Fast unit tests with mocks (default `go test ./...` scope)
+├── integration/   # Tests against real services (httptest mocks, live dependencies)
+├── e2e/           # End-to-end pipeline tests
+├── benchmark/     # Benchmarks for performance-critical code
+├── mocks/         # Generated mocks
+├── testutil/      # Shared test helpers and factories
+└── fixtures/      # HTML, sitemap, docsrs, git, llms sample data
 ```
 
-## Testing Patterns
+In-package tests also live next to the source they cover (e.g. `internal/llm/`, `internal/config/`).
 
-### 1. Table-Driven Tests
+## Running the Suites
 
-Preferred for testing multiple scenarios:
+All test entry points are wired through the Makefile:
+
+```bash
+make test        # unit tests:  go test -v -race -short ./...
+make test-all    # full suite:  go test -v -race ./...
+make coverage    # coverage report + HTML in ./coverage/
+```
+
+Individual suites can be run directly with `go test`:
+
+```bash
+# Unit tests
+go test ./tests/unit/...
+
+# Integration tests
+go test ./tests/integration/...
+
+# End-to-end tests
+go test ./tests/e2e/...
+
+# Benchmarks
+go test ./tests/benchmark/... -bench=.
+```
+
+The `-short` flag used by `make test` skips the slower suites (renderer/browser-heavy tests, long-running integration cases) so the quick feedback loop stays fast. Use `make test-all` for the complete run.
+
+## Coverage
+
+Coverage is measured per package and enforced in CI with **package-specific thresholds**, not a single global minimum.
+
+### Thresholds enforced in CI
+
+| Package | Required | Package | Required |
+|---------|----------|---------|----------|
+| `internal/domain` | 85% | `internal/app` | 48% |
+| `internal/converter` | 75% | `internal/config` | 54% |
+| `internal/output` | 80% | `internal/cache` | 75% |
+| `internal/git` | 80% | `internal/fetcher` | 70% |
+| `internal/llm` | 70% | `internal/renderer` | 28% |
+| `internal/strategies` | 34% | `cmd/repodocs` | 48% |
+
+Thresholds live in `.github/workflows/ci.yml`. When you raise a package's coverage, update the threshold there if you want CI to enforce the new bar.
+
+### Generating a local report
+
+```bash
+make coverage
+# HTML report: ./coverage/coverage.html
+```
+
+## CI Behavior
+
+The CI workflow (`.github/workflows/ci.yml`) runs on every push to `main`/`master` and on pull requests:
+
+1. **`test`** (Linux) — runs `go test -short ./...` with coverage, then checks every package against its threshold. A package below its threshold fails the job.
+2. **`test-windows`** — runs the same suite on Windows to catch platform-specific failures.
+3. **`comment-pr`** — posts the coverage summary on pull requests.
+
+## Writing Tests
+
+### Conventions
+
+- **Table-driven tests** for multiple cases: `TestFunction_Scenario`.
+- **Mock external dependencies** (network, LLM providers, git) so tests are deterministic. Mocks live in `tests/mocks/`; shared helpers in `tests/testutil/`.
+- **Use `t.Cleanup()`** for resource cleanup (servers, temp dirs).
+- **Test error paths**, not just happy paths.
+- **Respect the `-short` flag**: anything slow (browser launch, long retries, live network) should be skipped in short mode or placed in `tests/integration/` / `tests/e2e/`.
+- **Avoid `_ = err` patterns** in production code; assert real error values.
+
+### Example: mock-based unit test
 
 ```go
-func TestFunction(t *testing.T) {
-    tests := []struct {
-        name    string
-        input   string
-        wantErr bool
-    }{
-        {"valid input", "test", false},
-        {"invalid input", "", true},
+// internal/cache/cache_test.go
+func TestCache_Get_Miss(t *testing.T) {
+    // use a testutil helper or a real in-memory implementation
+    c, err := cache.New(cache.Options{Dir: t.TempDir()})
+    if err != nil {
+        t.Fatalf("New: %v", err)
     }
-
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            err := YourFunction(tt.input)
-            if tt.wantErr {
-                assert.Error(t, err)
-            } else {
-                assert.NoError(t, err)
-            }
-        })
+    got, err := c.Get(context.Background(), "missing")
+    if err != nil {
+        t.Fatalf("Get on missing key: %v", err)
+    }
+    if len(got) != 0 {
+        t.Fatalf("expected empty result, got %q", got)
     }
 }
 ```
 
-### 2. Mock Testing
-
-Using `go.uber.org/mock` for interfaces:
-
-```go
-// Generate mock
-//go:generate mockgen -source=domain/cache.go -destination=../../mocks/mock_cache.go
-
-func TestWithMock(t *testing.T) {
-    ctrl := gomock.NewController(t)
-    defer ctrl.Finish()
-
-    mockCache := mocks.NewMockCache(ctrl)
-    mockCache.EXPECT().Get(gomock.Any(), "key").Return([]byte("value"), nil)
-}
-```
-
-### 3. Test Helpers
-
-Create reusable test helpers:
+### Example: HTTP server helper
 
 ```go
 // tests/testutil/testutil.go
@@ -145,119 +124,22 @@ func SetupTestServer(t *testing.T) *httptest.Server {
 }
 ```
 
-### 4. Fixture Organization
+### Adding a benchmark
 
-```
-tests/
-└── fixtures/
-    ├── html/           # HTML samples for testing
-    │   ├── simple.html
-    │   ├── spa.html
-    │   └── markdown.html
-    └── sitemap/        # Sitemap samples
-        ├── small.xml
-        └── index.xml
+```go
+func BenchmarkExtract(b *testing.B) {
+    for i := 0; i < b.N; i++ {
+        // exercise the path under test
+    }
+}
 ```
 
-## Coverage Targets
-
-- **Minimum**: 80% per package
-- **Target**: 90% per package
-- **Excellent**: 95%+ per package
-
-Packages below 80% require attention and additional test coverage.
-
-## CI/CD Integration
-
-Tests run automatically on:
-- Pull request creation
-- Push to main branch
-- Scheduled nightly builds
-
-Coverage badges are updated automatically based on test results.
+Benchmarks live in `tests/benchmark/` or next to the code they measure.
 
 ## Best Practices
 
-1. **Write tests first** (TDD when possible)
-2. **Keep tests fast** - Use `-short` flag for quick feedback
-3. **Use descriptive test names** - `TestFunction_Scenario`
-4. **Table-driven for multiple cases** - Better maintainability
-5. **Mock external dependencies** - Tests should be deterministic
-6. **Clean up resources** - Use `t.Cleanup()` and `defer`
-7. **Test error paths** - Not just happy paths
-8. **Add benchmarks** - For performance-critical code
-
-## Example: Adding New Tests
-
-```go
-// 1. Identify function to test
-func MyFunction(input string) (string, error)
-
-// 2. Create test file: tests/unit/mypackage/mypackage_test.go
-package mypackage_test
-
-import (
-    "testing"
-    "github.com/stretchr/testify/assert"
-    "github.com/quantmind-br/repodocs/internal/mypackage"
-)
-
-// 3. Write test
-func TestMyFunction(t *testing.T) {
-    result, err := mypackage.MyFunction("test")
-    assert.NoError(t, err)
-    assert.Equal(t, "expected", result)
-}
-
-// 4. Run test
-// go test ./tests/unit/mypackage/ -v
-```
-
-## Coverage Reports
-
-Generate detailed coverage reports:
-
-```bash
-# Function coverage
-go test ./internal/... -coverprofile=coverage.out
-go tool cover -func=coverage.out | grep -v "100.0%"
-
-# HTML report
-go tool cover -html=coverage.out -o coverage.html
-
-# By package
-go test ./internal/... -coverprofile=coverage.out
-go tool cover -func=coverage.out | grep "^github.com"
-```
-
-## Troubleshooting
-
-### Tests Timing Out
-- Use `-short` flag to skip integration tests
-- Check for infinite loops in goroutines
-- Add explicit timeouts to contexts
-
-### Browser Tests Failing
-- Ensure Chrome/Chromium is installed
-- Check `renderer.IsAvailable()` before running
-- Use `testing.Short()` to skip when browser unavailable
-
-### Cache Issues
-- Clear cache: `rm -rf ~/.repodocs-cache`
-- Run with cache disabled: `REPODOCS_CACHE=off ./repodocs`
-
-### Mock Generation
-```bash
-# Install mockgen
-go install go.uber.org/mock/mockgen@latest
-
-# Generate mocks
-go generate ./...
-```
-
-## Additional Resources
-
-- [Effective Go Testing](https://go.dev/doc/effective_go.html#testing)
-- [Table-Driven Tests](https://dave.cheney.net/2019/03/04/table-driven-tests-in-go)
-- [Test Coverage](https://blog.golang.org/cover/go14)
-- [Go Mock](https://github.com/golang/mock)
+1. Write the test that captures the regression **before** fixing the bug (reproduce → fix → confirm).
+2. Keep the quick suite fast — move slow cases behind `-short` or into integration/e2e.
+3. Name tests descriptively (`TestFunction_Scenario`) so failures are self-explanatory.
+4. One behavior per test; assert observable contracts, not implementation details.
+5. When a bug fix changes behavior, add a regression test that fails on the old behavior.
