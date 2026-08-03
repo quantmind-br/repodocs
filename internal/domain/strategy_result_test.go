@@ -65,10 +65,13 @@ func TestStrategyResult_NonPositiveAddsAreIgnored(t *testing.T) {
 
 func TestStrategyResult_FinishRecordsDurationOnce(t *testing.T) {
 	r := NewStrategyResult("crawler", "https://example.com")
+	// Backdate startedAt so the elapsed duration is non-zero even on
+	// platforms with coarse clocks (e.g. Windows 15ms timers).
+	r.startedAt = time.Now().Add(-50 * time.Millisecond)
 
 	r.Finish()
 	d1 := r.Duration
-	assert.Greater(t, d1, time.Duration(0))
+	assert.NotZero(t, d1)
 
 	// Second call must not overwrite the recorded duration
 	time.Sleep(5 * time.Millisecond)

@@ -2,8 +2,9 @@ package app
 
 import (
 	"context"
+	"net/http"
+	"sync"
 	"testing"
-	"time"
 
 	"github.com/quantmind-br/repodocs/internal/config"
 	"github.com/quantmind-br/repodocs/internal/domain"
@@ -81,13 +82,22 @@ func TestRunWithFallback_VerdictOKReturnsImmediately(t *testing.T) {
 }
 
 func TestRunWithFallback_NoFallbackReturnsOriginal(t *testing.T) {
-	executed := 0
-	o := newTestFallbackOrchestrator(t, func(st StrategyType) strategies.Strategy {
+	executed := map[string]int{}
+	var mu sync.Mutex
+	base := newTestFallbackOrchestrator(t, func(st StrategyType) strategies.Strategy {
 		return &fallbackStrategy{name: string(st), produceDocs: false, discovered: 5}
 	})
+	origFactory := base.strategyFactory
+	base.strategyFactory = func(st StrategyType, d *strategies.Dependencies) strategies.Strategy {
+		s := origFactory(st, d)
+		mu.Lock()
+		executed[s.Name()]++
+		mu.Unlock()
+		return s
+	}
 
 	initial := recovery.Attempt{Strategy: "sitemap", URL: "https://example.com/sitemap.xml"}
-	result, verdict, err := o.runWithFallback(context.Background(), initial, OrchestratorOptions{
+	result, verdict, err := base.runWithFallback(context.Background(), initial, OrchestratorOptions{
 		NoFallback: true,
 	})
 
@@ -96,22 +106,39 @@ func TestRunWithFallback_NoFallbackReturnsOriginal(t *testing.T) {
 	assert.Equal(t, 0, result.CompletedDocs())
 	_, ok := verdict.(recovery.VerdictRetryAlternative)
 	assert.True(t, ok)
-	assert.Equal(t, 0, executed)
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, 1, executed["sitemap"], "initial attempt runs once")
+	assert.Equal(t, 0, executed["crawler"], "fallback must be suppressed")
 }
 
 func TestRunWithFallback_StrategyOverrideReturnsOriginal(t *testing.T) {
-	o := newTestFallbackOrchestrator(t, func(st StrategyType) strategies.Strategy {
+	executed := map[string]int{}
+	var mu sync.Mutex
+	base := newTestFallbackOrchestrator(t, func(st StrategyType) strategies.Strategy {
 		return &fallbackStrategy{name: string(st), produceDocs: false, discovered: 5}
 	})
+	origFactory := base.strategyFactory
+	base.strategyFactory = func(st StrategyType, d *strategies.Dependencies) strategies.Strategy {
+		s := origFactory(st, d)
+		mu.Lock()
+		executed[s.Name()]++
+		mu.Unlock()
+		return s
+	}
 
 	initial := recovery.Attempt{Strategy: "sitemap", URL: "https://example.com/sitemap.xml"}
-	_, verdict, err := o.runWithFallback(context.Background(), initial, OrchestratorOptions{
+	_, verdict, err := base.runWithFallback(context.Background(), initial, OrchestratorOptions{
 		StrategyOverride: "crawler",
 	})
 
 	require.NoError(t, err)
 	_, ok := verdict.(recovery.VerdictRetryAlternative)
 	assert.True(t, ok)
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, 1, executed["sitemap"], "initial attempt runs once")
+	assert.Equal(t, 0, executed["crawler"], "override must suppress fallback")
 }
 
 func TestRunWithFallback_PlannedCandidateRecovers(t *testing.T) {
@@ -195,25 +222,73 @@ func TestRunWithFallback_CancellationDuringFallbackPropagates(t *testing.T) {
 }
 
 func TestRunWithFallback_DeduplicatesAttempts(t *testing.T) {
-	// The same attempt proposed twice (e.g. identical planner candidates)
-	// must only execute once.
+	// Scenario: the initial sitemap attempt discovers URLs but attempts none
+	// (VerdictRetryAlternative). Tier 1's planner proposes crawling the site
+	// origin (R3). Tier 2's probes then re-propose the same crawler attempt via
+	// the index-page probe. The dedup key must prevent a second crawler run.
+	originHTML := []byte(`<!DOCTYPE html><html><body>` + indexPageAnchors() + `</body></html>`)
+	fetcher := &pathAwareFetcher{
+		responses: map[string]*domain.Response{
+			// Origin: link-rich index page (20+ anchors, no GitHub meta).
+			"https://example.com": {StatusCode: 200, Body: originHTML},
+		},
+	}
+
+	var mu sync.Mutex
 	executed := map[string]int{}
 	o := newTestFallbackOrchestrator(t, func(st StrategyType) strategies.Strategy {
 		return &fallbackStrategy{name: string(st), produceDocs: false, discovered: 5}
 	})
-	// Instrument the factory to count executions.
+	o.probeRunner = recovery.NewProbeRunner(fetcher)
 	origFactory := o.strategyFactory
 	o.strategyFactory = func(st StrategyType, d *strategies.Dependencies) strategies.Strategy {
 		s := origFactory(st, d)
+		mu.Lock()
 		executed[s.Name()]++
+		mu.Unlock()
 		return s
 	}
 
 	initial := recovery.Attempt{Strategy: "sitemap", URL: "https://example.com/sitemap.xml"}
-	_, _, err := o.runWithFallback(context.Background(), initial, OrchestratorOptions{})
+	_, verdict, err := o.runWithFallback(context.Background(), initial, OrchestratorOptions{})
 	require.NoError(t, err)
+
+	mu.Lock()
+	defer mu.Unlock()
 	assert.Equal(t, 1, executed["sitemap"], "initial attempt runs once")
+	assert.Equal(t, 1, executed["crawler"], "dedup must prevent the re-proposed crawler from running twice")
+	_, ok := verdict.(recovery.VerdictRetryAlternative)
+	assert.True(t, ok, "no alternative satisfied criteria; original verdict surfaces")
 }
+
+// indexPageAnchors returns 25 anchor tags to satisfy the index-page probe.
+func indexPageAnchors() string {
+	s := ""
+	for i := range 25 {
+		s += `<a href="https://example.com/page` + string(rune('0'+i)) + `">Page</a>`
+	}
+	return s
+}
+
+// pathAwareFetcher returns per-URL canned responses; URLs not listed return 404.
+type pathAwareFetcher struct {
+	responses map[string]*domain.Response
+}
+
+func (f *pathAwareFetcher) Get(_ context.Context, url string) (*domain.Response, error) {
+	if resp, ok := f.responses[url]; ok {
+		return resp, nil
+	}
+	return &domain.Response{StatusCode: 404, Body: []byte("not found")}, nil
+}
+
+func (f *pathAwareFetcher) GetWithHeaders(ctx context.Context, url string, _ map[string]string) (*domain.Response, error) {
+	return f.Get(ctx, url)
+}
+
+func (f *pathAwareFetcher) GetCookies(url string) []*http.Cookie { return nil }
+func (f *pathAwareFetcher) Transport() http.RoundTripper         { return nil }
+func (f *pathAwareFetcher) Close() error                         { return nil }
 
 func TestAttemptKey_DistinguishesStrategyURLAndFilter(t *testing.T) {
 	base := recovery.Attempt{Strategy: "crawler", URL: "https://example.com", FilterURL: "/docs"}
@@ -251,5 +326,3 @@ func TestValidationOpts_CarriesPerAttemptOverrides(t *testing.T) {
 	assert.True(t, opts.DryRun)
 	assert.Equal(t, 7, opts.MinDocs)
 }
-
-var _ = time.Second
